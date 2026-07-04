@@ -1,0 +1,4 @@
+*.vsix
+*.zip
+example_data/
+Robotic_Origami_Challenge/

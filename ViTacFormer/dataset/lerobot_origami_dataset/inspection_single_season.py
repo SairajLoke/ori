@@ -29,11 +29,12 @@ dataset = LeRobotDataset(repo_id=None, root=episode_root)
 sample = dataset[100]
 print(sample)
 
-delta_timestamps = {
-    "observation.images.head_left": [-0.2, -0.1, 0.0]  # 0.2s and 0.1s before current frame
-}
+# delta_timestamps = {
+#     "observation.images.head_left": [-0.2, -0.1, 0.0]  # 0.2s and 0.1s before current frame
+# }
 
-dataset = LeRobotDataset(repo_id=None,  root=episode_root, delta_timestamps=delta_timestamps,
+dataset = LeRobotDataset(repo_id=None,  root=episode_root, 
+                         #delta_timestamps=delta_timestamps, #NOTE: they don't seem to have any history? /delta timesteps in input
                          video_backend="pyav",
                         tolerance_s=TOLERANCE)
 

@@ -1,12 +1,13 @@
-import Path 
+
+from pathlib import Path
 
 TOLERANCE = 0.001
 IS_ORIGAMI_TASK = True 
 
+FPS = 30.0 
+CHUNK_SIZE = 100 
 
 if IS_ORIGAMI_TASK:
-    
-    
     # ------------------ State / Observation configs ------------------
     EPISODE_LEN = 10_000
     CAMERA_NAMES = ['observation.images.head_left',
@@ -30,9 +31,13 @@ if IS_ORIGAMI_TASK:
         # "season_POC22034_train",
     ]
     #TODO : check what they had 
-    # delta_timestamps = {
-    #     "observation.images.head_left": [-0.2, -0.1, 0.0]
-    # }
+    
+    assert 1/FPS != 0 
+    DELTA_TIMESTAMPS = {
+        # "observation.images.head_left": [-0.2, -0.1, 0.0]
+        # "action": [i / FPS for i in range(CHUNK_SIZE)],
+        "observation.tactile": [0.0, 1/FPS],
+    }
     
     
     # ------------------ Training configs ------------------

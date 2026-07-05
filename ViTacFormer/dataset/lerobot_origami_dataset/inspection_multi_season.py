@@ -116,9 +116,11 @@ for count, batch in enumerate(data_loader):
     actions = batch["action"].to(device)
     images = batch["observation.images.head_left"].to(device)
     
+    print(f"\nBatch {count} -> Obs: {observations.shape}, Actions: {actions.shape}, Images: {images.shape}")
+
     # print('')
     # Your model training forward pass goes here
     if count % 10 == 0:
         print(f"\nBatch {count} -> Obs: {observations.shape}, Actions: {actions.shape}, Images: {images.shape}")
-    
+        raise
     # break # Uncomment to test just the first batch

@@ -1,5 +1,6 @@
 import torch
 import numpy as np
+import time 
 import os
 import pickle
 import argparse
@@ -23,19 +24,21 @@ from policy import ACTPolicy
 from dataset.ha_pipelinev2_dataset import HaPipelineV2DatasetD020
 from dataset.data import data
 from dataset.data_tactile import data_tactile
+
 # from visualize_episodes import save_videos
 
-from dataset.origami_dataset import OrigramDataset, get_origami_multi_season_dataset
+from dataset.origami_dataset import get_origami_multi_season_dataset,get_origami_single_season_dataset, convert_batch
 from lerobot.processor import  PolicyProcessorPipeline
 from lerobot.policies.factory import make_pre_post_processors
 # RobotProcessorPipeline for actual h/w inference (unbatched), policy processingis for batched : 
 # ref: https://huggingface.co/docs/lerobot/introduction_processors
 
+from train_utils import _stats
 import IPython
 e = IPython.embed
 
 from configs import (BATCH_SIZE, EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
-    DATASET_ROOT, SEASONS, DELTA_TIMESTAMPS)
+    DATASET_ROOT, SEASONS, DELTA_TIMESTAMPS, CHUNK_SIZE)
 
 
 
@@ -57,6 +60,10 @@ def main(args):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     ckpt_dir = os.path.join(ckpt_dir, timestamp)
 
+    if IS_ORIGAMI_TASK:
+        ckpt_dir = ckpt_dir + "origami"
+        timestamp = timestamp + "origami"
+        
     if use_tactile:
         ckpt_dir = ckpt_dir + "_tactile"
         timestamp = timestamp + "_tactile"
@@ -80,7 +87,7 @@ def main(args):
         dec_layers = 7
         nheads = 8
         policy_config = {'lr': args['lr'],
-                         'num_queries': args['chunk_size'],
+                         'num_queries': CHUNK_SIZE, #args['chunk_size'],
                          'kl_weight': args['kl_weight'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
@@ -122,6 +129,9 @@ def main(args):
             'min_lr_ratio': 1e-1,
         }
     }
+    
+    print(os.cpu_count())
+    time.sleep(2)
 
     norm_stats_cache = os.path.join(ckpt_dir, 'dataset_stats.pkl')
     data['train']['norm_stats_cache'] = norm_stats_cache
@@ -130,9 +140,28 @@ def main(args):
     data_tactile['val']['norm_stats_cache']   = norm_stats_cache
 
     preprocessor, postprocessor = None, None
+    normalizer = None 
     if IS_ORIGAMI_TASK:
-        # train_dataset = OrigramDataset(**data_tactile['train']) if use_tactile else OrigramDataset(**data['train']) 
-        train_dataset = get_origami_multi_season_dataset(DATASET_ROOT, SEASONS, DELTA_TIMESTAMPS, TOLERANCE, use_tactile=use_tactile)
+        
+        train_dataset = get_origami_single_season_dataset(
+                            dataset_root=DATASET_ROOT,
+                            season=SEASONS[0],
+                            TOLERANCE=TOLERANCE, 
+                            delta_timestamps=DELTA_TIMESTAMPS,
+                            use_tactile=use_tactile
+                        )       
+        # train_dataset = get_origami_multi_season_dataset(
+        #             dataset_root=DATASET_ROOT, 
+        #             seasons=SEASONS, 
+        #             delta_timestamps=DELTA_TIMESTAMPS,
+        #             TOLERANCE=TOLERANCE, 
+        #             use_tactile=use_tactile
+        #         )
+    
+        print("stats keys" , train_dataset.meta.stats.keys())
+        
+        
+        
         train_dataloader =  DataLoader(
             train_dataset, 
             batch_size=BATCH_SIZE, 
@@ -143,7 +172,7 @@ def main(args):
         )
          #TODO: check if error if num_workers = 0 and prefetch_factor>=1        
         #----------
-        preprocessor, postprocessor =  make_pre_post_processors(policy_cfg=policy_config, dataset_stats=norm_stats_cache)        #----------
+        # preprocessor, postprocessor =  make_pre_post_processors(policy_cfg=policy_config, dataset_stats=norm_stats_cache)        #----------
         #TODO: check above dataset stats and others     
          
     else:
@@ -235,12 +264,63 @@ def forward_pass(data, policy, normalizer, device, use_tactile, epoch=0):
 
         tactile_next = data["tactile_next"]                          # [B, T2, D2]
         tactile_next_norm = normalize_tactile_next(tactile_next, normalizer)  # normalize
-        tactile_next_norm = tactile_next_norm.to(device)                     
+        tactile_next_norm = tactile_next_norm.to(device)        
+        
+                     
 
 
         return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device, tactile_norm, tactile_next_norm, epoch)
 
     return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device)
+
+
+def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0):
+    image_data = data["image"]               # [B, N_cam, 3, H, W]
+    qpos_data = data["lowdim"]               # [B, T1, D1]
+    action_data = data["action"]            # [B, T, D_action]
+    is_pad = data["action_mask"]            # [B, T]
+
+    # normalize
+    qpos_data_norm = normalize_obs_lowdim(qpos_data, normalizer)  # [B, T1, D1]
+    action_data_norm = normalize_action(action_data, normalizer)  # [B, T, D_action]
+
+    # === apply masking to hand joint
+    hand_mask = [0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    # right_hand mask
+    qpos_data_norm = apply_joint_mask(qpos_data_norm, hand_mask, start_index=7)
+
+    # left_hand mask
+    qpos_data_norm = apply_joint_mask(qpos_data_norm, hand_mask, start_index=35)
+
+    # flatten
+    B, T1, D1 = qpos_data_norm.shape
+    qpos_data_norm = qpos_data_norm.view(B, T1 * D1)  # → [B, T1 * D1]
+
+    # move to device
+    qpos_data_norm = qpos_data_norm.to(device)
+    image_data = image_data.to(device)
+    action_data_norm = action_data_norm.to(device)
+    is_pad = is_pad.to(device)
+
+    if use_tactile:
+        tactile = data["tactile"]                          # [B, T2, D2]
+        tactile_norm = normalize_tactile(tactile, normalizer)  # normalize
+        B, T2, D2 = tactile_norm.shape
+        tactile_norm = tactile_norm.view(B, T2 * D2)                # → [B, T2 * D2]
+        tactile_norm = tactile_norm.to(device)                     
+
+        tactile_next = data["tactile_next"]                          # [B, T2, D2]
+        tactile_next_norm = normalize_tactile_next(tactile_next, normalizer)  # normalize
+        tactile_next_norm = tactile_next_norm.to(device)        
+        
+                     
+
+
+        return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device, tactile_norm, tactile_next_norm, epoch)
+
+    return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device)
+
 
 
 def train_bc(train_dataloader, normalizer, dataset, timestamp, config, preprocessor=None, postprocessor=None):
@@ -330,9 +410,15 @@ def train_bc(train_dataloader, normalizer, dataset, timestamp, config, preproces
         train_losses = []
         with tqdm(train_dataloader, desc=f"Train Epoch {epoch}", leave=False) as tepoch:
             # for batch_idx, data in enumerate(train_dataloader):
-            for batch_idx, data in enumerate(tepoch):
-                # data = dataset.postprocess(data, device, use_tactile) #TODO CHECK THIS functionality 
-                forward_dict = forward_pass(data, policy, normalizer, device, use_tactile)
+            for batch_idx, data in enumerate(tepoch): 
+                
+                if IS_ORIGAMI_TASK:
+                    data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS) 
+                    forward_dict = origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=epoch)
+                else:
+                    data = dataset.postprocess(data, device, use_tactile) #TODO CHECK THIS functionality
+                    forward_dict = forward_pass(data, policy, normalizer, device, use_tactile)
+                
                 # backward
                 loss = forward_dict['loss']
                 loss.backward()

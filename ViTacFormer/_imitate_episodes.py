@@ -8,6 +8,8 @@ from copy import deepcopy
 from tqdm import tqdm
 from einops import rearrange
 
+from train_utils import _stats
+
 from utils import compute_dict_mean, set_seed, detach_dict # helper functions
 from utils import unnormalize_image, normalize_action, denormalize_action, normalize_obs_lowdim, denormalize_obs_lowdim, normalize_tactile, denormalize_tactile, normalize_tactile_next, denormalize_tactile_next, apply_joint_mask
 from policy import ACTPolicy
@@ -122,13 +124,13 @@ def main(args):
 
     if not use_tactile:
         train_dataset = HaPipelineV2DatasetD020(**data['train'])
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=min(os.cpu_count(), batch_size_train), prefetch_factor=1)
 
         # val_dataset = HaPipelineV2DatasetD020(**data['val'])
         # val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
     else:
         train_dataset = HaPipelineV2DatasetD020(**data_tactile['train'])
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
+        train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=min(os.cpu_count(), batch_size_train), prefetch_factor=1)
 
         # val_dataset = HaPipelineV2DatasetD020(**data_tactile['val'])
         # val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)

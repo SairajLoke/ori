@@ -8,6 +8,9 @@ import IPython
 e = IPython.embed
 
 
+
+from train_utils import _stats
+
 class ACTPolicy(nn.Module):
     def __init__(self, args_override):
         super().__init__()
@@ -20,12 +23,23 @@ class ACTPolicy(nn.Module):
 
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None, tactile_next=None, epoch=0):
         env_state = None
+        
+        _stats('actions', actions)
+        
         if actions is not None: # training time
             actions = actions[:, :self.model.num_queries]
             is_pad = is_pad[:, :self.model.num_queries]
 
             if device is None:
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                
+            print('model_num_queries', self.model.num_queries)
+            _stats('actions', actions)
+            _stats('image', image)
+            _stats('env_state', env_state)
+            _stats('tactile', tactile)
+            _stats('tactile_next', tactile_next)
+            
 
             a_hat, is_pad_hat, (mu, logvar), tac_hat = self.model(qpos, image, env_state, tactile, actions, is_pad, tactile_next, epoch=epoch)
             total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
@@ -45,6 +59,8 @@ class ACTPolicy(nn.Module):
                 l1_tac = (all_l1_tac * ~is_pad_tac.unsqueeze(-1)).mean()
                 loss_dict['l1_tac'] = l1_tac
                 loss_dict['loss'] = loss_dict['loss'] + loss_dict['l1_tac']
+                
+            raise 
 
             return loss_dict
         else: # inference time

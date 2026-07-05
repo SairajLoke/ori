@@ -118,6 +118,7 @@ class HaBaseV2Dataset(torch.utils.data.Dataset):
         normalizer = LinearNormalizer()
 
         for key in self.normalize_keys:
+            print("debug normalizer keys", key)
             stats = self.norm_stats[key]
             mean = torch.tensor(stats["mean"], dtype=torch.float32)
             std = torch.tensor(stats["std"], dtype=torch.float32)

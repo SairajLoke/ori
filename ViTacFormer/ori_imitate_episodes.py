@@ -8,26 +8,34 @@ from copy import deepcopy
 from tqdm import tqdm
 from einops import rearrange
 import cv2
-
-from utils import compute_dict_mean, set_seed, detach_dict # helper functions
-from utils import unnormalize_image, normalize_action, denormalize_action, normalize_obs_lowdim, denormalize_obs_lowdim, normalize_tactile, denormalize_tactile, normalize_tactile_next, denormalize_tactile_next, apply_joint_mask
-from policy import ACTPolicy
-# from visualize_episodes import save_videos
-from dataset.ha_pipelinev2_dataset import HaPipelineV2DatasetD020
-from dataset.data import data
-from dataset.data_tactile import data_tactile
-from torch.utils.data import TensorDataset, DataLoader
-
 from tqdm import tqdm, trange
-
-import IPython
-e = IPython.embed
-
+from torch.utils.data import TensorDataset, DataLoader
 import torchvision.utils as vutils
 import os
 from PIL import Image
 import torchvision.transforms.functional as TF
 
+from utils import compute_dict_mean, set_seed, detach_dict # helper functions
+from utils import unnormalize_image, normalize_action, denormalize_action, normalize_obs_lowdim, denormalize_obs_lowdim, normalize_tactile, denormalize_tactile, normalize_tactile_next, denormalize_tactile_next, apply_joint_mask
+#TOOD add normin dataset transforms?
+
+from policy import ACTPolicy
+from dataset.ha_pipelinev2_dataset import HaPipelineV2DatasetD020
+from dataset.data import data
+from dataset.data_tactile import data_tactile
+# from visualize_episodes import save_videos
+
+from dataset.origami_dataset import OrigramDataset, get_origami_multi_season_dataset
+from lerobot.processor import  PolicyProcessorPipeline
+from lerobot.policies.factory import make_pre_post_processors
+# RobotProcessorPipeline for actual h/w inference (unbatched), policy processingis for batched : 
+# ref: https://huggingface.co/docs/lerobot/introduction_processors
+
+import IPython
+e = IPython.embed
+
+from configs import (BATCH_SIZE, EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
+    DATASET_ROOT, SEASONS, DELTA_TIMESTAMPS)
 
 
 
@@ -47,23 +55,26 @@ def main(args):
 
     from datetime import datetime
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
     ckpt_dir = os.path.join(ckpt_dir, timestamp)
 
     if use_tactile:
         ckpt_dir = ckpt_dir + "_tactile"
         timestamp = timestamp + "_tactile"
-
-
     os.makedirs(ckpt_dir, exist_ok=True)
 
-    episode_len = 10000
-    camera_names = ['/observe/vision/head/stereo/lefteye/rgb','/observe/vision/head/stereo/righteye/rgb','/observe/vision/right_wrist/fisheye/rgb','/observe/vision/left_wrist/fisheye/rgb']
+    # episode_len = 10000
+    # camera_names = ['/observe/vision/head/stereo/lefteye/rgb',
+    #                 '/observe/vision/head/stereo/righteye/rgb',
+    #                 '/observe/vision/right_wrist/fisheye/rgb',
+    #                 '/observe/vision/left_wrist/fisheye/rgb']
+    
+    
 
     # fixed parameters
-    state_dim = 58
-    lr_backbone = 1e-5
-    backbone = 'resnet18'
+    # state_dim = 58
+    # lr_backbone = 1e-5
+    # backbone = 'resnet18'
+    
     if policy_class == 'ACT':
         enc_layers = 4
         dec_layers = 7
@@ -73,25 +84,25 @@ def main(args):
                          'kl_weight': args['kl_weight'],
                          'hidden_dim': args['hidden_dim'],
                          'dim_feedforward': args['dim_feedforward'],
-                         'lr_backbone': lr_backbone,
-                         'backbone': backbone,
+                         'lr_backbone': LR_BACKBONE,
+                         'backbone': BACKBONE,
                          'enc_layers': enc_layers,
                          'dec_layers': dec_layers,
                          'nheads': nheads,
-                         'camera_names': camera_names,
+                         'camera_names': CAMERA_NAMES, #TODO check this order in list
                          'use_tactile': use_tactile
                          }
     elif policy_class == 'CNNMLP':
-        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
-                         'camera_names': camera_names,}
+        policy_config = {'lr': args['lr'], 'lr_backbone': LR_BACKBONE, 'backbone' : LR_BACKBONE, 'num_queries': 1,
+                         'camera_names': CAMERA_NAMES,}
     else:
         raise NotImplementedError
 
     config = {
         'num_epochs': num_epochs,
         'ckpt_dir': ckpt_dir,
-        'episode_len': episode_len,
-        'state_dim': state_dim,
+        'episode_len': EPISODE_LEN,
+        'state_dim': STATE_DIM,
         'lr': args['lr'],
         'policy_class': policy_class,
         'onscreen_render': onscreen_render,
@@ -99,7 +110,7 @@ def main(args):
         'task_name': task_name,
         'seed': args['seed'],
         'temporal_agg': args['temporal_agg'],
-        'camera_names': camera_names,
+        'camera_names': CAMERA_NAMES,
         # 'real_robot': not is_sim,
         'use_tactile': use_tactile,
         'resume_path': resume_path,
@@ -113,38 +124,54 @@ def main(args):
     }
 
     norm_stats_cache = os.path.join(ckpt_dir, 'dataset_stats.pkl')
-
     data['train']['norm_stats_cache'] = norm_stats_cache
-    data['val']['norm_stats_cache'] = norm_stats_cache
+    data['val']['norm_stats_cache']   = norm_stats_cache
     data_tactile['train']['norm_stats_cache'] = norm_stats_cache
-    data_tactile['val']['norm_stats_cache'] = norm_stats_cache
+    data_tactile['val']['norm_stats_cache']   = norm_stats_cache
 
-
-    if not use_tactile:
-        train_dataset = HaPipelineV2DatasetD020(**data['train'])
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
-
-        # val_dataset = HaPipelineV2DatasetD020(**data['val'])
-        # val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
+    preprocessor, postprocessor = None, None
+    if IS_ORIGAMI_TASK:
+        # train_dataset = OrigramDataset(**data_tactile['train']) if use_tactile else OrigramDataset(**data['train']) 
+        train_dataset = get_origami_multi_season_dataset(DATASET_ROOT, SEASONS, DELTA_TIMESTAMPS, TOLERANCE, use_tactile=use_tactile)
+        train_dataloader =  DataLoader(
+            train_dataset, 
+            batch_size=BATCH_SIZE, 
+            pin_memory=True, 
+            shuffle=True, 
+            num_workers=min(os.cpu_count(), BATCH_SIZE),
+            persistent_workers=True,
+        )
+         #TODO: check if error if num_workers = 0 and prefetch_factor>=1        
+        #----------
+        preprocessor, postprocessor =  make_pre_post_processors(policy_cfg=policy_config, dataset_stats=norm_stats_cache)        #----------
+        #TODO: check above dataset stats and others     
+         
     else:
-        train_dataset = HaPipelineV2DatasetD020(**data_tactile['train'])
-        train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
+        if not use_tactile:
+            train_dataset = HaPipelineV2DatasetD020(**data['train'])
+            train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=min(os.cpu_count(), BATCH_SIZE), prefetch_factor=1)
 
-        # val_dataset = HaPipelineV2DatasetD020(**data_tactile['val'])
-        # val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
+            # val_dataset = HaPipelineV2DatasetD020(**data['val'])
+            # val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
+        else:
+            train_dataset = HaPipelineV2DatasetD020(**data_tactile['train'])
+            train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=False, num_workers=min(os.cpu_count(), BATCH_SIZE), prefetch_factor=1)
 
-    normalizer = train_dataset.get_normalizer()
+            # val_dataset = HaPipelineV2DatasetD020(**data_tactile['val'])
+            # val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=False, num_workers=36, prefetch_factor=1)
 
-
+        normalizer = train_dataset.get_normalizer()
+    #----------------------------------------------------------------
 
     # save dataset stats
     if not os.path.isdir(ckpt_dir):
         os.makedirs(ckpt_dir)
     stats_path = os.path.join(ckpt_dir, f'normalize.pkl')
     with open(stats_path, 'wb') as f:
-        pickle.dump(normalizer, f)
+        pickle.dump(preprocessor,f) if IS_ORIGAMI_TASK else pickle.dump(normalizer, f) 
 
-    best_ckpt_info = train_bc(train_dataloader, normalizer, train_dataset, timestamp, config)
+    best_ckpt_info = train_bc(train_dataloader, normalizer, train_dataset, timestamp, 
+                              config, preprocessor=preprocessor, postprocessor=postprocessor)
     best_epoch, min_val_loss, best_state_dict = best_ckpt_info
 
     # save best checkpoint
@@ -216,7 +243,7 @@ def forward_pass(data, policy, normalizer, device, use_tactile, epoch=0):
     return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device)
 
 
-def train_bc(train_dataloader, normalizer, dataset, timestamp, config):
+def train_bc(train_dataloader, normalizer, dataset, timestamp, config, preprocessor=None, postprocessor=None):
     num_epochs = config['num_epochs']
     ckpt_dir = config['ckpt_dir']
     seed = config['seed']
@@ -239,6 +266,7 @@ def train_bc(train_dataloader, normalizer, dataset, timestamp, config):
     policy = make_policy(policy_class, policy_config)
     policy.to(device)
     optimizer = make_optimizer(policy_class, policy)
+    
 
     # === 构建 scheduler ===
     total_iters = num_epochs * len(train_dataloader)
@@ -303,7 +331,7 @@ def train_bc(train_dataloader, normalizer, dataset, timestamp, config):
         with tqdm(train_dataloader, desc=f"Train Epoch {epoch}", leave=False) as tepoch:
             # for batch_idx, data in enumerate(train_dataloader):
             for batch_idx, data in enumerate(tepoch):
-                data = dataset.postprocess(data, device, use_tactile)
+                # data = dataset.postprocess(data, device, use_tactile) #TODO CHECK THIS functionality 
                 forward_dict = forward_pass(data, policy, normalizer, device, use_tactile)
                 # backward
                 loss = forward_dict['loss']

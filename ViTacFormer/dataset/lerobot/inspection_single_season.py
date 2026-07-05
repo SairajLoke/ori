@@ -17,6 +17,8 @@ print(info["features"].keys())
 import torch
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
+TOLERANCE = 0.001
+
 
 # repo_id = "SharpaIT/Robotic_Origami_Challenge"
 
@@ -31,7 +33,9 @@ delta_timestamps = {
     "observation.images.head_left": [-0.2, -0.1, 0.0]  # 0.2s and 0.1s before current frame
 }
 
-dataset = LeRobotDataset(repo_id=None,  root=episode_root, delta_timestamps=delta_timestamps)
+dataset = LeRobotDataset(repo_id=None,  root=episode_root, delta_timestamps=delta_timestamps,
+                         video_backend="pyav",
+                        tolerance_s=TOLERANCE)
 
 # Accessing an index now returns a stack for the specified key(s)
 sample = dataset[100]

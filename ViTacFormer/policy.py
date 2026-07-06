@@ -24,8 +24,6 @@ class ACTPolicy(nn.Module):
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None, tactile_next=None, epoch=0):
         env_state = None
         
-        _stats('actions', actions)
-        
         if actions is not None: # training time
             actions = actions[:, :self.model.num_queries]
             is_pad = is_pad[:, :self.model.num_queries]
@@ -60,7 +58,7 @@ class ACTPolicy(nn.Module):
                 loss_dict['l1_tac'] = l1_tac
                 loss_dict['loss'] = loss_dict['loss'] + loss_dict['l1_tac']
                 
-            raise 
+            
 
             return loss_dict
         else: # inference time

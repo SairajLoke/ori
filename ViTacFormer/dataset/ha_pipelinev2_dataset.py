@@ -20,6 +20,7 @@ try:
 except:
     print("please install ha_data repository")
 
+from train_utils import _stats 
 
 # @DATASETS.register_module()
 class HaPipelineV2DatasetD010(HaBaseV2Dataset):
@@ -611,5 +612,14 @@ class HaPipelineV2DatasetD020(HaPipelineV2DatasetD010):
         result_dict["action"] = action.to(device)  # [B, T, D_action]
         result_dict["action_mask"] = action_pad_mask  # [B, T]
         result_dict["action_abs"] = action_abs.to(device)
+        
+        
+        print("------------ Pre Normalization Stats ------------")
+        _stats('actions', result_dict["action"])
+        _stats('action_abs', result_dict["action_abs"])
+        _stats('image', result_dict["image"] )
+        _stats('tactile', result_dict["tactile"] )
+        _stats('tactile_next', result_dict["tactile_next"] )
+        print("-----------------------------------------------")
 
         return result_dict

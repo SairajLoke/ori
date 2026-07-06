@@ -302,6 +302,8 @@ def train_bc(train_dataloader, normalizer, dataset, timestamp, config):
         policy.train()
         optimizer.zero_grad()
         train_losses = []
+        
+        print("train_dataloader len", train_dataloader)
         with tqdm(train_dataloader, desc=f"Train Epoch {epoch}", leave=False) as tepoch:
             # for batch_idx, data in enumerate(train_dataloader):
             for batch_idx, data in enumerate(tepoch):
@@ -323,6 +325,10 @@ def train_bc(train_dataloader, normalizer, dataset, timestamp, config):
                 )
 
                 global_step += 1
+                
+                print("train_losses", train_losses)
+                if batch_idx > 2: 
+                    raise 
 
         epoch_summary = compute_dict_mean(train_history[(batch_idx+1)*epoch:(batch_idx+1)*(epoch+1)])
         epoch_train_loss = epoch_summary['loss']

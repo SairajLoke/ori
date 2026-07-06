@@ -1,0 +1,13 @@
+ 
+
+
+
+raw vitac
+
+[actions] Shape: [16, 100, 58] | dtype: torch.float32 | Device: cuda:0 | Min: -4.82442045211792 | Max: 5.433603763580322]
+model_num_queries 100
+📊 [actions] Shape: [16, 100, 58] | dtype: torch.float32 | Device: cuda:0 | Min: -4.82442045211792 | Max: 5.433603763580322
+📊 [image] Shape: [16, 4, 3, 224, 320] | dtype: torch.float32 | Device: cuda:0 | Min: -2.1179041862487793 | Max: 2.640000343322754
+❌ [env_state] Not a tensor: <class 'NoneType'>
+📊 [tactile] Shape: [16, 2160] | dtype: torch.float32 | Device: cuda:0 | Min: -7.287315368652344 | Max: 6.264133930206299
+📊 [tactile_next] Shape: [16, 18, 120] | dtype: torch.float32 | Device: cuda:0 | Min: -5.971405029296875 | Max: 5.668658256530762

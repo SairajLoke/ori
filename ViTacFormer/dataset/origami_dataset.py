@@ -44,6 +44,14 @@ def convert_batch(batch, use_tactile, delta_timestamps):
     # -------------------------------------------------
     # Images
     # -------------------------------------------------
+    print("+++++++++=== restructuring the batch ==++++++++++++++++")
+    print("batch['observation.images.head_left']      :", batch["observation.images.head_left"].shape)
+    print("lowdim     :", batch["observation.state"].shape)
+    print("action     :", batch["action"].shape)
+    if use_tactile:
+        print("tactile    :", batch["observation.tactile"].shape)
+    
+    
 
     cams = [
         batch["observation.images.head_left"],
@@ -102,6 +110,17 @@ def convert_batch(batch, use_tactile, delta_timestamps):
         tactile = batch["observation.tactile"]
         output["tactile"] = tactile[:, 0]
         output["tactile_next"] = tactile[:, 1]
+        
+        
+
+    print("image      :", image.shape, image.device)
+    print("lowdim     :", lowdim.shape)
+    print("action     :", action.shape)
+    print("action_mask", action_mask.shape)
+    if use_tactile:
+        print("tactile    :", output["tactile"].shape)
+        print("tactile next   :", output["tactile_next"].shape)
+        assert not torch.equal(output["tactile"] , output["tactile_next"])
         
 
     return output
@@ -172,3 +191,51 @@ def get_origami_multi_season_dataset(dataset_root, seasons, delta_timestamps, TO
     print(f"Sample head_left shape: {sample['observation.images.head_left'].shape}")
     
     return multi_season_dataset
+
+
+
+
+
+class LeRobotNormalizer:
+
+    def __init__(self, stats, cfg):
+
+        self.transforms = {}
+
+        for key, mode in cfg.items():
+
+            if mode is None:
+                continue
+
+            s = stats[key]
+
+            mean = torch.tensor(s["mean"])
+            std = torch.tensor(s["std"])
+            minimum = torch.tensor(s["min"])
+            maximum = torch.tensor(s["max"])
+
+            self.transforms[key] = dict(
+                mode=mode,
+                mean=mean,
+                std=std,
+                min=minimum,
+                max=maximum,
+            )
+
+    def normalize(self, key, x):
+
+        if key not in self.transforms:
+            return x
+
+        t = self.transforms[key]
+
+        mean = t["mean"].to(x.device)
+        std = t["std"].to(x.device)
+
+        if t["mode"] == "gaussian":
+            return (x - mean) / (std + 1e-6)
+
+        minimum = t["min"].to(x.device)
+        maximum = t["max"].to(x.device)
+
+        return 2 * (x - minimum) / (maximum - minimum + 1e-6) - 1

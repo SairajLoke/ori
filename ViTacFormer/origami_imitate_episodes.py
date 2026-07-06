@@ -27,9 +27,13 @@ from dataset.data_tactile import data_tactile
 
 # from visualize_episodes import save_videos
 
-from dataset.origami_dataset import get_origami_multi_season_dataset,get_origami_single_season_dataset, convert_batch
+from dataset.origami_dataset import (
+    get_origami_multi_season_dataset,get_origami_single_season_dataset, 
+    convert_batch , LeRobotNormalizer)
+
 from lerobot.processor import  PolicyProcessorPipeline
 from lerobot.policies.factory import make_pre_post_processors
+from lerobot.common.datasets import transforms
 # RobotProcessorPipeline for actual h/w inference (unbatched), policy processingis for batched : 
 # ref: https://huggingface.co/docs/lerobot/introduction_processors
 
@@ -130,6 +134,9 @@ def main(args):
         }
     }
     
+    
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    
     print(os.cpu_count())
     time.sleep(2)
 
@@ -160,8 +167,6 @@ def main(args):
     
         print("stats keys" , train_dataset.meta.stats.keys())
         
-        
-        
         train_dataloader =  DataLoader(
             train_dataset, 
             batch_size=BATCH_SIZE, 
@@ -173,7 +178,24 @@ def main(args):
          #TODO: check if error if num_workers = 0 and prefetch_factor>=1        
         #----------
         # preprocessor, postprocessor =  make_pre_post_processors(policy_cfg=policy_config, dataset_stats=norm_stats_cache)        #----------
-        #TODO: check above dataset stats and others     
+        #TODO: check above dataset stats and others    
+        
+        normalizer = LeRobotNormalizer(
+            train_dataset.meta.stats,
+            {
+                "observation.state": None, #"gaussian",
+                "action": None, # "gaussian",
+                "observation.tactile": None, #"gaussian",
+
+                # not changing these yet
+                "observation.images.head_left": None,
+                "observation.images.head_right": None,
+                "observation.images.wrist_left": None,
+                "observation.images.wrist_right": None,
+            },
+            
+            device=device,
+        ) 
          
     else:
         if not use_tactile:
@@ -191,6 +213,9 @@ def main(args):
 
         normalizer = train_dataset.get_normalizer()
     #----------------------------------------------------------------
+    
+    #checks
+    print(train_dataset.meta.features["observation.state"])
 
     # save dataset stats
     if not os.path.isdir(ckpt_dir):
@@ -200,7 +225,7 @@ def main(args):
         pickle.dump(preprocessor,f) if IS_ORIGAMI_TASK else pickle.dump(normalizer, f) 
 
     best_ckpt_info = train_bc(train_dataloader, normalizer, train_dataset, timestamp, 
-                              config, preprocessor=preprocessor, postprocessor=postprocessor)
+                              config, device)
     best_epoch, min_val_loss, best_state_dict = best_ckpt_info
 
     # save best checkpoint
@@ -281,10 +306,15 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0)
     is_pad = data["action_mask"]            # [B, T]
 
     # normalize
-    qpos_data_norm = normalize_obs_lowdim(qpos_data, normalizer)  # [B, T1, D1]
+    # qpos_data_norm = normalize_obs_lowdim(qpos_data, normalizer) 
     action_data_norm = normalize_action(action_data, normalizer)  # [B, T, D_action]
+    
+    qpos_data_norm   = normalizer.normalize("observation.state", qpos_data)  # [B, T1, D1]
+    action_data_norm = normalizer.normalize("action", action_data)           # [B, T, D_action]
 
     # === apply masking to hand joint
+    assert False , "check what's this masking for..seems like he's keeping some joints inactive"
+    
     hand_mask = [0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1]
 
     # right_hand mask
@@ -305,16 +335,17 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0)
 
     if use_tactile:
         tactile = data["tactile"]                          # [B, T2, D2]
-        tactile_norm = normalize_tactile(tactile, normalizer)  # normalize
+        tactile_norm = normalizer.normalize("observation.tactile", tactile)
+        # tactile_norm = normalize_tactile(tactile, normalizer)  # normalize    
         B, T2, D2 = tactile_norm.shape
         tactile_norm = tactile_norm.view(B, T2 * D2)                # → [B, T2 * D2]
-        tactile_norm = tactile_norm.to(device)                     
+        tactile_norm = tactile_norm.to(device)                     #TODO sure if the view is correct here, maybe we should keep the tactile as [B, T2, D2] for the model to process it as a sequence
 
         tactile_next = data["tactile_next"]                          # [B, T2, D2]
-        tactile_next_norm = normalize_tactile_next(tactile_next, normalizer)  # normalize
+        tactile_next_norm = normalizer.normalize("observation.tactile_next", tactile_next)
+        # tactile_next_norm = normalize_tactile_next(tactile_next, normalizer)  # normalize
         tactile_next_norm = tactile_next_norm.to(device)        
-        
-                     
+                           
 
 
         return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device, tactile_norm, tactile_next_norm, epoch)
@@ -323,7 +354,7 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0)
 
 
 
-def train_bc(train_dataloader, normalizer, dataset, timestamp, config, preprocessor=None, postprocessor=None):
+def train_bc(train_dataloader, normalizer, dataset, timestamp, config, device):
     num_epochs = config['num_epochs']
     ckpt_dir = config['ckpt_dir']
     seed = config['seed']
@@ -332,7 +363,7 @@ def train_bc(train_dataloader, normalizer, dataset, timestamp, config, preproces
     use_tactile = config['use_tactile']
     resume_path = config.get('resume_path', None)
 
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    # device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     set_seed(seed)
 

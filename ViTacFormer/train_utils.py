@@ -15,4 +15,4 @@ def _stats(name: str, tensor: torch.Tensor):
         if torch.isnan(tensor).any() or torch.isinf(tensor).any():
             status = " ⚠️ (NaN/Inf Detected!)"
 
-    print(f"📊 [{name}] Shape: {list(tensor.shape)} | dtype: {tensor.dtype} | Device: {tensor.device} | Min: {t_min} | Max: {t_max}{status}")
+    print(f" [{name}] Shape: {list(tensor.shape)} | dtype: {tensor.dtype} | Device: {tensor.device} | Min: {t_min} | Max: {t_max}{status}")

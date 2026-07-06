@@ -33,10 +33,15 @@ if IS_ORIGAMI_TASK:
     #TODO : check what they had 
     
     assert 1/FPS != 0 
+    
+    PROPRIOCEPTIVE_TEMPORAL_HORIZON = 6
+    
+    
     DELTA_TIMESTAMPS = {
         # "observation.images.head_left": [-0.2, -0.1, 0.0]
-        # "action": [i / FPS for i in range(CHUNK_SIZE)],
-        "observation.tactile": [0.0, 1/FPS],
+        # "action": [i / FPS for i in range(CHUNK_SIZE)], #TODO change input horizons
+        
+        "observation.tactile": [0.0, 1/FPS], #note: the delta is the second input, not that there are 2 proprio frames
     }
     
     

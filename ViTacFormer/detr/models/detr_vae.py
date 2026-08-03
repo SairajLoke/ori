@@ -33,7 +33,7 @@ def get_sinusoid_encoding_table(n_position, d_hid):
 
 class DETRVAE(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_tactile):
+    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_tactile, proprioceptive_temporal_horizon):
         """ Initializes the model.
         Parameters:
             backbones: torch module of the backbone to be used. See backbone.py
@@ -55,7 +55,7 @@ class DETRVAE(nn.Module):
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         self.use_tactile = use_tactile
 
-        qpos_dim = 348
+        qpos_dim = state_dim * proprioceptive_temporal_horizon #348 WTH why hardcode it
         tactile_dim = 120
         tactile_dim_all = 18 * tactile_dim
         if backbones is not None:
@@ -77,7 +77,7 @@ class DETRVAE(nn.Module):
         # encoder extra parameters
         self.latent_dim = 32 # final size of latent z # TODO tune
         self.cls_embed = nn.Embedding(1, hidden_dim) # extra cls token embedding
-        self.encoder_action_proj = nn.Linear(58, hidden_dim) # project action to embedding
+        self.encoder_action_proj = nn.Linear(state_dim, hidden_dim) # project action to embedding  NOTE: instead of self.state_dim, , it was 58 before
         self.encoder_joint_proj = nn.Linear(qpos_dim, hidden_dim)  # project qpos to embedding
         self.latent_proj = nn.Linear(hidden_dim, self.latent_dim*2) # project hidden state to latent std, var
         self.register_buffer('pos_table', get_sinusoid_encoding_table(1+1+num_queries, hidden_dim)) # [CLS], qpos, a_seq
@@ -150,7 +150,9 @@ class DETRVAE(nn.Module):
                 tactile_input = self.input_proj_tactile(tactile)
                 hs_tactile = self.transformer(src, None, self.query_embed_tactile.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, None)[0]
                 tactile_hat = self.tactile_head(hs_tactile)  ##[bs, 18, tactile_dim]
+                print("tactile_hat", tactile_hat.shape)
                 B, T, D = tactile_hat.shape
+                print("tactile_next", tactile_next.shape)
                 if epoch < 75:
                     tactile_pred_input = tactile_next.view(B, T * D)
                 else:
@@ -258,7 +260,8 @@ def build_encoder(args):
 
 
 def build(args):
-    state_dim = 58 # TODO hardcode
+    # state_dim = 58 # TODO hardcode
+    
 
     # From state
     # backbone = None # from state for now, no need for conv nets
@@ -277,10 +280,11 @@ def build(args):
         backbones,
         transformer,
         encoder,
-        state_dim=state_dim,
+        state_dim=args.state_dim,
         num_queries=args.num_queries,
         camera_names=args.camera_names,
-        use_tactile = args.use_tactile
+        use_tactile = args.use_tactile,
+        proprioceptive_temporal_horizon = args.proprioceptive_temporal_horizon
     )
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)

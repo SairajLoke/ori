@@ -112,8 +112,10 @@ class HaPipelineV2DatasetD010(HaBaseV2Dataset):
     def init_dataset(self):
         self.init_data_paths()
         self.save_data_paths()
-
+        print("here")
         self.all_episode_len = self.get_all_hdf5_length()
+        print('self.data_root', self.data_root)
+        
         self.max_episode_len = max(self.all_episode_len)
         print(
             f"Min & Max & Sum & Count episode length: {min(self.all_episode_len)}"
@@ -457,6 +459,7 @@ class HaPipelineV2DatasetD020(HaPipelineV2DatasetD010):
     def get_all_hdf5_length(self):
         sample_key = None
         length_list = []
+        print("------------", self.data_paths)
         for h5file in self.data_paths:
             with h5py.File(h5file, "r") as f:
                 if sample_key is None:
@@ -476,6 +479,8 @@ class HaPipelineV2DatasetD020(HaPipelineV2DatasetD010):
     def init_data_paths(self):
         self.data_paths = []
         self.anno_paths = []
+
+        print("+++++", self.data_root)
 
         for ti, path in enumerate(self.data_root):
             try:

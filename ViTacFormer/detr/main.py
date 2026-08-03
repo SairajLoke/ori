@@ -68,6 +68,9 @@ def get_args_parser():
 
     parser.add_argument('--use_tactile', action='store_true')
 
+    parser.add_argument('--state_dim', default=65, type=int, # will be overridden
+                        help="decides the output actions dim (as equalt to state dim)")
+
     parser.add_argument('--resume_path', type=str, default=None, help='path to resume checkpoint')
 
     return parser
@@ -75,7 +78,7 @@ def get_args_parser():
 
 def build_ACT_model_and_optimizer(args_override):
     parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])
-    args = parser.parse_args()
+    args, _ = parser.parse_known_args()
 
     for k, v in args_override.items():
         setattr(args, k, v)

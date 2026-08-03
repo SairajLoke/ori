@@ -6,16 +6,17 @@ import copy
 import os
 import numpy as np
 
-total_memory = torch.cuda.get_device_properties(0).total_memory / (1024 * 1024 * 1000)
-if total_memory < 16:
-    batch_size = 2
-    workers = 1
-elif 80<total_memory<90:
-    batch_size = 80
-    workers = 12
-elif 90<total_memory<100:
-    batch_size = 93
-    workers = 18
+if torch.cuda.is_available():
+    total_memory = torch.cuda.get_device_properties(0).total_memory / (1024 * 1024 * 1000)
+    if total_memory < 16:
+        batch_size = 2
+        workers = 1
+    elif 80<total_memory<90:
+        batch_size = 80
+        workers = 12
+    elif 90<total_memory<100:
+        batch_size = 93
+        workers = 18
 
 batch_size = 256
 workers = 16

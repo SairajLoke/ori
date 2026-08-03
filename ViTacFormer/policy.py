@@ -1,6 +1,6 @@
-import torch.nn as nn
 from torch.nn import functional as F
 import torchvision.transforms as transforms
+import torch.nn as nn
 import torch
 
 from detr.main import build_ACT_model_and_optimizer
@@ -63,8 +63,9 @@ class ACTPolicy(nn.Module):
             return loss_dict
         else: # inference time
             # epoch>=75 disables teacher forcing so the model uses its own predicted tactile_next
-            a_hat, _, (_, _), _ = self.model(qpos, image, env_state, tactile, epoch=999) # no action, sample from prior
+            a_hat, _, (_, _), _ = self.model(qpos, image, env_state, tactile, epoch=999, tactile_next=tactile_next) # no action, sample from prior
             return a_hat
+
 
     def configure_optimizers(self):
         return self.optimizer

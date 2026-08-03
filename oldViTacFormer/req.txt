@@ -1,0 +1,32 @@
+torchvision
+torch
+opencv-python
+matplotlib
+tqdm
+einops
+h5py
+ipython
+transforms3d
+zarr
+transformers
+pyzmq                  
+pytorch-kinematics
+lerobot==0.4.0 
+# req for v3.0 of lerobot dataset
+# torchcodec==0.5
+
+##########
+# sudo apt update
+# apt install python3.12-venv python3.12-dev build-essential
+# 3.12 req for lerobot 
+
+#had to install ffmpeg  for torchcodec issue
+#sudo apt update
+#sudo apt install -y ffmpeg libavcodec-dev libavformat-dev libavutil-dev libswscale-dev libavdevice-dev
+
+#sudo apt update
+#sudo apt install -y libdav1d-dev ffmpeg
+
+#for codec 
+#pip install av
+av

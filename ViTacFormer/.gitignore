@@ -12,6 +12,8 @@ RoboVerse/
 .DS_Store
 .vscode/
 .idea/
+.venv_vitac_312/
+.venv310_vitac_local/
 
 # Python
 __pycache__/

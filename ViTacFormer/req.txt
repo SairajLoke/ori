@@ -11,11 +11,22 @@ zarr
 transformers
 pyzmq                  
 pytorch-kinematics
-lerobot==0.4.0 
-# req for v3.0 of lerobot dataset
-# torchcodec==0.5
+
+
+
 
 ##########
+#for codec 
+#pip install av
+av
+
+tensorboard
+lerobot==0.6.0 
+# >=0.4.0 req for v3.0 of lerobot dataset
+# torchcodec==0.5
+
+
+
 # sudo apt update
 # apt install python3.12-venv python3.12-dev build-essential
 # 3.12 req for lerobot 
@@ -27,6 +38,6 @@ lerobot==0.4.0
 #sudo apt update
 #sudo apt install -y libdav1d-dev ffmpeg
 
-#for codec 
-#pip install av
-av
+
+#################################################
+#pip install -r req.txt --trusted-host pypi.org

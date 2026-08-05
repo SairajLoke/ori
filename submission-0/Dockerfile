@@ -38,6 +38,8 @@ RUN pip install \
 # ---------------------------------------------------------------------------
 # Stage 2: runtime -- minimal, nonroot, no build tools
 # ---------------------------------------------------------------------------
+
+
 FROM python:3.11-slim AS runtime
 
 # Install system libraries required by OpenCV, NumPy, and PyTorch C-extensions
@@ -45,6 +47,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl1 \
     libglib2.0-0 \
     libgomp1 \
+    g++ \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /.venv /.venv
@@ -75,7 +79,8 @@ COPY entrypoint.sh /app/entrypoint.sh
 COPY checkpoints/policy_epoch_30_loss_0.041.ckpt /app/checkpoints/policy_best.ckpt
 COPY checkpoints/resnet18-f37072fd.pth /tmp/origami-cache/torch/hub/checkpoints/resnet18-f37072fd.pth
 
-ENV VITAC_CKPT_PATH=/app/checkpoints/policy_best.ckpt \
+ENV TORCHINDUCTOR_CACHE_DIR=/app/.cache/torchinductor \
+    VITAC_CKPT_PATH=/app/checkpoints/policy_best.ckpt \
     ORIGAMI_ACTION_HORIZON=25 \
     PYTHONPATH=/app/vitacformer:/app/vitacformer/detr \
     HOME=/tmp/origami-home \

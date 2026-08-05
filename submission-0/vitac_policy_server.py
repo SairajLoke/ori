@@ -17,6 +17,7 @@ import signal
 import sys
 import threading
 import time
+import traceback
 import uuid
 from collections.abc import Mapping
 from typing import Any
@@ -36,6 +37,8 @@ import zenoh
 VITACFORMER_ROOT = os.environ.get("VITACFORMER_ROOT", "/app/vitacformer")
 if VITACFORMER_ROOT not in sys.path:
     sys.path.insert(0, VITACFORMER_ROOT)
+import os
+os.environ["TORCHINDUCTOR_CACHE_DIR"] = "/app/.cache/torchinductor"
 
 import torch  # noqa: E402  (import after sys.path wiring)
 
@@ -189,10 +192,6 @@ def unpack_payload(value: Any) -> Any:
 class TeamPolicy:
     """VITAC (vitacformer ACT) adapter for the origami-zenoh-v1 protocol.
 
-    Every shape/preprocessing decision below is confirmed directly from the
-    vitacformer source (detr/models/detr_vae.py, configs.py, policy.py,
-    origami_inference.py), not guessed:
-
     - qpos:          2D  [B, 390]         (6-step state history, flattened)
     - image:         5D  [B, 4, 3, 224, 320]  (per-camera resize, NO normalization)
     - tactile (past): 2D  [B, 2160]        (18 steps x [value(60), delta(60)], flattened --
@@ -260,6 +259,46 @@ class TeamPolicy:
     # action_horizon = int(os.environ.get("ORIGAMI_ACTION_HORIZON", str(ACTION_HORIZON)))
     
 
+    def _load_policy(self, policy_config, optimization_type) :
+        logging.info("loading VITAC checkpoint from %s", self.checkpoint_path)
+        logging.info("Optimization:", optimization_type)
+        
+        checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
+        self.policy = ACTPolicy(policy_config)
+        # origami_inference.py's load_policy(): handles both {'model': state_dict, ...}
+        # (periodic checkpoints) and a raw state_dict (the 'best' checkpoint format).
+        if isinstance(checkpoint, dict) and "model" in checkpoint:
+            self.policy.load_state_dict(checkpoint["model"])
+        else:
+            self.policy.load_state_dict(checkpoint)
+        self.policy.eval().to(self.device)
+        
+        
+        if optimization_type == "compile":
+            logging.info("Compiling policy with torch.compile...")
+            # Use 'reduce-overhead' for CUDA, 'default' for CPU
+            compile_mode = "reduce-overhead" if self.device.type == "cuda" else "default"
+            self.policy = torch.compile(self.policy, mode=compile_mode)
+
+            logging.info("Running dummy forward pass to warm up compiled graph...")
+            dummy_qpos = torch.zeros((1, self.PROPRIOCEPTIVE_TEMPORAL_HORIZON * self.STATE_DIM), device=self.device)
+            dummy_image = torch.zeros((1, len(self.CAMERA_ORDER), 3, *self.TRAIN_IMAGE_HW), device=self.device)
+            dummy_tactile = torch.zeros((1, self.TACTILE_TEMPORAL_HORIZON * self.TACTILE_FEATURE_DIM), device=self.device)
+            dummy_tactile_next = torch.zeros((1, self.TACTILE_TEMPORAL_HORIZON, self.TACTILE_FEATURE_DIM), device=self.device)
+
+            with torch.no_grad():
+                _ = self.policy(
+                    dummy_qpos,
+                    dummy_image,
+                    device=self.device,
+                    tactile=dummy_tactile,
+                    tactile_next=dummy_tactile_next,
+                )
+            logging.info("Model warm-up and compilation complete.")
+            
+        return self.policy        
+        
+        
     def __init__(self, action_horizon: int) -> None:
         if action_horizon > self.CHUNK_SIZE:
             raise ValueError(
@@ -287,19 +326,15 @@ class TeamPolicy:
             "state_dim": self.STATE_DIM,
             "proprioceptive_temporal_horizon": self.PROPRIOCEPTIVE_TEMPORAL_HORIZON,
         }
+        optimizations =['compile', 'tflite','none']
+        OPTIMIZATION_IDX = 0
+        
         logging.info("using device: %s", self.device)
         
-        logging.info("loading VITAC checkpoint from %s", self.checkpoint_path)
-        checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
-        self.policy = ACTPolicy(policy_config)
-        # origami_inference.py's load_policy(): handles both {'model': state_dict, ...}
-        # (periodic checkpoints) and a raw state_dict (the 'best' checkpoint format).
-        if isinstance(checkpoint, dict) and "model" in checkpoint:
-            self.policy.load_state_dict(checkpoint["model"])
-        else:
-            self.policy.load_state_dict(checkpoint)
-        self.policy.eval().to(self.device)
-
+        self.policy = self._load_policy(policy_config = policy_config, 
+                                        optimization_type=optimizations[OPTIMIZATION_IDX])
+        
+        
         # Episode-scoped rolling history. The public protocol only ever sends the
         # *current* frame per infer() call, but the model was trained on short
         # windows of state/tactile history, so the server must reconstruct that
@@ -314,7 +349,7 @@ class TeamPolicy:
             maxlen=self.TACTILE_TEMPORAL_HORIZON + 1
         )
         
-        logging.info("Done Initialzingthe TeamPolicy ++++++++++")
+        logging.info("Done Initializing the TeamPolicy ++++++++++")
         
         #MAYBE WE SHOULD DO A DUMMY FWD PASS HERE JUST SO THE MODELS COME IN CACHE?
         
@@ -327,14 +362,26 @@ class TeamPolicy:
         logging.info(" TeamPolicy Reset called ++++++++")
         self._state_history.clear()
         self._tactile_history.clear()
+        
+    def _preprocess_image(self, image: np.ndarray) -> torch.Tensor:
+        #permute | to tensor | resize | normalize 
+        tensor = torch.from_numpy(image.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
+        tensor = torch.nn.functional.interpolate(
+            tensor,
+            size=self.TRAIN_IMAGE_HW,
+            mode="bilinear",
+            align_corners=False,
+        )
+        tensor = tensor/255.0  # Normalize to [0, 1]
+        return tensor       
+            
+        
 
     @torch.inference_mode()
     def infer(self, observation: dict[str, Any]) -> np.ndarray:
         
         
-        logging.info(" TeamPolicy Infer called ++++++++")
-        
-        
+        logging.info(" TeamPolicy Infer called ++++++++")        
         # --- images: HWC uint8 [0,255] -> CHW float [0,255] (NOT [0,1]), resized
         # to the rectangular training resolution. Confirmed no /255 scaling and no
         # ImageNet mean/std normalization anywhere in the training preprocessing --
@@ -345,22 +392,34 @@ class TeamPolicy:
         # validating against the local Shadow evaluator once you have real observations.
         cams = []
         for key in self.CAMERA_ORDER:
-            image = observation[key].astype(np.float32)  # HWC, [0, 255]
-            tensor = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
-            tensor = torch.nn.functional.interpolate(
-                tensor,
-                size=self.TRAIN_IMAGE_HW,
-                mode="bilinear",
-                align_corners=False,
-            )
+            # image = observation[key].astype(np.float32)  # HWC, [0, 255]
+            # tensor = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
+            # tensor = torch.nn.functional.interpolate(
+            #     tensor,
+            #     size=self.TRAIN_IMAGE_HW,
+            #     mode="bilinear",
+            #     align_corners=False,
+            # )
+            tensor = self._preprocess_image(observation[key])
             cams.append(tensor)
         image_tensor = torch.stack(cams, dim=1).to(self.device)  # [1, 4, 3, 224, 320]
-        
-        logging.debug("+++++= img obs", torch.min(image_tensor), torch.max(image_tensor), image_tensor.shape, image_tensor.dtype)
+        logging.debug(
+            "+++++= img obs min=%s max=%s shape=%s dtype=%s",
+            torch.min(image_tensor),
+            torch.max(image_tensor),
+            image_tensor.shape,
+            image_tensor.dtype,
+        )
 
         # --- state history: 6-step window, oldest -> newest, flattened to [1, 390] ---
         state = np.asarray(observation["observation/state"], dtype=np.float32)
-        logging.debug("+++++= state obs", np.min(state), np.max(state), state.shape, state.dtype)
+        logging.debug(
+            "+++++= state obs min=%s max=%s shape=%s dtype=%s",
+            np.min(state),
+            np.max(state),
+            state.shape,
+            state.dtype,
+        )
         
         if not self._state_history:
             # Cold start at episode begin: no history yet, so backfill with the
@@ -380,7 +439,13 @@ class TeamPolicy:
 
         # --- tactile history: 19 raw readings -> 18 x [value, delta] -> flattened ---
         tactile = np.asarray(observation["observation/tactile"], dtype=np.float32)
-        logging.debug("+++++= tactile obs", np.min(tactile), np.max(tactile), tactile.shape, tactile.dtype)
+        logging.debug(
+            "+++++= tactile obs min=%s max=%s shape=%s dtype=%s",
+            np.min(tactile),
+            np.max(tactile),
+            tactile.shape,
+            tactile.dtype,
+        )
         
         if not self._tactile_history:
             for _ in range(self.TACTILE_TEMPORAL_HORIZON + 1):
@@ -420,7 +485,13 @@ class TeamPolicy:
             tactile_next=tactile_next_tensor,
         )  # [1, 100, 65], absolute joint-position radians, unnormalized (no
            # denormalization step exists anywhere in the reference inference path)
-        logging.debug("+++++= a_hat", torch.min(a_hat), torch.max(a_hat), a_hat.shape, a_hat.dtype)
+        logging.debug(
+            "+++++= a_hat min=%s max=%s shape=%s dtype=%s",
+            torch.min(a_hat),
+            torch.max(a_hat),
+            a_hat.shape,
+            a_hat.dtype,
+        )
         
         actions = a_hat[0, : self.action_horizon].detach().to("cpu").numpy()
         return np.ascontiguousarray(actions.astype(np.float32))
@@ -491,10 +562,11 @@ class OrigamiZenohServer:
         except Exception as exc:  # noqa: BLE001 - sanitized protocol error
             error_id = uuid.uuid4().hex
             logging.error(
-                "request failed operation=%s error_id=%s type=%s",
+                "request failed operation=%s error_id=%s type=%s\n%s",
                 operation,
                 error_id,
                 type(exc).__name__,
+                traceback.format_exc(),
             )
             public_message = f"request failed; error_id={error_id}"
             if not isinstance(request, Mapping):

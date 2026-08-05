@@ -1,0 +1,97 @@
+# VITAC participant policy image for origami-zenoh-v1.
+#
+# Extends sharpa_north_ces_lite_sdk-main/scripts/docker/policy-template.Dockerfile with the
+# vitacformer inference stack (torch/torchvision), the vendored vitacformer source, and a
+# baked-in checkpoint.
+#
+# Expected build context layout (this Dockerfile assumes it's run from a directory containing):
+#   ./requirements-inference.txt          # from earlier in this thread
+#   ./vitac_policy_server.py              # the completed adapter (from earlier in this thread)
+#   ./vitacformer/policy.py
+#   ./vitacformer/detr/                   # whole package: main.py, models/, util/
+#   ./vitacformer/train_utils.py
+#   ./vitacformer/configs.py
+#   ./checkpoint/policy_best.ckpt         # your trained checkpoint
+#
+# Build (CPU):
+#   docker build -t vitac-policy:dev .
+#
+# Build (CUDA, e.g. cu121 wheels):
+#   docker build --build-arg TORCH_INDEX_URL=https://download.pytorch.org/whl/cu121 \
+#     -t vitac-policy:dev .
+#
+# This image is designed to run under the local Shadow evaluator's hardened runtime
+# (--read-only, --cap-drop ALL, --user 65532:65532, tmpfs-only /tmp and /run -- see
+# participant_local_evaluator/docker_runtime.py). It also runs standalone for the plain
+# wire-protocol test:
+#   docker run --rm --network host \
+#     -e ORIGAMI_ZENOH_ENDPOINT=tcp/127.0.0.1:7447 \
+#     -e ORIGAMI_SESSION_ID=local-contract-test \
+#     -e ORIGAMI_ACTION_HORIZON=25 \
+#     vitac-policy:dev
+
+# ---------------------------------------------------------------------------
+# Stage 1: build a self-contained venv (keeps the runtime stage free of pip/build tools)
+# ---------------------------------------------------------------------------
+FROM python:3.11-slim AS builder
+
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cpu
+
+RUN python -m venv /.venv
+ENV PATH="/.venv/bin:${PATH}"
+
+# torch/torchvision need the special --index-url, so installed separately from the rest.
+RUN pip install --no-cache-dir \
+      --index-url "${TORCH_INDEX_URL}" \
+      --extra-index-url https://pypi.org/simple \
+      torch torchvision
+
+# Everything else comes from requirements-inference.txt (from earlier in this thread) --
+# referenced here, not retyped, so the two files can't drift out of sync. Expected in the
+# build context alongside this Dockerfile.
+COPY requirements-inference.txt /tmp/requirements-inference.txt
+RUN pip install --no-cache-dir -r /tmp/requirements-inference.txt \
+ && rm /tmp/requirements-inference.txt
+
+# ---------------------------------------------------------------------------
+# Stage 2: runtime -- minimal, nonroot, no build tools
+# ---------------------------------------------------------------------------
+FROM python:3.11-slim AS runtime
+
+COPY --from=builder /.venv /.venv
+ENV PATH="/.venv/bin:${PATH}"
+
+WORKDIR /app
+
+# vitacformer inference-only source (no dataset/, no lerobot dependency).
+COPY vitacformer/policy.py       /app/vitacformer/policy.py
+COPY vitacformer/detr            /app/vitacformer/detr
+COPY vitacformer/train_utils.py  /app/vitacformer/train_utils.py
+COPY vitacformer/configs.py      /app/vitacformer/configs.py
+
+# Checkpoint baked into the image (read-only at runtime).
+COPY checkpoints/policy_epoch_30_loss_0.041.ckpt /app/checkpoints/policy_best.ckpt
+
+# The completed protocol adapter from earlier in this thread.
+COPY policy_server.py /app/policy_server.py
+
+ENV VITACFORMER_ROOT=/app/vitacformer \
+    VITAC_CKPT_PATH=/app/checkpoints/policy_best.ckpt \
+    ORIGAMI_ACTION_HORIZON=25 \
+    HOME=/tmp/origami-home \
+    XDG_CACHE_HOME=/tmp/origami-cache \
+    IPYTHONDIR=/tmp/origami-ipython \
+    MPLCONFIGDIR=/tmp/origami-mpl
+
+# Pre-create writable-cache dirs so the image also works when run WITHOUT the evaluator's
+# tmpfs mounts (e.g. a plain `docker run`); under the evaluator's --read-only + tmpfs /tmp,
+# these paths are shadowed by the tmpfs mount at runtime anyway.
+RUN mkdir -p /tmp/origami-home /tmp/origami-cache /tmp/origami-ipython /tmp/origami-mpl \
+ && chown -R 65532:65532 /app /tmp/origami-home /tmp/origami-cache /tmp/origami-ipython /tmp/origami-mpl
+
+# Matches the --user 65532:65532 the local evaluator forces via `docker run` regardless
+# (docker_runtime.py's _policy_command); set here too so the image is correct standalone.
+USER 65532:65532
+
+HEALTHCHECK NONE
+ENTRYPOINT ["python", "/app/policy_server.py"]

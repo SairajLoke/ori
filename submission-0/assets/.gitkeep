@@ -1,0 +1,9 @@
+# Placeholder for normalization statistics and other assets
+#
+# If your model uses normalization statistics, place them here:
+#
+#   - norm_stats.pkl or norm_stats.json
+#   - tokenizer/ directory
+#   - vocabulary files
+#
+# The Dockerfile copies all assets to /opt/vitacformer/assets/

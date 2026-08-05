@@ -1,0 +1,75 @@
+# Git
+.git
+.gitignore
+.gitmodules
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Test outputs
+tests/output/
+*.log
+
+# Data and datasets
+datasets/
+data/
+*.h5
+*.zarr
+
+# Training artifacts
+wandb/
+runs/
+logs/
+checkpoints_raw/
+
+# Secrets and credentials
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+.env
+.env.*
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Scripts (not needed in runtime)
+scripts/
+
+# Development configs
+*.yaml
+*.yml
+!requirements.lock
+
+# OS files
+.DS_Store
+Thumbs.db

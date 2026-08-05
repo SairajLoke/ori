@@ -1,0 +1,14 @@
+# Placeholder for checkpoint files
+# 
+# Copy your trained ViTacFormer checkpoint here before building:
+# 
+#   cp /path/to/policy_globalstep_4200_loss_0.0836.ckpt \
+#      ori/submission-0/checkpoints/policy.ckpt
+#
+# The checkpoint should contain:
+#   - 'model': state_dict with model weights
+#   - 'global_step': training step number
+#   - 'epoch': training epoch number
+
+# resnet18-f37072fd.pth
+# policy_epoch_30_loss_0.041.pth

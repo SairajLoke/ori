@@ -1,0 +1,19 @@
+# ViTacFormer Policy Server - Python Dependencies
+# Pin exact versions for reproducible builds
+
+# Core ML
+torch==2.1.0
+torchvision==0.16.0
+numpy==1.24.3
+
+# Image processing
+Pillow==10.0.1
+opencv-python-headless==4.8.1.78
+
+# Zenoh protocol (origami-zenoh-v1)
+zenoh==1.0.0
+msgpack==1.0.7
+msgpack-numpy==0.4.8
+
+# Utilities
+typing-extensions==4.8.0

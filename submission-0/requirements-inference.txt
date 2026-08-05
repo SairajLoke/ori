@@ -1,0 +1,26 @@
+# Minimal set actually needed to run the VITAC policy server (vitac_policy_server.py) and
+# the SDK's protocol tools (check_zenoh_policy.py, remote_observation_client.py).
+#
+# Derived from what policy.py / detr/ / train_utils.py actually import at inference time --
+# NOT the full vitacformer/req.txt, which also covers training and dataset loading (lerobot,
+# av, tensorboard, zarr, etc. are not imported anywhere in the inference path).
+#
+# For CPU-only (no NVIDIA GPU), install torch/torchvision from the CPU index first:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements-inference.txt
+#
+# On a CUDA machine, just:
+#   pip install -r requirements-inference.txt
+
+# --- origami-inference-kit-participant (SDK / wire protocol) ---
+eclipse-zenoh>=1.9.0
+msgpack>=1.0.5
+msgpack-numpy
+numpy>=2.2.6,<3
+opencv-python>=4.13.0.92
+
+# --- vitacformer (model + policy.py's own imports only) ---
+torch
+torchvision
+ipython
+packaging

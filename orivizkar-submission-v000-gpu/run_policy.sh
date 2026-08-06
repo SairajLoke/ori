@@ -1,16 +1,8 @@
-# docker run -d --name origami-contract-router \
-#   --network origami-contract-test \
-#   -p 127.0.0.1:17447:7447 \
-#   "$ROUTER_IMAGE" \
-#   -l tcp/0.0.0.0:7447 \
-#   --no-multicast-scouting \
-#   --cfg 'transport/shared_memory/enabled:false'
+docker stop origami-contract-policy 
 
-# docker stop origami-contract-policy 
+docker rm origami-contract-policy 
 
-# docker rm origami-contract-policy 
-
-# docker build -t "$IMAGE" .
+docker build -t "$IMAGE" .
 
 docker run -d --name origami-contract-policy \
   --network origami-contract-test \

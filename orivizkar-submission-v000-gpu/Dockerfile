@@ -26,15 +26,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Install PyTorch with CUDA 12.4 wheels and dependencies
-# ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
-# RUN --mount=type=cache,target=/root/.cache/pip \
-#     python3 -m pip install \
-#     --default-timeout=100 \
-#     --retries=5 \
-#     --index-url "${TORCH_INDEX_URL}" \
-#     --extra-index-url https://pypi.org/simple \
-#     torch torchvision msgpack
-#     # --no-cache-dir
+# Must run BEFORE the lock install: the lock leaves torch unpinned, so without
+# this the default PyPI wheel (cu130) lands in this cuda:12.4.1 base image and
+# fails at runtime on any driver older than 580.
+# NOTE: no --extra-index-url here. pip picks the highest version across all
+# indexes, so adding PyPI lets its cu130 wheels outrank every cu124 wheel and
+# silently defeats the pin. Versions are explicit because cu124 caps at these.
+ARG TORCH_INDEX_URL=https://download.pytorch.org/whl/cu124
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3 -m pip install \
+    --default-timeout=100 \
+    --retries=5 \
+    --index-url "${TORCH_INDEX_URL}" \
+    torch==2.6.0+cu124 torchvision==0.21.0+cu124
+    # --no-cache-dir
 
 COPY requirements-inference.lock /tmp/requirements-inference.lock
 RUN --mount=type=cache,target=/root/.cache/pip \

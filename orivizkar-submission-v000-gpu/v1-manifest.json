@@ -2,10 +2,10 @@
   "submission_format": "origami-oci-archive-orvizkar-v0",
   "team_id": "orvizkar",
   "image": "orvizkar/origami-policy:submission-vitac000",
-  "image_id": "sha256:ef2606d81d019617b74ffaebc79181728b5cf7be0db23f156ba4d19a1c6828a2",
+  "image_id": "sha256:53c68d7dd96f5e03f47e8e2a936b2cc18e49fb238365a64e74bee4011e04874d",
   "archive": "orvizkar-origami-policy-submission-vitac000.tar.zst",
-  "archive_size_bytes": 12547942400,
-  "archive_sha256": "ad4330509ad4fa00507e55fad6415150b13367dfff0cf0745ece6d9a371b40be",
+  "archive_size_bytes": 12293361571,
+  "archive_sha256": "ef1873b76ffd90062137c028a129212e17dae303fdd875239564cf27cb276054",
   "protocol": "origami-zenoh-v1",
   "action_dim": 65,
   "action_horizon": 25

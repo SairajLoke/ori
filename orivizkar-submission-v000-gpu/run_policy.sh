@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 docker stop origami-contract-policy 
 
 docker rm origami-contract-policy 
@@ -11,7 +13,7 @@ docker run -d --name origami-contract-policy \
   --cap-drop ALL \
   --security-opt no-new-privileges=true \
   --user 65532:65532 \
-  --tmpfs /tmp:rw,exec,nosuid,nodev,size=4g \
+  --tmpfs /tmp:rw,noexec,nosuid,nodev,size=4g \
   --tmpfs /run:rw,noexec,nosuid,nodev,size=64m \
   --shm-size 8g \
   --memory 16g \

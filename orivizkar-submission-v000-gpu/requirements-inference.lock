@@ -1,12 +1,37 @@
+# Fully pinned. Generated from `pip freeze` inside the built submission image and
+# then verified by rebuilding against it.
+#
+# torch/torchvision and their transitive closure (nvidia-*, triton, sympy,
+# networkx, filelock, fsspec, jinja2, markupsafe, mpmath, pillow) are installed
+# in the earlier `--index-url .../cu124` step in the Dockerfile and are
+# deliberately absent here -- listing them would make pip re-resolve them against
+# PyPI and silently replace the cu124 wheels.
+
 # --- origami-inference-kit-participant (SDK / wire protocol) ---
-eclipse-zenoh>=1.9.0
-msgpack>=1.0.5
-msgpack-numpy
-numpy>=2.2.6,<3
-opencv-python>=4.13.0.92
+eclipse-zenoh==1.9.0
+msgpack==1.2.1
+msgpack-numpy==0.4.8
+numpy==2.2.6
+opencv-python==5.0.0.93
 
 # --- vitacformer (model + policy.py's own imports only) ---
-torch
-torchvision
-ipython
-packaging
+ipython==8.39.0
+packaging==26.3
+
+# --- transitive closure of the above (ipython) ---
+asttokens==3.0.2
+decorator==5.3.1
+exceptiongroup==1.3.1
+executing==2.2.1
+jedi==0.20.0
+matplotlib-inline==0.2.2
+parso==0.8.7
+pexpect==4.9.0
+prompt_toolkit==3.0.53
+ptyprocess==0.7.0
+pure_eval==0.2.3
+Pygments==2.20.0
+stack-data==0.6.3
+traitlets==5.16.1
+typing_extensions==4.15.0
+wcwidth==0.8.2

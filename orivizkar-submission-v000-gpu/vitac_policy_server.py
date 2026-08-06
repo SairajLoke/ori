@@ -336,7 +336,7 @@ class TeamPolicy:
             "proprioceptive_temporal_horizon": self.PROPRIOCEPTIVE_TEMPORAL_HORIZON,
         }
         optimizations =['compile', 'tflite','none']
-        OPTIMIZATION_IDX = 2
+        OPTIMIZATION_IDX = 0
         
         logging.info("using device: %s", self.device)
         

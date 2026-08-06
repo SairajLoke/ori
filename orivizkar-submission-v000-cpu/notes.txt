@@ -77,18 +77,6 @@ is the authoritative current state.
 
 
 
-kaustubh@fedora:~/Documents/ori/ori/orivizkar-submission-v000-gpu/scripts$ docker image inspect --format '{{json .RepoDigests}}' "$IMAGE"
-["orvizkar/origami-policy@sha256:ef2606d81d019617b74ffaebc79181728b5cf7be0db23f156ba4d19a1c6828a2"]
-
-kaustubh@fedora:~/Documents/ori/ori/orivizkar-submission-v000-gpu/scripts$ docker image inspect --format '{{.Id}}' "$IMAGE"
-sha256:ef2606d81d019617b74ffaebc79181728b5cf7be0db23f156ba4d19a1c6828a2
-
-
-
-
-
-
-
 
 pip install --no-cache-dir pip-licenses && \
     mkdir -p licenses && \

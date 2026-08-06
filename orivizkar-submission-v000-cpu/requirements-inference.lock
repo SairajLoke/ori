@@ -1,0 +1,12 @@
+# --- origami-inference-kit-participant (SDK / wire protocol) ---
+eclipse-zenoh>=1.9.0
+msgpack>=1.0.5
+msgpack-numpy
+numpy>=2.2.6,<3
+opencv-python>=4.13.0.92
+
+# --- vitacformer (model + policy.py's own imports only) ---
+torch
+torchvision
+ipython
+packaging

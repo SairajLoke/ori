@@ -1,0 +1,12 @@
+
+------------------ validator-------------
+raw obs: 
+imgs: Arguments: (tensor(0.), tensor(255.), torch.Size([1, 4, 3, 224, 320]), torch.float32)
+state: Arguments: (np.float32(-0.25), np.float32(0.25), (65,), dtype('float32'))
+tactile; Arguments: (np.float32(0.0), np.float32(0.0), (60,), dtype('float32'))
+ahat: (tensor(-1.3869), tensor(1.5633), torch.Size([1, 100, 65]), torch.float32)
+
+
+
+----------------------
+gpu

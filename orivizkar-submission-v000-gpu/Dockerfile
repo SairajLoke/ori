@@ -65,6 +65,11 @@ RUN mkdir -p /tmp/origami-home /tmp/origami-cache/triton /tmp/origami-cache/torc
     && chmod -R a+rX /app /tmp/origami-home /tmp/origami-cache /tmp/origami-ipython \
     && chown -R 65532:65532 /app /tmp/origami-home /tmp/origami-cache /tmp/origami-ipython
 
+# Copy licenses folder into /licenses
+COPY licenses/ /licenses/
+# Grant read/execute permissions to all users 
+RUN chmod -R a+rX /licenses
+
 USER 65532:65532
 
 HEALTHCHECK NONE

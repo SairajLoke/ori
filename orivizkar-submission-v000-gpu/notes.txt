@@ -7,6 +7,92 @@ tactile; Arguments: (np.float32(0.0), np.float32(0.0), (60,), dtype('float32'))
 ahat: (tensor(-1.3869), tensor(1.5633), torch.Size([1, 100, 65]), torch.float32)
 
 
+==========================================
+optimizations =['compile', 'tflite','none']
+        OPTIMIZATION_IDX = 2
+
+0   --requests 3   --expected-horizon 25
+metadata: PASS (transport=origami-zenoh-v1, semantic=origami-v1, horizon=25, dim=65)
+reset: PASS
+infer 1/3: PASS (2488.8 ms, full)
+infer 2/3: PASS (56.0 ms, full)
+infer 3/3: PASS (48.3 ms, without optional tactile_raw)
+PASS: policy is compatible with origami-zenoh-v1
+latency: requests=3 median=56.0 ms max=2488.8 ms
+
+
+
+15.6 First compilation
+The first inference with JAX/XLA, Torch compile, or TensorRT may be significantly slower. Record:
+
+cold-start model loading time;
+first-infer time;
+steady-state infer median/max;
+peak GPU memory usage;
+peak RAM and /tmp usage.
+Do not assume that the organizer will perform an undeclared warmup before official timing.
+
+metadata: PASS (transport=origami-zenoh-v1, semantic=origami-v1, horizon=25, dim=65)
+reset: PASS
+infer 1/3: PASS (54.3 ms, full)
+infer 2/3: PASS (48.2 ms, full)
+infer 3/3: PASS (46.8 ms, without optional tactile_raw)
+PASS: policy is compatible with origami-zenoh-v1
+latency: requests=3 median=48.2 ms max=54.3 ms
+
+uv run --no-sync python examples/check_zenoh_policy.py   --endpoint tcp/127.0.0.1:17447   --session-id "$SESSION"   --timeout 180   --requests 3   --expected-horizon 25
+metadata: PASS (transport=origami-zenoh-v1, semantic=origami-v1, horizon=25, dim=65)
+reset: PASS
+infer 1/3: PASS (62.9 ms, full)
+infer 2/3: PASS (52.9 ms, full)
+infer 3/3: PASS (53.1 ms, without optional tactile_raw)
+PASS: policy is compatible with origami-zenoh-v1
+latency: requests=3 median=53.1 ms max=62.9 ms
+
+uv run --no-sync python examples/check_zenoh_policy.py   --endpoint tcp/127.0.0.1:17447   --session-id "$SESSION"   --timeout 180   --requests 3   --expected-horizon 25
+metadata: PASS (transport=origami-zenoh-v1, semantic=origami-v1, horizon=25, dim=65)
+reset: PASS
+infer 1/3: PASS (59.5 ms, full)
+infer 2/3: PASS (53.8 ms, full)
+infer 3/3: PASS (51.7 ms, without optional tactile_raw)
+PASS: policy is compatible with origami-zenoh-v1
+latency: requests=3 median=53.8 ms max=59.5 ms
+
 
 ----------------------
-gpu
+Keep logs on stdout/stderr, bounded by the runner. Do not log observations, prompts, action arrays, environment values, or model secrets by default.
+normalization statistics;?
+
+needto confirm the input norm exactly....
+
+
+to discuss 6.2 with them --------------
+The organizer may execute only the first few steps 
+before running inference again, or may perform an 
+open-loop rollout over multiple chunks in Shadow to 
+produce 100 future steps. A participant policy must not 
+assume that the entire chunk is executed; the next observation 
+is the authoritative current state.
+
+
+
+
+
+
+
+
+
+
+
+
+
+pip install --no-cache-dir pip-licenses && \
+    mkdir -p licenses && \
+    pip-licenses \
+        --packages eclipse-zenoh msgpack msgpack-numpy numpy opencv-python torch torchvision ipython packaging \
+        --format=plain-vertical \
+        --with-license-file \
+        --no-license-path \
+        --output-file=licenses/THIRD_PARTY_LICENSES.txt && \
+    pip uninstall -y pip-licenses && \
+    chmod -R a+rX licenses

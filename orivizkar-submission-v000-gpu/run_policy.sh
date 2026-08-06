@@ -1,20 +1,28 @@
-docker stop origami-contract-policy 
+# docker run -d --name origami-contract-router \
+#   --network origami-contract-test \
+#   -p 127.0.0.1:17447:7447 \
+#   "$ROUTER_IMAGE" \
+#   -l tcp/0.0.0.0:7447 \
+#   --no-multicast-scouting \
+#   --cfg 'transport/shared_memory/enabled:false'
 
-docker rm origami-contract-policy 
+# docker stop origami-contract-policy 
 
-docker build -t "$IMAGE" .
+# docker rm origami-contract-policy 
+
+# docker build -t "$IMAGE" .
 
 docker run -d --name origami-contract-policy \
-  --gpus all \
   --network origami-contract-test \
+  --gpus all \
   --read-only \
   --cap-drop ALL \
   --security-opt no-new-privileges=true \
   --user 65532:65532 \
   --tmpfs /tmp:rw,exec,nosuid,nodev,size=4g \
   --tmpfs /run:rw,noexec,nosuid,nodev,size=64m \
-  --shm-size 2g \
-  --memory 10g \
+  --shm-size 8g \
+  --memory 16g \
   --cpus 4 \
   --pids-limit 512 \
   -e ORIGAMI_ZENOH_ENDPOINT=tcp/origami-contract-router:7447 \
@@ -37,3 +45,5 @@ docker run -d --name origami-contract-policy \
 #   -v "$(pwd)/vitacformer:/app/vitacformer:z" \
 #   "$IMAGE"ON_ID="$SESSION" \
 #   "$IMAGE"
+
+

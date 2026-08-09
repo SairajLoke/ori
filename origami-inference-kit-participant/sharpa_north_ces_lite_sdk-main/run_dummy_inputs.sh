@@ -24,9 +24,9 @@ uv run --no-sync python $filepath \
   --obs-type dataset \
   --dataset-root $datasetroot \
   --episode-index 0 \
-  --dataset-requests 5 \
+  --dataset-requests 3 \
   --frame-stride $expected_horizon \
-  --save-actions ./dataset_checks/actions_ep0.npy
+  --out-dir dataset_checks
 
 
 # #requests is sythetic requests

@@ -1,4 +1,4 @@
-export TORCHINDUCTOR_CACHE_DIR=/app/.cache/torchinductor
+# export TORCHINDUCTOR_CACHE_DIR=/app/.cache/torchinductor
 
 docker stop origami-contract-policy 
 

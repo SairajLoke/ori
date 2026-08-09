@@ -426,19 +426,37 @@ def run_validation(
     endpoint: str,
     session_id: str,
     timeout: float,
-    requests: int,
+    synth_requests: int,
     expected_horizon: int | None,
+    
+    dataset_requests: int,
+    obs_type: str | None ,
+    dataset_root: str | None,
+    episode_index: int ,
+    frame_stride: int ,
+    save_actions: str | None,
 ) -> None:
+    
     endpoint = validate_endpoint(endpoint)
     session_id = validate_session_id(session_id)
     if not math.isfinite(timeout) or timeout <= 0:
         raise ValidationError("timeout must be a finite number > 0")
-    if requests < 1:
+    if synth_requests < 1:
         raise ValidationError("requests must be >= 1")
     if expected_horizon is not None and not 1 <= expected_horizon <= 1024:
         raise ValidationError("expected horizon must be in [1,1024]")
+    if obs_type not in ("synthetic", "dataset", "both"):
+            raise ValidationError("obs_type must be one of 'synthetic', 'dataset', 'both'")
 
+    run_synthetic = obs_type in ("synthetic", "both")
+    run_dataset = obs_type in ("dataset", "both")
+    
     session = open_zenoh_session(endpoint)
+    
+    synth_latencies_ms: list[float] = []
+    dataset_latencies_ms: list[float] = []
+    dataset_actions: list[np.ndarray] = []
+    
     try:
         metadata = validate_metadata(
             query_once(session, "metadata", session_id, timeout),
@@ -449,42 +467,117 @@ def run_validation(
             "metadata: PASS "
             f"(transport={ZENOH_PROTOCOL_VERSION}, semantic={SEMANTIC_PROTOCOL_VERSION}, "
             f"horizon={horizon}, dim={ACTION_DIM})"
-        )
+        )   
+        
+        print("Building Dataset ")
+        #----------------------------------------
+        source = None
+        observation = None
+        if run_dataset:
+            from real_observation_source import RealObservationSource
+            source = RealObservationSource(
+                dataset_root=dataset_root,
+                drop_tactile_raw_every_n=dataset_requests, #NOTE:::::
+                episode_index=episode_index,
+                
+            )
+            source.assert_requests_validity(dataset_requests, frame_stride=frame_stride)
 
+        #-------------------------------------------
+
+
+        # --------- Synthetic -------------------
         validate_reset(query_once(session, "reset", session_id, timeout))
         print("reset: PASS")
+        
+        if run_synthetic:
+            observation = make_synthetic_observation()
+            for index in range(synth_requests):
+                request_observation = dict(observation)
+                if index == synth_requests - 1:
+                    request_observation.pop("observation/image/tactile_raw")
+                                
+                started = time.monotonic()
+                reply = query_once(
+                    session,
+                    "infer",
+                    session_id,
+                    timeout,
+                    observation=request_observation,
+                )
+                latency_ms = (time.monotonic() - started) * 1000.0
+                validate_infer(reply, horizon)
+                synth_latencies_ms.append(latency_ms)
+                raw_mode = "without optional tactile_raw" if index == synth_requests - 1 else "full"
+                print(
+                    f"infer Synthetic frames {index + 1}/{synth_requests}: PASS "
+                    f"({latency_ms:.1f} ms, {raw_mode})"
+                )
+                
+            
+        #----------------- Real Dataset -------------------    
+        if run_dataset:
+            
+            validate_reset(query_once(session, "reset", session_id, timeout))
+            source.reset_episode()
+            print("reset: PASS (dataset)")
+            
+            for index in range(dataset_requests):
+                request_observation = source.next_observation(frame_stride=frame_stride)
+                # frame_info = source.get_last_frame_info()  
 
-        observation = make_synthetic_observation()
-        latencies_ms: list[float] = []
-        for index in range(requests):
-            request_observation = dict(observation)
-            if index == requests - 1:
-                request_observation.pop("observation/image/tactile_raw")
-            started = time.monotonic()
-            reply = query_once(
-                session,
-                "infer",
-                session_id,
-                timeout,
-                observation=request_observation,
-            )
-            latency_ms = (time.monotonic() - started) * 1000.0
-            validate_infer(reply, horizon)
-            latencies_ms.append(latency_ms)
-            raw_mode = "without optional tactile_raw" if index == requests - 1 else "full"
-            print(
-                f"infer {index + 1}/{requests}: PASS "
-                f"({latency_ms:.1f} ms, {raw_mode})"
-            )
+                started = time.monotonic()
+                reply = query_once(
+                    session,
+                    "infer",
+                    session_id,
+                    timeout,
+                    observation=request_observation,
+                )
+                latency_ms = (time.monotonic() - started) * 1000.0
+                actions = validate_infer(reply, horizon)
+                dataset_actions.append(actions)
+                dataset_latencies_ms.append(latency_ms)
+                
+                raw_mode = (
+                    "without optional tactile_raw"
+                    if "observation/image/tactile_raw" not in request_observation
+                    else "full"
+                )
+                
+                print(
+                    f"infer real-dataset {index + 1}/{dataset_requests}: PASS "
+                    f"({latency_ms:.1f} ms, {raw_mode}, "
+                    # f"ep={frame_info['episode_index']} "
+                    # f"frame={frame_info['frame_index']} "
+                    # f"t={frame_info['timestamp_s']:.3f}s)"           # <-- now visible in every log line
+                )
+                
+                   
     finally:
         session.close()
 
     print(f"PASS: policy is compatible with {ZENOH_PROTOCOL_VERSION}")
-    print(
-        f"latency: requests={requests} "
-        f"median={statistics.median(latencies_ms):.1f} ms max={max(latencies_ms):.1f} ms"
-    )
+    print("obs_type:", obs_type)
 
+    if synth_latencies_ms:
+            print(
+                f"latency (synthetic): requests={len(synth_latencies_ms)} "
+                f"median={statistics.median(synth_latencies_ms):.1f} ms "
+                f"max={max(synth_latencies_ms):.1f} ms"
+        )
+    if dataset_latencies_ms:
+        print(
+            f"latency (real-dataset): requests={len(dataset_latencies_ms)} "
+            f"median={statistics.median(dataset_latencies_ms):.1f} ms "
+            f"max={max(dataset_latencies_ms):.1f} ms"
+        )
+
+    if save_actions and dataset_actions:
+        action_array = np.stack(dataset_actions, axis=0)  # (T, horizon, 65)
+        np.save(save_actions, action_array)
+        print(f"Saved dataset actions: {action_array.shape} -> {save_actions}")
+        
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -508,23 +601,65 @@ def build_argument_parser() -> argparse.ArgumentParser:
         default=None,
         help="require this exact metadata/action horizon",
     )
+    
+    parser.add_argument("--obs-type", type=str, default=None, required=True,
+    help="one of ['synthetic', 'dataset', 'both']")
+    
+    
+    parser.add_argument("--dataset-root", type=str, default=None, 
+    help="path to .../lerobot3.0 (if set, replays real dataset frames instead of synthetic data)")
+    
+    parser.add_argument("--dataset-requests", type=int, default=None)
+    parser.add_argument("--episode-index", type=int, default=None)
+    parser.add_argument("--frame-stride", type=int, default=None,
+        help="dataset frames to advance per infer() call; set to action_horizon "
+            "to replay at real deployment cadence (non-overlapping chunks)")
+    parser.add_argument("--save-actions", type=str, default=None,
+        help="if set, save collected predicted actions to this .npy path")
+    
+    
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_argument_parser()
     args = parser.parse_args(argv)
+    
     if not args.endpoint:
         parser.error("--endpoint or ORIGAMI_ZENOH_ENDPOINT is required")
     if not args.session_id:
         parser.error("--session-id or ORIGAMI_SESSION_ID is required")
+    
+
+    if args.obs_type in ("dataset", "both"):
+        if not args.dataset_root:
+            parser.error("--dataset-root is required when --obs-type is 'dataset' or 'both'")
+        if args.episode_index is None:
+            parser.error("--episode-index is required when --obs-type is 'dataset' or 'both'")
+        if args.frame_stride is None:
+            parser.error("--frame-stride is required when --obs-type is 'dataset' or 'both'")
+        if args.save_actions is None or (args.save_actions  is not None and not args.save_actions.endswith(".npy")):
+            parser.error("--save-actions must be a .npy file path if set")
+        os.makedirs(os.path.dirname(args.save_actions) or ".", exist_ok=True)
+            
+        if args.dataset_requests is None or args.dataset_requests < 1:
+            parser.error("--dataset-requests must be >= 1 when --obs-type is 'dataset' or 'both'")
+        
+        
     try:
         run_validation(
             endpoint=args.endpoint,
             session_id=args.session_id,
             timeout=args.timeout,
-            requests=args.requests,
+            synth_requests=args.requests,
             expected_horizon=args.expected_horizon,
+            
+            obs_type=args.obs_type,
+            dataset_requests=args.dataset_requests,
+            dataset_root=args.dataset_root,
+            episode_index=args.episode_index,
+            frame_stride=args.frame_stride,
+            save_actions=args.save_actions    
         )
     except (ValidationError, TimeoutError, OSError) as exc:
         print(f"FAIL: {exc}", file=sys.stderr)

@@ -261,7 +261,7 @@ class TeamPolicy:
 
     def _load_policy(self, policy_config, optimization_type) :
         logging.info("loading VITAC checkpoint from %s", self.checkpoint_path)
-        logging.info("Optimization:", optimization_type)
+        logging.info("Optimization: %s", optimization_type)
         
         checkpoint = torch.load(self.checkpoint_path, map_location=self.device)
         self.policy = ACTPolicy(policy_config)
@@ -327,7 +327,7 @@ class TeamPolicy:
             "proprioceptive_temporal_horizon": self.PROPRIOCEPTIVE_TEMPORAL_HORIZON,
         }
         optimizations =['compile', 'tflite','none']
-        OPTIMIZATION_IDX = 0
+        OPTIMIZATION_IDX = 2
         
         logging.info("using device: %s", self.device)
         

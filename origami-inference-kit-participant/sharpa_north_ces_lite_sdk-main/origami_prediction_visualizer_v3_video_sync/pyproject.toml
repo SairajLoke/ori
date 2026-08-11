@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "origami-prediction-visualizer"
+version = "0.2.0"
+description = "Offline North robot prediction vs Robotic Origami dataset episode visualizer"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dataset = [
+  "pyarrow>=14",
+]
+
+[project.scripts]
+origami-visualizer = "origami_prediction_visualizer.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["origami_prediction_visualizer*"]
+
+[tool.setuptools.package-data]
+origami_prediction_visualizer = [
+  "static/*",
+  "static/vendor/*",
+]

@@ -1,0 +1,14 @@
+do:  pip install -e '.[dataset]'
+in this dir 
+
+
+then do 
+
+
+origami-visualizer \
+    --predictions /home/sai/Desktop/ORI/ori/origami-inference-kit-participant/sharpa_north_ces_lite_sdk-main/origami_prediction_visualizer_v3_video_sync/gt.npy \
+    --robot-assets-dir /home/sai/Desktop/ORI/ori/north_poc2_2_urdf_usd \
+    --dataset-root /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0 \
+    --episode-index 0 \
+    --action-horizon 25 \
+    --control-hz 30

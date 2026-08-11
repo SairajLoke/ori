@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>North · Offline Episode Visualizer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>North · Offline Episode Visualizer</h1>
+    <p>Prediction vs dataset action + synchronized episode video</p>
+  </div>
+  <div class="badges">
+    <span id="predictionBadge" class="badge">Loading predictions…</span>
+    <span id="gtBadge" class="badge">GT —</span>
+    <span id="urdfBadge" class="badge">Loading URDF…</span>
+    <span id="meshBadge" class="badge">Mesh —</span>
+  </div>
+</header>
+
+<main>
+  <section class="panel span8">
+    <div class="section-head">
+      <h2>3D Robot</h2>
+      <div class="toggles">
+        <label><input id="showPrediction" type="checkbox" checked> Prediction</label>
+        <label><input id="showGT" type="checkbox" checked> GT action</label>
+      </div>
+    </div>
+    <div class="legend"><span class="solid-dot"></span> prediction &nbsp;&nbsp; <span class="ghost-dot"></span> GT action</div>
+    <div class="viewer">
+      <div id="robotView" role="img" aria-label="North prediction and ground truth action models"></div>
+      <span class="viewer-hint">Drag to rotate · Scroll to zoom · Right-drag to pan</span>
+    </div>
+    <div class="player">
+      <button id="playPause" disabled>▶</button>
+      <button id="stepBack" disabled>−1</button>
+      <input id="timeline" type="range" min="0" max="0" value="0" disabled>
+      <button id="stepForward" disabled>+1</button>
+      <span id="stepText">Step 0 / 0</span>
+    </div>
+    <div class="stage">
+      <span id="stageText">Stage 0 / 0</span>
+      <span id="horizonText">Horizon 0 / 25</span>
+      <span id="timeText">Time 0.000 s</span>
+    </div>
+  </section>
+
+  <section class="panel span4 videos-panel">
+    <h2>Dataset video</h2>
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-title">Head Left</div>
+        <video id="headLeftVideo" controls muted playsinline preload="metadata"></video>
+        <div id="headLeftStatus" class="video-status">Not configured</div>
+      </div>
+      <div class="video-card">
+        <div class="video-title">Wrist Left</div>
+        <video id="wristLeftVideo" controls muted playsinline preload="metadata"></video>
+        <div id="wristLeftStatus" class="video-status">Not configured</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel span4">
+    <h2>Episode / Errors</h2>
+    <div id="metrics" class="metrics"></div>
+    <h3>Current step warnings</h3>
+    <ul id="warnings" class="warnings"></ul>
+  </section>
+
+  <section class="panel span8">
+    <h2>Current joint values</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Joint</th><th>Prediction</th><th>GT action</th><th>|error|</th><th>URDF range</th><th>Velocity limit</th></tr></thead>
+        <tbody id="stateRows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

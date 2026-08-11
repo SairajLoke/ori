@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>North · Model Prediction Visualizer</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header>
+  <div>
+    <h1>North · Model Prediction Visualizer</h1>
+    <p>Offline model outputs · no remote robot · no policy container · no authentication</p>
+  </div>
+  <div class="badges">
+    <span id="predictionBadge" class="badge">Loading predictions…</span>
+    <span id="urdfBadge" class="badge">Loading URDF…</span>
+    <span id="meshBadge" class="badge">Mesh —</span>
+  </div>
+</header>
+
+<main>
+  <section class="panel span8">
+    <div class="section-head">
+      <h2>North URDF · Predicted Joint State</h2>
+      <div class="badges">
+        <span id="compatBadge" class="badge">Checking limits…</span>
+      </div>
+    </div>
+    <div class="viewer">
+      <div id="robotView" role="img" aria-label="Complete 3D North URDF model"></div>
+      <span class="viewer-hint">Drag to rotate · Scroll to zoom · Right-drag to pan</span>
+    </div>
+    <div class="player">
+      <button id="playPause" disabled>▶</button>
+      <button id="stepBack" disabled>−1</button>
+      <input id="timeline" type="range" min="0" max="0" value="0" disabled>
+      <button id="stepForward" disabled>+1</button>
+      <span id="stepText">Step 0 / 0</span>
+    </div>
+    <div class="stage">
+      <span id="stageText">Stage 0 / 0</span>
+      <span id="horizonText">Horizon 0 / 25</span>
+    </div>
+  </section>
+
+  <section class="panel span4">
+    <h2>Trajectory</h2>
+    <div id="metrics" class="metrics"></div>
+    <h3>Current Step Warnings</h3>
+    <ul id="warnings" class="warnings"></ul>
+    <h3>Selected State</h3>
+    <pre id="statusText"></pre>
+  </section>
+
+  <section class="panel span12">
+    <h2>65-Dimensional Predicted State</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Joint</th><th>Radians</th><th>URDF range</th><th>Velocity limit</th></tr></thead>
+        <tbody id="stateRows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

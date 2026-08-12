@@ -1,0 +1,28 @@
+{
+  "views": {
+    "front": {
+      "label": "Front",
+      "position": [0.0, 0.85, 2.9],
+      "target": [0.0, 1.30, 0.0],
+      "fov": 42,
+      "near": 0.01,
+      "far": 1000
+    },
+    "top": {
+      "label": "Top",
+      "position": [0.0, 3.60, 0.05],
+      "target": [0.0, 0.0, 0.0],
+      "fov": 42,
+      "near": 0.01,
+      "far": 1000
+    },
+    "hands": {
+      "label": "Close-up hands",
+      "position": [1.25, 1.15, 1.25],
+      "target": [0.0, 1.60, 0.0],
+      "fov": 38,
+      "near": 0.01,
+      "far": 1000
+    }
+  }
+}

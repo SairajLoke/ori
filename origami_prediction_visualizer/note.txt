@@ -1,0 +1,22 @@
+requires py3.12 
+
+do:  pip install -e '.[dataset]'
+in this dir 
+
+
+then do 
+
+
+origami-visualizer \
+    --predictions viz_data/preds_50.npy \
+    --robot-assets-dir ../north_poc2_2_urdf_usd \
+    --action-horizon 25 \
+    --control-hz 30 \
+    --camera-config cameras.json \
+    --record-views front top hands \
+    --dataset-root /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0 \
+    --episode-index 0 
+
+####### not req but could be used to comp against gt actions ######
+    --dataset-root /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0 \
+    --episode-index 0 \

@@ -1,0 +1,26 @@
+TODO: 
+scratch memory optimization on sunday
+ 
+
+
+optimization |  effect  | comment 
+
+Distributed sampler 
+num_workers=28–32 ....... per process (128 cores / 4 processes = 32 max)
+prefetch_factor=6–8/16 ig i can afford? based on mem usage?...currently it satlls a lot 10-20 sec 
+
+
+mixed_precision: 'fp16'` ✅ (good)
+
+
+
+Consider `batch_size=128` (A100 40GB can handle it with 93.95M params)...what should be the max batch size for my model to run ? say i hvae 4/ 8 gpus? 
+
+if i change batch size during trianing / num gpus ...how exactly should the resumed training params look like? 
+
+will torch compile affect the traiing quality? / model updates? 
+
+
+
+
+TRAIN ON H100 

@@ -1,0 +1,476 @@
+======================================================================
+DATALOADER TIMING LOG
+CPU cores: 64
+num_workers: 32
+batch_size_train: 64======================================================================
+
+[BATCH 0] dl=142.680s | convert: norm=0.315s resize=0.007s tac=0.002s total=0.324s | xfer=0.000s | fwd=3.736s | total=4.060s
+[BATCH 0] dl=127.363s | convert: norm=0.459s resize=0.082s tac=0.030s total=0.611s | xfer=0.000s | fwd=18.881s | total=19.492s
+[BATCH 1] dl=0.198s | convert: norm=0.005s resize=0.000s tac=0.002s total=0.008s | xfer=0.000s | fwd=1.779s | total=1.791s
+[BATCH 1] dl=0.268s | convert: norm=0.005s resize=0.000s tac=0.002s total=0.009s | xfer=0.000s | fwd=2.078s | total=2.101s
+[BATCH 2] dl=0.410s | convert: norm=0.006s resize=0.000s tac=0.003s total=0.009s | xfer=0.000s | fwd=2.577s | total=2.592s
+[BATCH 2] dl=0.240s | convert: norm=0.006s resize=0.000s tac=0.003s total=0.009s | xfer=0.000s | fwd=2.734s | total=2.747s
+[BATCH 3] dl=0.379s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.237s | total=0.246s
+[BATCH 3] dl=0.239s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.206s | total=0.214s
+[BATCH 4] dl=0.209s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.187s | total=0.202s
+[BATCH 4] dl=0.244s | convert: norm=0.001s resize=0.000s tac=0.000s total=0.002s | xfer=0.000s | fwd=0.178s | total=0.186s
+[BATCH 5] dl=0.484s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.002s | xfer=0.000s | fwd=0.184s | total=0.196s
+[BATCH 5] dl=0.267s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.357s | total=0.373s
+[BATCH 6] dl=0.315s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.230s | total=0.242s
+[BATCH 6] dl=0.250s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.238s | total=0.251s
+[BATCH 7] dl=0.441s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.203s | total=0.215s
+[BATCH 7] dl=0.459s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.210s | total=0.221s
+[BATCH 8] dl=0.460s | convert: norm=0.010s resize=0.001s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.182s | total=0.206s
+[BATCH 8] dl=0.279s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.397s | total=0.407s
+[BATCH 9] dl=0.277s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.260s | total=0.271s
+[BATCH 9] dl=0.346s | convert: norm=0.002s resize=0.005s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.195s | total=0.222s
+[BATCH 10] dl=0.174s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.282s | total=0.294s
+[BATCH 10] dl=0.249s | convert: norm=0.002s resize=0.000s tac=0.007s total=0.009s | xfer=0.000s | fwd=0.244s | total=0.267s
+[BATCH 11] dl=0.186s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.274s | total=0.284s
+[BATCH 11] dl=0.456s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.002s | xfer=0.000s | fwd=0.195s | total=0.204s
+[BATCH 12] dl=0.180s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.218s | total=0.237s
+[BATCH 12] dl=0.246s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.247s | total=0.261s
+[BATCH 13] dl=0.242s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.199s | total=0.211s
+[BATCH 13] dl=0.207s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.248s | total=0.258s
+[BATCH 14] dl=0.252s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.300s | total=0.322s
+[BATCH 14] dl=0.209s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.002s | xfer=0.000s | fwd=0.366s | total=0.375s
+[BATCH 15] dl=0.155s | convert: norm=0.019s resize=0.000s tac=0.001s total=0.020s | xfer=0.000s | fwd=0.320s | total=0.365s
+[BATCH 15] dl=0.129s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.243s | total=0.262s
+[BATCH 16] dl=0.144s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.333s | total=0.347s
+[BATCH 16] dl=0.227s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.339s | total=0.354s
+[BATCH 17] dl=0.162s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.226s | total=0.234s
+[BATCH 17] dl=0.121s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.293s | total=0.309s
+[BATCH 18] dl=0.226s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.323s | total=0.338s
+[BATCH 18] dl=0.215s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.265s | total=0.276s
+[BATCH 19] dl=0.154s | convert: norm=0.004s resize=0.000s tac=0.000s total=0.005s | xfer=0.000s | fwd=0.404s | total=0.442s
+[BATCH 19] dl=0.160s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.333s | total=0.353s
+[BATCH 20] dl=0.086s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.277s | total=0.295s
+[BATCH 20] dl=0.122s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.322s | total=0.357s
+[BATCH 21] dl=0.184s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.386s | total=0.407s
+[BATCH 21] dl=0.180s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.269s | total=0.280s
+[BATCH 22] dl=0.110s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.318s | total=0.334s
+[BATCH 22] dl=0.187s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.395s | total=0.417s
+[BATCH 23] dl=0.144s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.281s | total=0.305s
+[BATCH 23] dl=0.081s | convert: norm=0.004s resize=0.001s tac=0.002s total=0.007s | xfer=0.000s | fwd=0.323s | total=0.358s
+[BATCH 24] dl=0.220s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.337s | total=0.381s
+[BATCH 24] dl=0.139s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.415s | total=0.429s
+[BATCH 25] dl=0.180s | convert: norm=0.008s resize=0.001s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.359s | total=0.408s
+[BATCH 25] dl=0.113s | convert: norm=0.002s resize=0.000s tac=0.010s total=0.013s | xfer=0.000s | fwd=0.328s | total=0.353s
+[BATCH 26] dl=0.137s | convert: norm=0.017s resize=0.000s tac=0.001s total=0.018s | xfer=0.000s | fwd=0.298s | total=0.346s
+[BATCH 26] dl=0.137s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.410s | total=0.430s
+[BATCH 27] dl=0.166s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.436s | total=0.471s
+[BATCH 27] dl=0.110s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.361s | total=0.379s
+[BATCH 28] dl=0.065s | convert: norm=0.012s resize=0.000s tac=0.001s total=0.015s | xfer=0.000s | fwd=0.392s | total=0.438s
+[BATCH 28] dl=0.153s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.272s | total=0.302s
+[BATCH 29] dl=0.144s | convert: norm=0.008s resize=0.001s tac=0.002s total=0.010s | xfer=0.000s | fwd=0.455s | total=0.483s
+[BATCH 29] dl=0.221s | convert: norm=0.012s resize=0.000s tac=0.001s total=0.013s | xfer=0.000s | fwd=0.441s | total=0.510s
+[BATCH 30] dl=0.074s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.514s | total=0.537s
+[BATCH 30] dl=0.119s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.476s | total=0.496s
+[BATCH 31] dl=0.093s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.303s | total=0.324s
+[BATCH 31] dl=0.136s | convert: norm=0.001s resize=0.000s tac=0.001s total=0.002s | xfer=0.000s | fwd=0.380s | total=0.406s
+[BATCH 32] dl=0.173s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.322s | total=0.342s
+[BATCH 33] dl=0.148s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.370s | total=0.390s
+[BATCH 32] dl=0.839s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.353s | total=0.379s
+[BATCH 34] dl=0.120s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.373s | total=0.423s
+[BATCH 33] dl=0.129s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.441s | total=0.464s
+[BATCH 35] dl=0.144s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.434s | total=0.482s
+[BATCH 34] dl=0.159s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.354s | total=0.382s
+[BATCH 36] dl=0.148s | convert: norm=0.012s resize=0.000s tac=0.002s total=0.020s | xfer=0.000s | fwd=0.388s | total=0.431s
+[BATCH 35] dl=0.106s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.337s | total=0.363s
+[BATCH 37] dl=0.139s | convert: norm=0.005s resize=0.001s tac=0.002s total=0.007s | xfer=0.000s | fwd=0.263s | total=0.286s
+[BATCH 36] dl=0.139s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.437s | total=0.457s
+[BATCH 38] dl=0.206s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.333s | total=0.352s
+[BATCH 39] dl=0.135s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.292s | total=0.312s
+[BATCH 37] dl=0.120s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.346s | total=0.376s
+[BATCH 40] dl=0.192s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.338s | total=0.356s
+[BATCH 38] dl=0.146s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.396s | total=0.417s
+[BATCH 41] dl=0.167s | convert: norm=0.002s resize=0.000s tac=0.003s total=0.006s | xfer=0.000s | fwd=0.340s | total=0.370s
+[BATCH 39] dl=0.155s | convert: norm=0.004s resize=0.001s tac=0.002s total=0.007s | xfer=0.000s | fwd=0.356s | total=0.381s
+[BATCH 42] dl=0.167s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.362s | total=0.391s
+[BATCH 40] dl=0.173s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.469s | total=0.483s
+[BATCH 41] dl=0.097s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.294s | total=0.316s
+[BATCH 43] dl=0.141s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.385s | total=0.406s
+[BATCH 42] dl=0.199s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.292s | total=0.309s
+[BATCH 44] dl=0.154s | convert: norm=0.003s resize=0.000s tac=0.002s total=0.005s | xfer=0.000s | fwd=0.475s | total=0.504s
+[BATCH 43] dl=0.190s | convert: norm=0.004s resize=0.003s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.323s | total=0.345s
+[BATCH 45] dl=0.101s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.367s | total=0.390s
+[BATCH 44] dl=0.148s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.447s | total=0.467s
+[BATCH 46] dl=0.098s | convert: norm=0.011s resize=0.000s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.370s | total=0.401s
+[BATCH 45] dl=0.077s | convert: norm=0.004s resize=0.000s tac=0.000s total=0.005s | xfer=0.000s | fwd=0.321s | total=0.345s
+[BATCH 47] dl=0.122s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.348s | total=0.368s
+[BATCH 46] dl=0.161s | convert: norm=0.009s resize=0.000s tac=0.005s total=0.015s | xfer=0.000s | fwd=0.363s | total=0.412s
+[BATCH 48] dl=0.171s | convert: norm=0.003s resize=0.002s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.341s | total=0.364s
+[BATCH 47] dl=0.179s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.320s | total=0.335s
+[BATCH 49] dl=0.159s | convert: norm=0.008s resize=0.001s tac=0.002s total=0.011s | xfer=0.000s | fwd=0.338s | total=0.385s
+
+======================================================================
+[TIMING SUMMARY batches 0-49]
+  dataloader          : avg=2.734 p50=0.167 p95=0.460 min=0.065 max=127.363
+  convert_total       : avg=0.019 p50=0.005 p95=0.020 min=0.002 max=0.611
+  convert_norm        : avg=0.014 p50=0.004 p95=0.017 min=0.002 max=0.459
+  convert_resize      : avg=0.002 p50=0.000 p95=0.001 min=0.000 max=0.082
+  convert_tactile     : avg=0.001 p50=0.001 p95=0.003 min=0.000 max=0.030
+  transfer            : avg=0.000 p50=0.000 p95=0.000 min=0.000 max=0.000
+  forward             : avg=0.768 p50=0.337 p95=1.779 min=0.182 max=18.881
+  total               : avg=0.804 p50=0.364 p95=1.791 min=0.196 max=19.492
+  CPU util: ~99.9%
+======================================================================
+
+[BATCH 48] dl=0.169s | convert: norm=0.014s resize=0.000s tac=0.001s total=0.015s | xfer=0.000s | fwd=0.445s | total=0.482s
+[BATCH 50] dl=0.081s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.361s | total=0.405s
+[BATCH 49] dl=0.071s | convert: norm=0.003s resize=0.003s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.402s | total=0.419s
+
+======================================================================
+[TIMING SUMMARY batches 0-49]
+  dataloader          : avg=3.049 p50=0.173 p95=0.456 min=0.071 max=142.680
+  convert_total       : avg=0.012 p50=0.005 p95=0.015 min=0.002 max=0.324
+  convert_norm        : avg=0.010 p50=0.003 p95=0.012 min=0.001 max=0.315
+  convert_resize      : avg=0.001 p50=0.000 p95=0.003 min=0.000 max=0.007
+  convert_tactile     : avg=0.001 p50=0.001 p95=0.005 min=0.000 max=0.010
+  transfer            : avg=0.000 p50=0.000 p95=0.000 min=0.000 max=0.000
+  forward             : avg=0.484 p50=0.346 p95=2.078 min=0.178 max=3.736
+  total               : avg=0.511 p50=0.373 p95=2.101 min=0.186 max=4.060
+  CPU util: ~99.8%
+======================================================================
+
+[BATCH 51] dl=0.129s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.420s | total=0.443s
+[BATCH 50] dl=0.103s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.371s | total=0.435s
+[BATCH 52] dl=0.136s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.435s | total=0.453s
+[BATCH 51] dl=0.125s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.384s | total=0.418s
+[BATCH 53] dl=0.101s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.506s | total=0.535s
+[BATCH 52] dl=0.141s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.311s | total=0.327s
+[BATCH 54] dl=0.071s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.347s | total=0.366s
+[BATCH 53] dl=0.190s | convert: norm=0.010s resize=0.009s tac=0.001s total=0.020s | xfer=0.000s | fwd=0.347s | total=0.383s
+[BATCH 55] dl=0.128s | convert: norm=0.010s resize=0.001s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.522s | total=0.572s
+[BATCH 54] dl=0.145s | convert: norm=0.008s resize=0.000s tac=0.000s total=0.009s | xfer=0.000s | fwd=0.394s | total=0.420s
+[BATCH 56] dl=0.108s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.624s | total=0.643s
+[BATCH 55] dl=0.088s | convert: norm=0.003s resize=0.000s tac=0.005s total=0.008s | xfer=0.000s | fwd=0.387s | total=0.407s
+[BATCH 57] dl=0.065s | convert: norm=0.009s resize=0.000s tac=0.000s total=0.010s | xfer=0.000s | fwd=0.328s | total=0.371s
+[BATCH 56] dl=0.131s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.354s | total=0.369s
+[BATCH 58] dl=0.183s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.350s | total=0.376s
+[BATCH 57] dl=0.125s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.433s | total=0.465s
+[BATCH 59] dl=0.134s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.405s | total=0.425s
+[BATCH 58] dl=0.103s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.301s | total=0.320s
+[BATCH 60] dl=0.102s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.332s | total=0.369s
+[BATCH 59] dl=0.207s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.376s | total=0.399s
+[BATCH 61] dl=0.129s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.376s | total=0.429s
+[BATCH 60] dl=0.150s | convert: norm=0.007s resize=0.001s tac=0.002s total=0.010s | xfer=0.000s | fwd=0.336s | total=0.361s
+[BATCH 62] dl=0.163s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.421s | total=0.479s
+[BATCH 61] dl=0.151s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.388s | total=0.409s
+[BATCH 62] dl=0.114s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.353s | total=0.378s
+[BATCH 63] dl=2.454s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.398s | total=0.419s
+[BATCH 63] dl=3.086s | convert: norm=0.030s resize=0.002s tac=0.003s total=0.035s | xfer=0.000s | fwd=0.688s | total=0.761s
+[BATCH 64] dl=2.630s | convert: norm=0.015s resize=0.000s tac=0.001s total=0.017s | xfer=0.000s | fwd=0.609s | total=0.659s
+[BATCH 64] dl=8.564s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.373s | total=0.418s
+[BATCH 65] dl=16.965s | convert: norm=0.007s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.303s | total=0.322s
+[BATCH 65] dl=10.205s | convert: norm=0.010s resize=0.001s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.319s | total=0.353s
+[BATCH 66] dl=0.178s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.371s | total=0.384s
+[BATCH 66] dl=0.159s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.360s | total=0.387s
+[BATCH 67] dl=6.159s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.443s | total=0.462s
+[BATCH 68] dl=0.106s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.331s | total=0.351s
+[BATCH 69] dl=1.529s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.343s | total=0.370s
+[BATCH 70] dl=0.149s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.406s | total=0.425s
+[BATCH 71] dl=0.122s | convert: norm=0.003s resize=0.001s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.376s | total=0.399s
+[BATCH 72] dl=0.807s | convert: norm=0.014s resize=0.000s tac=0.001s total=0.015s | xfer=0.000s | fwd=0.348s | total=0.401s
+[BATCH 67] dl=10.644s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.382s | total=0.406s
+[BATCH 68] dl=0.149s | convert: norm=0.009s resize=0.000s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.364s | total=0.400s
+[BATCH 73] dl=0.849s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.406s | total=0.429s
+[BATCH 69] dl=0.142s | convert: norm=0.007s resize=0.010s tac=0.001s total=0.018s | xfer=0.000s | fwd=0.457s | total=0.491s
+[BATCH 70] dl=1.783s | convert: norm=0.011s resize=0.000s tac=0.001s total=0.013s | xfer=0.000s | fwd=0.324s | total=0.352s
+[BATCH 71] dl=0.140s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.335s | total=0.354s
+[BATCH 72] dl=0.127s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.444s | total=0.473s
+[BATCH 73] dl=0.112s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.312s | total=0.337s
+[BATCH 74] dl=3.707s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.371s | total=0.403s
+[BATCH 75] dl=0.116s | convert: norm=0.002s resize=0.000s tac=0.005s total=0.007s | xfer=0.000s | fwd=0.340s | total=0.381s
+[BATCH 76] dl=0.140s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.339s | total=0.353s
+[BATCH 74] dl=2.108s | convert: norm=0.011s resize=0.000s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.333s | total=0.392s
+[BATCH 75] dl=0.186s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.347s | total=0.379s
+[BATCH 77] dl=1.851s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.426s | total=0.444s
+[BATCH 78] dl=0.099s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.587s | total=0.632s
+[BATCH 76] dl=1.321s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.392s | total=0.416s
+[BATCH 79] dl=0.088s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.387s | total=0.423s
+[BATCH 77] dl=0.717s | convert: norm=0.009s resize=0.000s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.366s | total=0.406s
+[BATCH 78] dl=0.135s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.311s | total=0.328s
+[BATCH 79] dl=0.163s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.284s | total=0.308s
+[BATCH 80] dl=1.870s | convert: norm=0.017s resize=0.000s tac=0.000s total=0.018s | xfer=0.000s | fwd=0.473s | total=0.522s
+[BATCH 81] dl=0.133s | convert: norm=0.003s resize=0.001s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.351s | total=0.376s
+[BATCH 82] dl=0.144s | convert: norm=0.008s resize=0.001s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.400s | total=0.431s
+[BATCH 83] dl=0.142s | convert: norm=0.024s resize=0.000s tac=0.001s total=0.025s | xfer=0.000s | fwd=0.312s | total=0.369s
+[BATCH 84] dl=0.437s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.487s | total=0.521s
+[BATCH 85] dl=0.072s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.491s | total=0.522s
+[BATCH 86] dl=3.200s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.939s | total=0.965s
+[BATCH 87] dl=0.065s | convert: norm=0.040s resize=0.000s tac=0.001s total=0.041s | xfer=0.000s | fwd=0.418s | total=0.482s
+[BATCH 80] dl=10.467s | convert: norm=0.021s resize=0.000s tac=0.006s total=0.027s | xfer=0.000s | fwd=1.022s | total=1.111s
+[BATCH 81] dl=0.080s | convert: norm=0.016s resize=0.000s tac=0.001s total=0.017s | xfer=0.000s | fwd=0.487s | total=0.537s
+[BATCH 88] dl=3.556s | convert: norm=0.004s resize=0.001s tac=0.002s total=0.007s | xfer=0.000s | fwd=0.889s | total=0.923s
+[BATCH 82] dl=0.104s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.496s | total=0.519s
+[BATCH 89] dl=0.080s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.619s | total=0.680s
+[BATCH 83] dl=0.104s | convert: norm=0.035s resize=0.000s tac=0.003s total=0.039s | xfer=0.000s | fwd=0.834s | total=0.918s
+[BATCH 90] dl=0.125s | convert: norm=0.006s resize=0.001s tac=0.003s total=0.010s | xfer=0.000s | fwd=0.983s | total=1.016s
+[BATCH 91] dl=0.066s | convert: norm=0.009s resize=0.004s tac=0.002s total=0.017s | xfer=0.000s | fwd=0.755s | total=0.802s
+[BATCH 92] dl=0.443s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=1.261s | total=1.279s
+[BATCH 84] dl=3.026s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.416s | total=0.448s
+[BATCH 85] dl=0.100s | convert: norm=0.007s resize=0.005s tac=0.001s total=0.013s | xfer=0.000s | fwd=0.337s | total=0.373s
+[BATCH 93] dl=0.193s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.468s | total=0.482s
+[BATCH 94] dl=0.072s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=2.824s | total=2.846s
+[BATCH 86] dl=2.703s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.379s | total=0.423s
+[BATCH 87] dl=0.157s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.290s | total=0.308s
+[BATCH 95] dl=0.151s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.397s | total=0.448s
+[BATCH 96] dl=0.170s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.312s | total=0.338s
+[BATCH 88] dl=0.237s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.388s | total=0.414s
+[BATCH 89] dl=0.146s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.351s | total=0.372s
+[BATCH 90] dl=0.146s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.309s | total=0.325s
+[BATCH 91] dl=0.170s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.318s | total=0.343s
+[BATCH 92] dl=0.137s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.346s | total=0.379s
+[BATCH 93] dl=0.174s | convert: norm=0.014s resize=0.000s tac=0.001s total=0.016s | xfer=0.000s | fwd=0.348s | total=0.393s
+[BATCH 94] dl=0.137s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.364s | total=0.388s
+[BATCH 95] dl=0.164s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.291s | total=0.314s
+[BATCH 96] dl=2.881s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.387s | total=0.403s
+[BATCH 97] dl=20.385s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.483s | total=0.515s
+[BATCH 98] dl=0.071s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.282s | total=0.314s
+[BATCH 97] dl=14.392s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.388s | total=0.407s
+[BATCH 98] dl=0.160s | convert: norm=0.020s resize=0.000s tac=0.000s total=0.021s | xfer=0.000s | fwd=0.333s | total=0.405s
+[BATCH 99] dl=3.616s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.327s | total=0.358s
+
+======================================================================
+[TIMING SUMMARY batches 50-99]
+  dataloader          : avg=1.489 p50=0.142 p95=6.159 min=0.065 max=20.385
+  convert_total       : avg=0.008 p50=0.006 p95=0.018 min=0.003 max=0.041
+  convert_norm        : avg=0.006 p50=0.004 p95=0.017 min=0.002 max=0.040
+  convert_resize      : avg=0.001 p50=0.000 p95=0.001 min=0.000 max=0.004
+  convert_tactile     : avg=0.001 p50=0.001 p95=0.002 min=0.000 max=0.005
+  transfer            : avg=0.000 p50=0.000 p95=0.000 min=0.000 max=0.000
+  forward             : avg=0.514 p50=0.406 p95=0.983 min=0.282 max=2.824
+  total               : avg=0.546 p50=0.431 p95=1.016 min=0.314 max=2.846
+  CPU util: ~99.7%
+======================================================================
+
+[BATCH 100] dl=0.082s | convert: norm=0.003s resize=0.001s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.387s | total=0.403s
+[BATCH 101] dl=0.266s | convert: norm=0.013s resize=0.001s tac=0.006s total=0.020s | xfer=0.000s | fwd=0.435s | total=0.484s
+[BATCH 99] dl=4.179s | convert: norm=0.013s resize=0.001s tac=0.001s total=0.015s | xfer=0.000s | fwd=0.941s | total=0.973s
+
+======================================================================
+[TIMING SUMMARY batches 50-99]
+  dataloader          : avg=1.624 p50=0.157 p95=10.467 min=0.080 max=14.392
+  convert_total       : avg=0.010 p50=0.008 p95=0.027 min=0.003 max=0.039
+  convert_norm        : avg=0.008 p50=0.006 p95=0.021 min=0.003 max=0.035
+  convert_resize      : avg=0.001 p50=0.000 p95=0.005 min=0.000 max=0.010
+  convert_tactile     : avg=0.001 p50=0.001 p95=0.003 min=0.000 max=0.006
+  transfer            : avg=0.000 p50=0.000 p95=0.000 min=0.000 max=0.000
+  forward             : avg=0.403 p50=0.364 p95=0.834 min=0.284 max=1.022
+  total               : avg=0.436 p50=0.400 p95=0.918 min=0.308 max=1.111
+  CPU util: ~99.2%
+======================================================================
+
+[BATCH 100] dl=0.572s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.386s | total=0.415s
+[BATCH 102] dl=1.448s | convert: norm=0.012s resize=0.000s tac=0.001s total=0.013s | xfer=0.000s | fwd=0.709s | total=0.846s
+[BATCH 103] dl=1.050s | convert: norm=0.019s resize=0.001s tac=0.005s total=0.025s | xfer=0.000s | fwd=0.760s | total=0.864s
+[BATCH 101] dl=1.667s | convert: norm=0.007s resize=0.001s tac=0.004s total=0.012s | xfer=0.000s | fwd=0.682s | total=0.733s
+[BATCH 104] dl=3.463s | convert: norm=0.013s resize=0.013s tac=0.013s total=0.040s | xfer=0.000s | fwd=0.385s | total=0.474s
+[BATCH 105] dl=0.144s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.710s | total=0.774s
+[BATCH 102] dl=4.810s | convert: norm=0.018s resize=0.000s tac=0.001s total=0.019s | xfer=0.000s | fwd=0.380s | total=0.453s
+[BATCH 103] dl=0.975s | convert: norm=0.004s resize=0.001s tac=0.004s total=0.009s | xfer=0.000s | fwd=0.427s | total=0.489s
+[BATCH 104] dl=0.064s | convert: norm=0.004s resize=0.001s tac=0.003s total=0.009s | xfer=0.000s | fwd=0.362s | total=0.391s
+[BATCH 105] dl=0.131s | convert: norm=0.009s resize=0.001s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.435s | total=0.465s
+[BATCH 106] dl=6.771s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.487s | total=0.523s
+[BATCH 106] dl=0.383s | convert: norm=0.004s resize=0.004s tac=0.049s total=0.062s | xfer=0.000s | fwd=3.775s | total=3.860s
+[BATCH 107] dl=0.086s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.493s | total=0.528s
+[BATCH 108] dl=0.068s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.468s | total=0.484s
+[BATCH 109] dl=0.090s | convert: norm=0.005s resize=0.000s tac=0.002s total=0.008s | xfer=0.000s | fwd=0.456s | total=0.499s
+[BATCH 110] dl=0.097s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.414s | total=0.481s
+[BATCH 111] dl=0.125s | convert: norm=0.003s resize=0.000s tac=0.002s total=0.005s | xfer=0.000s | fwd=0.436s | total=0.474s
+[BATCH 107] dl=4.398s | convert: norm=0.007s resize=0.000s tac=0.007s total=0.017s | xfer=0.000s | fwd=0.431s | total=0.474s
+[BATCH 108] dl=0.118s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.321s | total=0.340s
+[BATCH 112] dl=2.124s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.647s | total=0.677s
+[BATCH 109] dl=0.151s | convert: norm=0.016s resize=0.003s tac=0.001s total=0.020s | xfer=0.000s | fwd=0.519s | total=0.585s
+[BATCH 113] dl=0.065s | convert: norm=0.017s resize=0.000s tac=0.001s total=0.017s | xfer=0.000s | fwd=0.584s | total=0.629s
+[BATCH 110] dl=0.097s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.366s | total=0.392s
+[BATCH 111] dl=0.114s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.433s | total=0.468s
+[BATCH 114] dl=0.096s | convert: norm=0.013s resize=0.001s tac=0.001s total=0.015s | xfer=0.000s | fwd=0.601s | total=0.671s
+[BATCH 115] dl=0.130s | convert: norm=0.017s resize=0.001s tac=0.001s total=0.019s | xfer=0.000s | fwd=0.418s | total=0.463s
+[BATCH 116] dl=0.089s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.301s | total=0.318s
+[BATCH 117] dl=0.152s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.459s | total=0.479s
+[BATCH 118] dl=0.929s | convert: norm=0.049s resize=0.000s tac=0.001s total=0.050s | xfer=0.000s | fwd=0.489s | total=0.571s
+[BATCH 119] dl=0.101s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.427s | total=0.448s
+[BATCH 112] dl=11.645s | convert: norm=0.036s resize=0.000s tac=0.001s total=0.037s | xfer=0.000s | fwd=0.325s | total=0.377s
+[BATCH 120] dl=0.219s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=8.055s | total=8.093s
+[BATCH 113] dl=0.207s | convert: norm=0.007s resize=0.001s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.380s | total=0.410s
+[BATCH 121] dl=0.173s | convert: norm=0.004s resize=0.000s tac=0.000s total=0.005s | xfer=0.000s | fwd=0.393s | total=0.424s
+[BATCH 114] dl=0.134s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.351s | total=0.368s
+[BATCH 122] dl=0.141s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.430s | total=0.459s
+[BATCH 115] dl=0.125s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.303s | total=0.316s
+[BATCH 123] dl=0.115s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.433s | total=0.496s
+[BATCH 116] dl=0.184s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.415s | total=0.443s
+[BATCH 124] dl=0.070s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.298s | total=0.316s
+[BATCH 117] dl=0.104s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.408s | total=0.426s
+[BATCH 125] dl=0.155s | convert: norm=0.009s resize=0.000s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.337s | total=0.368s
+[BATCH 118] dl=0.122s | convert: norm=0.013s resize=0.000s tac=0.004s total=0.018s | xfer=0.000s | fwd=0.393s | total=0.447s
+[BATCH 126] dl=0.162s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.540s | total=0.566s
+[BATCH 119] dl=0.135s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.420s | total=0.446s
+[BATCH 120] dl=0.071s | convert: norm=0.004s resize=0.000s tac=0.002s total=0.006s | xfer=0.000s | fwd=0.321s | total=0.351s
+[BATCH 127] dl=0.935s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.349s | total=0.398s
+[BATCH 121] dl=0.137s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.353s | total=0.381s
+[BATCH 128] dl=0.164s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.354s | total=0.372s
+[BATCH 122] dl=0.203s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.425s | total=0.453s
+[BATCH 123] dl=0.095s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.342s | total=0.360s
+[BATCH 124] dl=0.139s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.436s | total=0.453s
+[BATCH 125] dl=0.076s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.370s | total=0.406s
+[BATCH 126] dl=0.087s | convert: norm=0.007s resize=0.001s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.325s | total=0.351s
+[BATCH 127] dl=0.159s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.374s | total=0.391s
+[BATCH 128] dl=0.108s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.400s | total=0.414s
+[BATCH 129] dl=19.245s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.375s | total=0.387s
+[BATCH 129] dl=16.759s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.331s | total=0.360s
+[BATCH 130] dl=0.132s | convert: norm=0.015s resize=0.000s tac=0.000s total=0.016s | xfer=0.000s | fwd=0.533s | total=0.590s
+[BATCH 130] dl=0.195s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.371s | total=0.393s
+[BATCH 131] dl=6.936s | convert: norm=0.004s resize=0.007s tac=0.002s total=0.013s | xfer=0.000s | fwd=0.378s | total=0.426s
+[BATCH 131] dl=3.373s | convert: norm=0.013s resize=0.000s tac=0.001s total=0.014s | xfer=0.000s | fwd=3.401s | total=3.437s
+[BATCH 132] dl=0.161s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.373s | total=0.396s
+[BATCH 132] dl=0.103s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.399s | total=0.425s
+[BATCH 133] dl=0.195s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.327s | total=0.345s
+[BATCH 133] dl=0.210s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.496s | total=0.527s
+[BATCH 134] dl=0.867s | convert: norm=0.005s resize=0.002s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.361s | total=0.383s
+[BATCH 135] dl=0.175s | convert: norm=0.014s resize=0.000s tac=0.000s total=0.015s | xfer=0.000s | fwd=0.383s | total=0.413s
+[BATCH 136] dl=0.103s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.349s | total=0.383s
+[BATCH 137] dl=0.164s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.360s | total=0.409s
+[BATCH 134] dl=3.594s | convert: norm=0.010s resize=0.001s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.468s | total=0.520s
+[BATCH 135] dl=0.100s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.340s | total=0.364s
+[BATCH 136] dl=0.156s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.356s | total=0.373s
+[BATCH 137] dl=0.112s | convert: norm=0.012s resize=0.001s tac=0.004s total=0.016s | xfer=0.000s | fwd=0.363s | total=0.403s
+[BATCH 138] dl=4.794s | convert: norm=0.005s resize=0.000s tac=0.003s total=0.009s | xfer=0.000s | fwd=4.565s | total=4.594s
+[BATCH 138] dl=11.410s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.749s | total=0.832s
+[BATCH 139] dl=0.123s | convert: norm=0.025s resize=0.005s tac=0.002s total=0.032s | xfer=0.000s | fwd=0.482s | total=0.603s
+[BATCH 139] dl=0.125s | convert: norm=0.011s resize=0.000s tac=0.001s total=0.013s | xfer=0.000s | fwd=1.124s | total=1.170s
+[BATCH 140] dl=0.084s | convert: norm=0.019s resize=0.001s tac=0.011s total=0.031s | xfer=0.000s | fwd=0.891s | total=0.996s
+[BATCH 141] dl=0.071s | convert: norm=0.008s resize=0.001s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.517s | total=0.566s
+[BATCH 142] dl=0.160s | convert: norm=0.015s resize=0.001s tac=0.002s total=0.017s | xfer=0.000s | fwd=1.022s | total=1.077s
+[BATCH 143] dl=0.078s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.979s | total=1.030s
+[BATCH 144] dl=0.090s | convert: norm=0.008s resize=0.001s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.545s | total=0.668s
+[BATCH 145] dl=0.121s | convert: norm=0.009s resize=0.000s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.416s | total=0.451s
+[BATCH 146] dl=0.131s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.388s | total=0.411s
+[BATCH 147] dl=0.127s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.499s | total=0.517s
+[BATCH 148] dl=0.087s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=1.045s | total=1.061s
+[BATCH 140] dl=7.099s | convert: norm=0.011s resize=0.000s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.361s | total=0.408s
+[BATCH 149] dl=0.195s | convert: norm=0.007s resize=0.001s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.394s | total=0.431s
+[BATCH 141] dl=0.160s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.488s | total=0.509s
+
+======================================================================
+[TIMING SUMMARY batches 100-149]
+  dataloader          : avg=1.204 p50=0.144 p95=6.936 min=0.065 max=19.245
+  convert_total       : avg=0.011 p50=0.008 p95=0.032 min=0.003 max=0.050
+  convert_norm        : avg=0.008 p50=0.005 p95=0.019 min=0.002 max=0.049
+  convert_resize      : avg=0.001 p50=0.000 p95=0.005 min=0.000 max=0.013
+  convert_tactile     : avg=0.001 p50=0.001 p95=0.006 min=0.000 max=0.013
+  transfer            : avg=0.000 p50=0.000 p95=0.000 min=0.000 max=0.000
+  forward             : avg=0.656 p50=0.456 p95=1.022 min=0.298 max=8.055
+  total               : avg=0.703 p50=0.484 p95=1.061 min=0.316 max=8.093
+  CPU util: ~99.8%
+======================================================================
+
+[BATCH 142] dl=0.119s | convert: norm=0.004s resize=0.000s tac=0.013s total=0.018s | xfer=0.000s | fwd=0.452s | total=0.496s
+[BATCH 150] dl=0.096s | convert: norm=0.007s resize=0.000s tac=0.000s total=0.008s | xfer=0.000s | fwd=0.522s | total=0.567s
+[BATCH 151] dl=0.070s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.414s | total=0.436s
+[BATCH 143] dl=0.092s | convert: norm=0.015s resize=0.000s tac=0.000s total=0.016s | xfer=0.000s | fwd=0.497s | total=0.549s
+[BATCH 152] dl=3.209s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=1.633s | total=1.664s
+[BATCH 144] dl=4.499s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.436s | total=0.477s
+[BATCH 153] dl=0.186s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.418s | total=0.449s
+[BATCH 145] dl=0.130s | convert: norm=0.001s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.376s | total=0.414s
+[BATCH 146] dl=0.162s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.387s | total=0.417s
+[BATCH 154] dl=0.206s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.431s | total=0.455s
+[BATCH 147] dl=0.123s | convert: norm=0.001s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.380s | total=0.395s
+[BATCH 155] dl=0.172s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.425s | total=0.451s
+[BATCH 148] dl=0.111s | convert: norm=0.006s resize=0.002s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.405s | total=0.431s
+[BATCH 156] dl=0.085s | convert: norm=0.005s resize=0.001s tac=0.002s total=0.007s | xfer=0.000s | fwd=0.316s | total=0.341s
+[BATCH 157] dl=0.168s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.343s | total=0.378s
+[BATCH 149] dl=0.132s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.454s | total=0.487s
+
+======================================================================
+[TIMING SUMMARY batches 100-149]
+  dataloader          : avg=1.387 p50=0.137 p95=7.099 min=0.064 max=16.759
+  convert_total       : avg=0.010 p50=0.007 p95=0.020 min=0.003 max=0.062
+  convert_norm        : avg=0.007 p50=0.005 p95=0.016 min=0.001 max=0.036
+  convert_resize      : avg=0.001 p50=0.000 p95=0.002 min=0.000 max=0.004
+  convert_tactile     : avg=0.002 p50=0.001 p95=0.007 min=0.000 max=0.049
+  transfer            : avg=0.000 p50=0.000 p95=0.000 min=0.000 max=0.000
+  forward             : avg=0.623 p50=0.393 p95=3.401 min=0.303 max=4.565
+  total               : avg=0.657 p50=0.425 p95=3.437 min=0.316 max=4.594
+  CPU util: ~99.8%
+======================================================================
+
+[BATCH 150] dl=0.075s | convert: norm=0.006s resize=0.003s tac=0.001s total=0.010s | xfer=0.000s | fwd=0.316s | total=0.358s
+[BATCH 158] dl=0.147s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.479s | total=0.517s
+[BATCH 151] dl=0.197s | convert: norm=0.003s resize=0.000s tac=0.021s total=0.024s | xfer=0.000s | fwd=0.362s | total=0.398s
+[BATCH 152] dl=0.130s | convert: norm=0.008s resize=0.000s tac=0.000s total=0.009s | xfer=0.000s | fwd=0.338s | total=0.378s
+[BATCH 153] dl=0.139s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.367s | total=0.398s
+[BATCH 154] dl=0.117s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.361s | total=0.383s
+[BATCH 155] dl=0.127s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.328s | total=0.349s
+[BATCH 156] dl=0.155s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.345s | total=0.379s
+[BATCH 159] dl=3.045s | convert: norm=0.003s resize=0.010s tac=0.001s total=0.014s | xfer=0.000s | fwd=0.351s | total=0.390s
+[BATCH 157] dl=0.124s | convert: norm=0.011s resize=0.000s tac=0.001s total=0.012s | xfer=0.000s | fwd=0.284s | total=0.313s
+[BATCH 160] dl=0.153s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.381s | total=0.399s
+[BATCH 158] dl=0.177s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.377s | total=0.395s
+[BATCH 159] dl=0.123s | convert: norm=0.014s resize=0.001s tac=0.001s total=0.016s | xfer=0.000s | fwd=0.346s | total=0.404s
+[BATCH 160] dl=2.274s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.451s | total=0.472s
+[BATCH 161] dl=13.871s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.005s | xfer=0.000s | fwd=2.062s | total=2.093s
+[BATCH 161] dl=18.868s | convert: norm=0.002s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.598s | total=0.616s
+[BATCH 162] dl=0.077s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.514s | total=0.550s
+[BATCH 162] dl=0.081s | convert: norm=0.012s resize=0.002s tac=0.005s total=0.024s | xfer=0.000s | fwd=0.806s | total=0.859s
+[BATCH 163] dl=2.854s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=2.869s | total=2.911s
+[BATCH 163] dl=4.995s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.372s | total=0.393s
+[BATCH 164] dl=0.150s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.423s | total=0.443s
+[BATCH 164] dl=0.157s | convert: norm=0.011s resize=0.001s tac=0.001s total=0.013s | xfer=0.000s | fwd=0.617s | total=0.686s
+[BATCH 165] dl=0.077s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.406s | total=0.421s
+[BATCH 165] dl=0.918s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.436s | total=0.468s
+[BATCH 166] dl=0.858s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.470s | total=0.509s
+[BATCH 167] dl=0.776s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.328s | total=0.358s
+[BATCH 168] dl=0.171s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.344s | total=0.366s
+[BATCH 169] dl=0.113s | convert: norm=0.008s resize=0.001s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.345s | total=0.383s
+[BATCH 166] dl=7.272s | convert: norm=0.008s resize=0.015s tac=0.001s total=0.023s | xfer=0.000s | fwd=0.406s | total=0.499s
+[BATCH 167] dl=0.097s | convert: norm=0.008s resize=0.000s tac=0.005s total=0.013s | xfer=0.000s | fwd=0.597s | total=0.628s
+[BATCH 168] dl=0.071s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.542s | total=0.581s
+[BATCH 169] dl=0.870s | convert: norm=0.011s resize=0.001s tac=0.006s total=0.018s | xfer=0.000s | fwd=0.384s | total=0.425s
+[BATCH 170] dl=2.122s | convert: norm=0.049s resize=0.017s tac=0.001s total=0.068s | xfer=0.000s | fwd=0.832s | total=0.932s
+[BATCH 170] dl=10.746s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.627s | total=0.686s
+[BATCH 171] dl=0.172s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.593s | total=0.623s
+[BATCH 171] dl=0.071s | convert: norm=0.017s resize=0.010s tac=0.006s total=0.034s | xfer=0.000s | fwd=0.367s | total=0.446s
+[BATCH 172] dl=0.177s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.427s | total=0.453s
+[BATCH 173] dl=0.088s | convert: norm=0.009s resize=0.001s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.469s | total=0.521s
+[BATCH 174] dl=0.092s | convert: norm=0.006s resize=0.000s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.499s | total=0.538s
+[BATCH 175] dl=0.098s | convert: norm=0.004s resize=0.000s tac=0.003s total=0.007s | xfer=0.000s | fwd=0.541s | total=0.589s
+[BATCH 176] dl=0.139s | convert: norm=0.010s resize=0.000s tac=0.001s total=0.011s | xfer=0.000s | fwd=0.836s | total=0.956s
+[BATCH 177] dl=0.072s | convert: norm=0.006s resize=0.001s tac=0.002s total=0.009s | xfer=0.000s | fwd=0.942s | total=0.981s
+[BATCH 178] dl=0.068s | convert: norm=0.014s resize=0.003s tac=0.013s total=0.031s | xfer=0.000s | fwd=0.963s | total=1.072s
+[BATCH 179] dl=0.064s | convert: norm=0.006s resize=0.001s tac=0.003s total=0.011s | xfer=0.000s | fwd=0.992s | total=1.051s
+[BATCH 180] dl=4.205s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=2.714s | total=2.735s
+[BATCH 172] dl=13.578s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.424s | total=0.479s
+[BATCH 181] dl=0.122s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.470s | total=0.490s
+[BATCH 173] dl=0.142s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.504s | total=0.525s
+[BATCH 182] dl=0.151s | convert: norm=0.003s resize=0.000s tac=0.000s total=0.004s | xfer=0.000s | fwd=0.514s | total=0.532s
+[BATCH 174] dl=0.179s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.439s | total=0.474s
+[BATCH 175] dl=0.131s | convert: norm=0.006s resize=0.000s tac=0.009s total=0.015s | xfer=0.000s | fwd=0.380s | total=0.427s
+[BATCH 183] dl=0.102s | convert: norm=0.008s resize=0.000s tac=0.001s total=0.009s | xfer=0.000s | fwd=0.504s | total=0.533s
+[BATCH 184] dl=0.135s | convert: norm=0.006s resize=0.001s tac=0.008s total=0.015s | xfer=0.000s | fwd=0.481s | total=0.509s
+[BATCH 176] dl=0.300s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.358s | total=0.386s
+[BATCH 177] dl=0.166s | convert: norm=0.007s resize=0.000s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.424s | total=0.453s
+[BATCH 185] dl=0.177s | convert: norm=0.006s resize=0.000s tac=0.002s total=0.008s | xfer=0.000s | fwd=0.643s | total=0.670s
+[BATCH 178] dl=0.083s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.376s | total=0.397s
+[BATCH 186] dl=0.078s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.478s | total=0.511s
+[BATCH 179] dl=0.146s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.453s | total=0.480s
+[BATCH 187] dl=0.078s | convert: norm=0.005s resize=0.001s tac=0.001s total=0.007s | xfer=0.000s | fwd=0.392s | total=0.425s
+[BATCH 180] dl=0.067s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.003s | xfer=0.000s | fwd=0.368s | total=0.389s
+[BATCH 188] dl=0.141s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.492s | total=0.527s
+[BATCH 181] dl=0.112s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.390s | total=0.411s
+[BATCH 189] dl=0.090s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.424s | total=0.483s
+[BATCH 182] dl=0.117s | convert: norm=0.003s resize=0.001s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.338s | total=0.362s
+[BATCH 183] dl=0.176s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.481s | total=0.501s
+[BATCH 190] dl=0.228s | convert: norm=0.007s resize=0.015s tac=0.001s total=0.023s | xfer=0.000s | fwd=0.470s | total=0.525s
+[BATCH 184] dl=0.125s | convert: norm=0.005s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.439s | total=0.471s
+[BATCH 185] dl=0.133s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.355s | total=0.371s
+[BATCH 186] dl=0.102s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.004s | xfer=0.000s | fwd=0.313s | total=0.350s
+[BATCH 187] dl=0.159s | convert: norm=0.003s resize=0.000s tac=0.008s total=0.011s | xfer=0.000s | fwd=0.411s | total=0.445s
+[BATCH 188] dl=0.123s | convert: norm=0.003s resize=0.000s tac=0.001s total=0.005s | xfer=0.000s | fwd=0.276s | total=0.297s
+[BATCH 189] dl=0.192s | convert: norm=0.005s resize=0.001s tac=0.006s total=0.012s | xfer=0.000s | fwd=0.417s | total=0.448s
+[BATCH 190] dl=0.077s | convert: norm=0.002s resize=0.000s tac=0.000s total=0.003s | xfer=0.000s | fwd=0.345s | total=0.360s
+[BATCH 191] dl=5.025s | convert: norm=0.004s resize=0.001s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.409s | total=0.449s
+[BATCH 192] dl=0.097s | convert: norm=0.006s resize=0.000s tac=0.020s total=0.026s | xfer=0.000s | fwd=0.341s | total=0.410s
+[BATCH 191] dl=3.547s | convert: norm=0.004s resize=0.000s tac=0.001s total=0.006s | xfer=0.000s | fwd=0.373s | total=0.397s
+[BATCH 192] dl=2.849s | convert: norm=0.006s resize=0.001s tac=0.001s total=0.008s | xfer=0.000s | fwd=0.367s | total=0.399s

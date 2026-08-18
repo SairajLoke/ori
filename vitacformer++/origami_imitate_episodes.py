@@ -565,6 +565,8 @@ def main(args):
         'tb_log_freq': args['tb_log_freq'],
         'doImageTransforms':  doImageTransforms,
         'disable_normalization': disable_normalization,
+        'max_train_steps': args.get('max_train_steps'),
+        'max_val_steps': args.get('max_val_steps'),
     }
     
     
@@ -982,7 +984,8 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
 
 
 @torch.no_grad()
-def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, epoch):
+def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, epoch,
+                     max_steps=None):
     """Run the held-out episodes and return a dict of scalar metrics.
 
     `policy` must be the UNWRAPPED module (accelerator.unwrap_model), and this
@@ -1002,6 +1005,8 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
     n_batches = 0
 
     for batch_idx, data in enumerate(tqdm(val_dataloader, desc=f"Val epoch {epoch}", leave=False)):
+        if max_steps is not None and batch_idx >= max_steps:
+            break
         data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
                              epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
         data.pop("_timing", None)
@@ -1206,6 +1211,14 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
              warmup_iters, 100.0 * warmup_iters / max(total_iters, 1), _wu_ratio,
              warmup_iters // max(accelerator.num_processes, 1), accelerator.num_processes)
 
+    # BACKBONE_WEIGHTS only affects the freshly-built model. Both branches below
+    # load a FULL ACT state_dict, which already contains backbones.0.0.body.* and
+    # therefore overwrites whatever the backbone was initialised with.
+    if BACKBONE_WEIGHTS and (resume_path or load_pretrained_for_newtraining):
+        log.warning("BACKBONE_WEIGHTS=%s is redundant here: the checkpoint about to be loaded "
+                    "contains the backbone weights and will overwrite it. BACKBONE_WEIGHTS only "
+                    "matters when training from scratch.", BACKBONE_WEIGHTS)
+
     if load_pretrained_for_newtraining is not None and os.path.exists(load_pretrained_for_newtraining):
         log.info("loading pretrained WEIGHTS ONLY (fresh optimizer/scheduler/epoch) from %s",
                  load_pretrained_for_newtraining)
@@ -1376,7 +1389,7 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                 _t_val = time.time()
                 val_metrics = origami_validate(
                     val_dataloader, accelerator.unwrap_model(policy), normalizer,
-                    device, use_tactile, epoch)
+                    device, use_tactile, epoch, max_steps=config.get('max_val_steps'))
                 validation_history.append((epoch, val_metrics))
 
                 if val_metrics:
@@ -1532,6 +1545,14 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                             writer.add_scalar("gpu/max_mem_allocated_gb", gpu_stats['max_mem_allocated_gb'], global_step)
 
                 global_step += 1
+
+                _max_steps = config.get('max_train_steps')
+                if _max_steps is not None and (batch_idx + 1) >= _max_steps:
+                    log.warning("--max_train_steps=%d reached, ending epoch %d early (DEBUG)",
+                                _max_steps, epoch)
+                    if ( global_step % 2000 == 0 ) and accelerator.is_main_process:
+                        pass
+                    break
 
                 if ( global_step% 2000==0 ) and accelerator.is_main_process:
 
@@ -1706,6 +1727,11 @@ if __name__ == '__main__':
                         help='Give zero loss weight to action dims whose q99-q01 is below the '
                              'degenerate threshold (dims 58,59 on this dataset -- they are constant, '
                              'so they add a constant to the loss and no gradient).')
+    parser.add_argument('--max_train_steps', type=int, default=None,
+                        help='DEBUG: stop each epoch after N optimizer steps. Use for smoke tests; '
+                             'note the LR schedule is still sized for the full epoch.')
+    parser.add_argument('--max_val_steps', type=int, default=None,
+                        help='DEBUG: cap the number of validation batches.')
     parser.add_argument('--tac_weight', type=float, default=1.0,
                         help='Multiplier on the tactile prediction loss (default 1.0, unchanged). '
                              'Sweep this together with --kl_weight: the three terms l1, kl*kl_weight '

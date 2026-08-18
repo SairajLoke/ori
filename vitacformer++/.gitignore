@@ -36,3 +36,8 @@ work_dirs/
 # Logs / temp
 *.log
 vis_image/
+
+# uv env for local smoke tests (req_smoke_cpu.txt)
+.venv/
+.venv_smoke/
+uv.lock

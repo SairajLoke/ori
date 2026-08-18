@@ -566,7 +566,10 @@ def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, 
     log_tensors(log, TRACE, "  ds[0]/", {k: v for k, v in sample.items() if hasattr(v, "shape")})
 
     # Log actual episodes used from dataset object
-    episode_indices = sorted(set(ds.hf_dataset["episode_index"][:]))
+    # int() matters: hf_dataset returns 0-d tensors, which hash by identity, so
+    # set() over them does not deduplicate (this used to report one "episode"
+    # per frame).
+    episode_indices = sorted({int(e) for e in ds.hf_dataset["episode_index"][:]})
     log.info("  episodes used: %d  (range %s .. %s)",
              len(episode_indices), min(episode_indices), max(episode_indices))
 

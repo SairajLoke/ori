@@ -992,10 +992,22 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
     should only be called on the main process -- see the val DataLoader comment
     in main() for why.
 
-    Loss is computed the same way as training (teacher-forced CVAE posterior,
-    same masked L1) so val/train numbers are directly comparable. Additionally
-    reports per-joint-group L1 in unnormalized-comparable terms, which is what
-    actually tells you whether a change helped the fingers or just the arms.
+    Two different things are reported, in two different spaces, deliberately:
+
+      val/*     the training losses, in NORMALIZED space -- identical formula to
+                training, so val and train are directly comparable within a run.
+      val_l1/*  per-joint-group mean |error| in PHYSICAL units (radians), after
+                denormalizing both the prediction and the target.
+
+    val_l1 has to be denormalized or it is meaningless across runs: the
+    per-dimension scale factor is 2/(q99-q01), which on this dataset ranges from
+    0.94x to 82x across the 65 action dims. Without this, a val_l1 from an
+    unnormalized run and one from a normalized run would be in different units
+    and could not be compared -- which is the entire point of running the
+    normalization variants. In physical units they are also directly comparable
+    against a physical baseline (e.g. "copy the current pose", ~0.044 rad).
+
+    With normalization off, denormalize() is identity, so nothing changes.
     """
     policy.eval()
 
@@ -1016,8 +1028,18 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
 
         actions = data["action"][:, :policy.model.num_queries].to(device)
         is_pad = data["action_mask"][:, :policy.model.num_queries].to(device)
-        valid = (~is_pad).unsqueeze(-1).to(a_hat.dtype)            # [B, T, 1]
-        abs_err = (a_hat - actions).abs() * valid                  # [B, T, D]
+
+        # Back to physical units before measuring per-joint error. The loss
+        # terms above stay in normalized space (that is what the model is
+        # trained on); only the reported metric is converted.
+        if normalizer is not None:
+            a_hat_phys = normalizer.denormalize("action", a_hat.float())
+            actions_phys = normalizer.denormalize("action", actions.float())
+        else:
+            a_hat_phys, actions_phys = a_hat.float(), actions.float()
+
+        valid = (~is_pad).unsqueeze(-1).to(a_hat_phys.dtype)       # [B, T, 1]
+        abs_err = (a_hat_phys - actions_phys).abs() * valid        # [B, T, D], radians
 
         for k, v in forward_dict.items():
             sums[f"val/{k}"] = sums.get(f"val/{k}", 0.0) + float(v.item())
@@ -1043,6 +1065,8 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
         # mean |error| per (timestep, dim) inside this joint group
         metrics[f"val_l1/{group_name}"] = sums[f"val_l1/{group_name}"] / (denom_steps * len(indices))
     metrics["val_l1/all_dims"] = sums["_abs_err_total"] / (denom_steps * STATE_DIM)
+    # ^ radians. Reference points on season_POC22061 held-out episodes:
+    #   copy current pose frozen 3.3s = 0.044, predict dataset mean = 0.103.
     metrics["val/n_valid_steps"] = n_valid_steps
     return metrics
 

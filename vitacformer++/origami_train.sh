@@ -6,7 +6,7 @@ afafawwafw
 python3 origami_imitate_episodes.py \
 --task_name fold_plane \
 --expt_name aug3_unmasked_unnormed_99epis_pretrainedjul12-u-u-12epi-e30 \
---policy_class ACT --kl_weight 10 --chunk_size 00 --hidden_dim 512 \
+--policy_class ACT --kl_weight 10 --hidden_dim 512 \
 --batch_size 128 --dim_feedforward 3200 \
 --ckpt_save_epochs 1 \
 --num_epochs 1000  \

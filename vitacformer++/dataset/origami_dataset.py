@@ -293,15 +293,24 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
             log.debug("  tactile_next_mask: %d/%d padded target steps",
                       int(output["tactile_next_mask"].sum().item()),
                       output["tactile_next_mask"].numel())
-            # The value half and the delta half share one input_proj_tactile.
-            # Under normalization a 1/30 s delta is far smaller than a value, so
-            # the value half can dominate the projection. Surface both scales.
+            # The value half and the delta half share one input_proj_tactile, so
+            # their relative scale decides how much the delta half can influence
+            # the projection.
+            #
+            # Report the MEDIAN PER-CHANNEL ratio, not the ratio of pooled stds.
+            # A pooled std over one small batch is dominated by whichever
+            # channels happen to be active in it and swings wildly (a 2-sample
+            # batch produced 1400x where the whole-dataset figure is 39x).
+            # The per-channel ratio is also invariant to the normalizer, since
+            # a per-dim linear map gives diff(x/s) = diff(x)/s.
             _D = output["tactile"].shape[-1] // 2
-            log.debug("  tactile halves: values std=%.4g | deltas std=%.4g  (ratio %.1fx)",
-                      output["tactile"][..., :_D].std().item(),
-                      output["tactile"][..., _D:].std().item(),
-                      output["tactile"][..., :_D].std().item()
-                      / max(output["tactile"][..., _D:].std().item(), 1e-9))
+            _vals = output["tactile"][..., :_D].reshape(-1, _D)
+            _dels = output["tactile"][..., _D:].reshape(-1, _D)
+            if _vals.shape[0] > 1:
+                _ratio = (_vals.std(0) / _dels.std(0).clamp(min=1e-9)).median().item()
+                log.debug("  tactile halves: median per-channel value/delta std ratio = %.1fx "
+                          "(batch-local; whole-dataset reference ~39x normalized, ~16x raw)",
+                          _ratio)
             log_tensor(log, TRACE, "  out/tactile", output["tactile"])
             log_tensor(log, TRACE, "  out/tactile_next", output["tactile_next"])
 

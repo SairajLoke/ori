@@ -325,9 +325,45 @@ class SPLIT_TYPE(str, Enum):
     VAL = "val" 
 
 
-def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, TOLERANCE, use_tactile, max_duration_sec, doImageTransforms):
+def plan_train_val_episodes(dataset_root, max_episodes, num_val_episodes):
+    """Decide which episode indices go to train and which are held out.
+
+    The holdout is taken from the END of the loaded range so that raising
+    MAX_EPISODES only ever grows the train set -- the val episodes stay the same
+    only if MAX_EPISODES is unchanged, so pin it when comparing runs.
+
+    Splitting by EPISODE (never by frame) is essential: consecutive frames are
+    near-duplicates, so a frame-level split leaks the val set into training and
+    makes the val loss meaningless.
+    """
+    meta_path = dataset_root / "meta" / "info.json"
+    with open(meta_path, "r") as f:
+        total_episodes = json.load(f)["total_episodes"]
+
+    all_eps = list(range(max_episodes)) if max_episodes > 0 else list(range(total_episodes))
+    if max_episodes > total_episodes:
+        log.warning("MAX_EPISODES=%d exceeds total_episodes=%d; clamping", max_episodes, total_episodes)
+        all_eps = list(range(total_episodes))
+
+    if num_val_episodes <= 0:
+        return all_eps, []
+    if num_val_episodes >= len(all_eps):
+        raise ValueError(
+            f"NUM_VAL_EPISODES={num_val_episodes} leaves no training episodes "
+            f"(only {len(all_eps)} available)."
+        )
+
+    val_eps = all_eps[-num_val_episodes:]
+    train_eps = all_eps[:-num_val_episodes]
+    log.info("episode split: %d train %s..%s | %d val %s",
+             len(train_eps), train_eps[0], train_eps[-1], len(val_eps), val_eps)
+    return train_eps, val_eps
+
+
+def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, TOLERANCE, use_tactile,
+                             max_duration_sec, doImageTransforms, episodes=None, tag=""):
     _t_load_start = time.time()
-    
+
     if split == "full":
         data_root = dataset_root
     else:
@@ -335,7 +371,7 @@ def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, 
 
     # Quick metadata inspection per season
     log.info("=" * 60)
-    log.info("building origami dataset  split=%s  root=%s", split, data_root)
+    log.info("building origami dataset  split=%s%s  root=%s", split, f" [{tag}]" if tag else "", data_root)
     log.info("  delta_timestamps keys: %s",
              {k: f"{len(v)} offsets [{round(v[0]*30)} .. {round(v[-1]*30)}]" for k, v in delta_timestamps.items()})
     log.info("  tolerance_s=%s  use_tactile=%s  doImageTransforms=%s  max_duration_sec=%s",
@@ -350,11 +386,17 @@ def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, 
     else:
         raise ValueError(f"Warning: Metadata not found for {split}")
 
-    # Episode filtering: if MAX_EPISODES > 0, only load first N episodes
-    _episodes = list(range(MAX_EPISODES)) if MAX_EPISODES > 0 else None
-    if _episodes is not None:
+    # Episode filtering. An explicit `episodes` list (from plan_train_val_episodes)
+    # wins; otherwise fall back to the legacy MAX_EPISODES prefix behaviour.
+    if episodes is not None:
+        _episodes = list(episodes)
+        log.info("  loading %d explicit episode indices: %s%s",
+                 len(_episodes), _episodes[:8], " ..." if len(_episodes) > 8 else "")
+    elif MAX_EPISODES > 0:
+        _episodes = list(range(MAX_EPISODES))
         log.info("  MAX_EPISODES=%d -> loading episode indices 0..%d only", MAX_EPISODES, MAX_EPISODES - 1)
     else:
+        _episodes = None
         log.info("  MAX_EPISODES=0 -> loading all episodes")
 
     #only loads base vitac particular keys

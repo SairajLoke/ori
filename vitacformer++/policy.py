@@ -44,7 +44,7 @@ class ACTPolicy(nn.Module):
         return (err * valid).sum() / denom.clamp(min=1.0)
 
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None,
-                 tactile_next=None, tactile_next_pad=None, epoch=0):
+                 tactile_next=None, tactile_next_pad=None, epoch=0, return_a_hat=False):
         env_state = None
 
         if actions is not None: # training time
@@ -91,6 +91,10 @@ class ACTPolicy(nn.Module):
                     log_tensor(log, TRACE, "loss/tac_hat", tac_hat)
                     log_tensor(log, TRACE, "loss/tactile_next(target)", tactile_next)
 
+            # Validation asks for the predictions too, so it can break the error
+            # down per joint group without a second forward pass.
+            if return_a_hat:
+                return loss_dict, a_hat
             return loss_dict
         else: # inference time
             # epoch>=75 disables teacher forcing so the model uses its own predicted tactile_next

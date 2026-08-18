@@ -38,7 +38,8 @@ from my_utils.normalizer import OriNormalizer, recommended_modes
 # from visualize_episodes import save_videos
 
 from dataset.origami_dataset import (
-    get_origami_full_dataset, 
+    get_origami_full_dataset,
+    plan_train_val_episodes,
     convert_batch )
 
 from lerobot.processor import  PolicyProcessorPipeline
@@ -63,7 +64,8 @@ def my_function():
 
 
 from configs import ( EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
-    FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC )
+    FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
+    MAX_EPISODES, NUM_VAL_EPISODES, VAL_EVERY_N_EPOCHS )
 
 
 def print_time(s, e, name):
@@ -625,27 +627,53 @@ def main(args):
     # data_tactile['train']['norm_stats_cache'] = norm_stats_cache
     # data_tactile['val']['norm_stats_cache']   = norm_stats_cache #TODO
 
-    train_dataset = None 
-    normalizer = None 
+    train_dataset = None
+    val_dataset = None
+    val_dataloader = None
+    normalizer = None
 
     if IS_ORIGAMI_TASK:
         # Set env var so origami_dataset.py can log active keys to the info log file
         os.environ["ORI_INFO_LOG_PATH"] = info_log_path
 
-        train_dataset = get_origami_full_dataset(
+        # --- Episode-level train/val split (never frame-level: adjacent frames
+        #     are near-duplicates and would leak the val set into training) ---
+        train_eps, val_eps = plan_train_val_episodes(
+            dataset_root=FULL_DATASET,
+            max_episodes=MAX_EPISODES,
+            num_val_episodes=NUM_VAL_EPISODES,
+        )
+        config['train_episodes'] = train_eps
+        config['val_episodes'] = val_eps
 
+        train_dataset = get_origami_full_dataset(
             dataset_root=FULL_DATASET,
             split= "full",
-            TOLERANCE= TOLERANCE, 
+            TOLERANCE= TOLERANCE,
             delta_timestamps=DELTA_TIMESTAMPS,
             use_tactile=use_tactile,
-            max_duration_sec= MAXDURATION_IN_EPISODE_SEC  , #NOTE:;;; becareful 
-            doImageTransforms = config.get('doImageTransforms', False) 
+            max_duration_sec= MAXDURATION_IN_EPISODE_SEC  , #NOTE:;;; becareful
+            doImageTransforms = config.get('doImageTransforms', False),
+            episodes=train_eps,
+            tag="train",
         )
 
-        # valid_dataset =
-        # test_dataset =
-        log.info("dataset type=%s  len=%d frames", type(train_dataset).__name__, len(train_dataset))
+        if val_eps:
+            val_dataset = get_origami_full_dataset(
+                dataset_root=FULL_DATASET,
+                split="full",
+                TOLERANCE=TOLERANCE,
+                delta_timestamps=DELTA_TIMESTAMPS,
+                use_tactile=use_tactile,
+                max_duration_sec=MAXDURATION_IN_EPISODE_SEC,
+                doImageTransforms=False,   # never augment the val set
+                episodes=val_eps,
+                tag="val",
+            )
+
+        log.info("dataset type=%s  train=%d frames  val=%s frames",
+                 type(train_dataset).__name__, len(train_dataset),
+                 len(val_dataset) if val_dataset is not None else "-")
         log.info("dataset stats keys: %s", sorted(train_dataset.meta.stats.keys()))
 
 
@@ -669,6 +697,26 @@ def main(args):
 
             drop_last=True,           # important for DDP — avoids uneven batch sizes
         )
+
+        if val_dataset is not None:
+            # Deliberately NOT passed to accelerator.prepare(): validation runs
+            # on the main process only against the unwrapped model, which keeps
+            # the metric exact (no DDP batch padding / duplicate-sample
+            # de-duplication to reason about) at the cost of the other ranks
+            # idling for a few seconds every VAL_EVERY_N_EPOCHS epochs.
+            val_dataloader = DataLoader(
+                val_dataset,
+                batch_size=batch_size_val,
+                shuffle=False,
+                pin_memory=True,
+                num_workers=max(2, _auto_workers // 4),
+                persistent_workers=True,
+                prefetch_factor=4,
+                drop_last=False,
+            )
+            log.info("val DataLoader: %d frames, %d batches, num_workers=%d (main process only, every %d epochs)",
+                     len(val_dataset), len(val_dataloader),
+                     val_dataloader.num_workers, VAL_EVERY_N_EPOCHS)
 
 
 
@@ -743,15 +791,15 @@ def main(args):
     time.sleep(2)
     
     #=======================================================
-    best_ckpt_info = train_bc(train_dataloader, normalizer, train_dataset, timestamp, 
-                              config, old_device=None, info_log_path=info_log_path)
+    # policy_best.ckpt is written inside train_bc whenever the val loss improves,
+    # so nothing more to save here.
+    best_ckpt_info = train_bc(train_dataloader, normalizer, train_dataset, timestamp,
+                              config, old_device=None, info_log_path=info_log_path,
+                              val_dataloader=val_dataloader)
 
-    best_epoch, min_val_loss, best_state_dict = best_ckpt_info
-
-    # save best checkpoint
-    ckpt_path = os.path.join(ckpt_dir, f'policy_best.ckpt')
-    torch.save(best_state_dict, ckpt_path)
-    print(f'Best ckpt, val loss {min_val_loss:.6f} @ epoch{best_epoch}')
+    if best_ckpt_info is not None:
+        best_epoch, best_val_loss, _ = best_ckpt_info
+        log.info("best checkpoint: epoch %s, val loss %.6f", best_epoch, best_val_loss)
     #=======================================================
 
 
@@ -820,7 +868,8 @@ def old_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0):
     return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device)
 
 
-def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0, log_final_inputs=False, writer=None, global_step=0):
+def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0, log_final_inputs=False,
+                         writer=None, global_step=0, return_a_hat=False):
     image_data = data["image"]               # [B, N_cam, 3, H, W]
     qpos_data = data["lowdim"]               # [B, T1, D1]
     action_data = data["action"]            # [B, T, D_action]
@@ -893,17 +942,81 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
 
         return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
                       tactile_norm, tactile_next_norm,
-                      tactile_next_pad=tactile_next_pad, epoch=epoch)
+                      tactile_next_pad=tactile_next_pad, epoch=epoch,
+                      return_a_hat=return_a_hat)
 
     if log_final_inputs:
         log_final_model_inputs(qpos_data_norm, image_data, action_data_norm, is_pad,
                                None, None, writer, global_step)
 
-    return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device)
+    return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
+                  return_a_hat=return_a_hat)
 
 
 
-def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old_device, info_log_path=None):
+@torch.no_grad()
+def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, epoch):
+    """Run the held-out episodes and return a dict of scalar metrics.
+
+    `policy` must be the UNWRAPPED module (accelerator.unwrap_model), and this
+    should only be called on the main process -- see the val DataLoader comment
+    in main() for why.
+
+    Loss is computed the same way as training (teacher-forced CVAE posterior,
+    same masked L1) so val/train numbers are directly comparable. Additionally
+    reports per-joint-group L1 in unnormalized-comparable terms, which is what
+    actually tells you whether a change helped the fingers or just the arms.
+    """
+    policy.eval()
+
+    # Accumulate sums + counts so the mean is exact regardless of batch sizes.
+    sums = {}
+    n_valid_steps = 0.0
+    n_batches = 0
+
+    for batch_idx, data in enumerate(tqdm(val_dataloader, desc=f"Val epoch {epoch}", leave=False)):
+        data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
+                             epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
+        data.pop("_timing", None)
+
+        forward_dict, a_hat = origami_forward_pass(
+            data, policy, normalizer, device, use_tactile, epoch=epoch, return_a_hat=True)
+
+        actions = data["action"][:, :policy.model.num_queries].to(device)
+        is_pad = data["action_mask"][:, :policy.model.num_queries].to(device)
+        valid = (~is_pad).unsqueeze(-1).to(a_hat.dtype)            # [B, T, 1]
+        abs_err = (a_hat - actions).abs() * valid                  # [B, T, D]
+
+        for k, v in forward_dict.items():
+            sums[f"val/{k}"] = sums.get(f"val/{k}", 0.0) + float(v.item())
+        for group_name, indices in JOINT_GROUPS.items():
+            sums[f"val_l1/{group_name}"] = (sums.get(f"val_l1/{group_name}", 0.0)
+                                            + abs_err[..., indices].sum().item())
+        sums["_abs_err_total"] = sums.get("_abs_err_total", 0.0) + abs_err.sum().item()
+
+        n_valid_steps += float(valid.sum().item())
+        n_batches += 1
+
+    policy.train()
+
+    if n_batches == 0:
+        return {}
+
+    metrics = {}
+    for k, v in sums.items():
+        if k.startswith("val/"):
+            metrics[k] = v / n_batches                     # loss terms: mean over batches
+    denom_steps = max(n_valid_steps, 1.0)
+    for group_name, indices in JOINT_GROUPS.items():
+        # mean |error| per (timestep, dim) inside this joint group
+        metrics[f"val_l1/{group_name}"] = sums[f"val_l1/{group_name}"] / (denom_steps * len(indices))
+    metrics["val_l1/all_dims"] = sums["_abs_err_total"] / (denom_steps * STATE_DIM)
+    metrics["val/n_valid_steps"] = n_valid_steps
+    return metrics
+
+
+def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old_device,
+             info_log_path=None, val_dataloader=None):
     num_epochs = config['num_epochs']
     ckpt_dir = config['ckpt_dir']
     seed = config['seed']
@@ -1208,30 +1321,47 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
             log.info("tactile teacher forcing OFF from this epoch: the second transformer pass "
                      "now consumes the model's own tactile_hat instead of ground-truth tactile_next")
         epoch_start_idx = len(train_history)  # mark start of this epoch's entries
-        # if epoch % 5 == 0:
-        #     # validation
-        #     # with torch.inference_mode():
-        #     with torch.no_grad():
-        #         policy.eval()
-        #         epoch_dicts = []
-        #         for data in tqdm(val_dataloader, desc="Validation", leave=False):
-        #             data = dataset.postprocess(data, device, use_tactile)
-        #             forward_dict = forward_pass(data, policy, normalizer, device, use_tactile)
-        #             epoch_dicts.append(forward_dict)
 
-        #         epoch_summary = compute_dict_mean(epoch_dicts)
-        #         validation_history.append(epoch_summary)
+        # ===================== VALIDATION =====================
+        # Runs on the main process only, against the unwrapped model, every
+        # VAL_EVERY_N_EPOCHS epochs (and on the final epoch). Other ranks wait
+        # at the barrier below.
+        _do_val = (val_dataloader is not None
+                   and (epoch % VAL_EVERY_N_EPOCHS == 0 or epoch == num_epochs - 1))
+        if _do_val:
+            if accelerator.is_main_process:
+                _t_val = time.time()
+                val_metrics = origami_validate(
+                    val_dataloader, accelerator.unwrap_model(policy), normalizer,
+                    device, use_tactile, epoch)
+                validation_history.append((epoch, val_metrics))
 
-        #         epoch_val_loss = epoch_summary['loss']
-        #         if epoch_val_loss < min_val_loss:
-        #             min_val_loss = epoch_val_loss
-        #             best_ckpt_info = (epoch, min_val_loss, deepcopy(policy.state_dict()))
+                if val_metrics:
+                    epoch_val_loss = val_metrics['val/loss']
+                    log.info("VAL epoch %d (%.1fs): loss=%.5f | %s",
+                             epoch, time.time() - _t_val, epoch_val_loss,
+                             " ".join(f"{k.split('/')[-1]}={v:.5f}"
+                                      for k, v in sorted(val_metrics.items())
+                                      if k.startswith("val_l1/")))
+                    if writer is not None:
+                        for k, v in val_metrics.items():
+                            writer.add_scalar(k, v, epoch)
+                        writer.flush()
 
-        #     print(f'Val loss:   {epoch_val_loss:.5f}')
-        #     summary_string = ''
-        #     for k, v in epoch_summary.items():
-        #         summary_string += f'{k}: {v.item():.3f} '
-        #     print(summary_string)
+                    if epoch_val_loss < min_val_loss:
+                        min_val_loss = epoch_val_loss
+                        best_ckpt_info = (epoch, min_val_loss,
+                                          deepcopy(accelerator.unwrap_model(policy).state_dict()))
+                        ckpt_path = os.path.join(ckpt_dir, 'policy_best.ckpt')
+                        torch.save({
+                            'model': best_ckpt_info[2],
+                            'epoch': epoch,
+                            'global_step': global_step,
+                            'min_val_loss': min_val_loss,
+                            'val_metrics': val_metrics,
+                        }, ckpt_path)
+                        log.info("VAL new best (%.5f) -> %s", min_val_loss, ckpt_path)
+            accelerator.wait_for_everyone()
 
         # training
         policy.train()
@@ -1426,31 +1556,36 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
     if accelerator.is_main_process:
         ckpt_path = os.path.join(ckpt_dir, f'policy_last.ckpt')
         torch.save(accelerator.unwrap_model(policy).state_dict(), ckpt_path)
+        log.info("saved final weights -> %s", ckpt_path)
 
-        # If no validation was run, best_ckpt_info is None — use last epoch as best
         if best_ckpt_info is None:
-            print("[Warning] No validation was run, using last epoch as best checkpoint")
-            best_ckpt_info = (num_epochs - 1, epoch_train_loss, deepcopy(accelerator.unwrap_model(policy).state_dict()))
-
-        best_epoch, min_val_loss, best_state_dict = best_ckpt_info
-        ckpt_path = os.path.join(ckpt_dir, f'policy_epoch_{best_epoch}_val_loss_{min_val_loss}.ckpt')
-        torch.save(best_state_dict, ckpt_path)
-        print(f'Training finished:\nSeed {seed}, val loss {min_val_loss:.6f} at epoch {best_epoch}')
+            # Only possible when NUM_VAL_EPISODES=0. Fall back to the last epoch,
+            # but say so -- this is NOT a validated best checkpoint.
+            log.warning("no validation was run (NUM_VAL_EPISODES=0); "
+                        "policy_last.ckpt is the only meaningful checkpoint")
+        else:
+            best_epoch, min_val_loss, _ = best_ckpt_info
+            log.info("training finished: seed=%s, best val loss %.6f at epoch %d "
+                     "(saved as policy_best.ckpt)", seed, min_val_loss, best_epoch)
 
         # === TensorBoard: close writer ===
-        writer.add_hparams(
-            {
-                "lr": config['policy_config']['lr'],
-                "num_epochs": num_epochs,
-                "seed": seed,
-                "use_tactile": int(use_tactile),
-            },
-            {
-                "hparam/best_val_loss": min_val_loss,
-            },
-        )
-        writer.close()
-        print(f"[TensorBoard] Writer closed. Run `tensorboard --logdir {os.path.join(ckpt_dir, 'tensorboard')}` to view.")
+        if writer is not None:
+            writer.add_hparams(
+                {
+                    "lr": config['policy_config']['lr'],
+                    "num_epochs": num_epochs,
+                    "seed": seed,
+                    "use_tactile": int(use_tactile),
+                    "warmup_iters": config['lr_config']['warmup_iters'],
+                    "n_val_episodes": len(config.get('val_episodes', [])),
+                },
+                {
+                    "hparam/best_val_loss": float(min_val_loss),
+                },
+            )
+            writer.close()
+            log.info("[TensorBoard] writer closed. `tensorboard --logdir %s`",
+                     os.path.join(ckpt_dir, 'tensorboard'))
 
     # === Final timing summary ===
     batch_timing_logger.finalize()

@@ -10,12 +10,19 @@ set -euo pipefail
 #   USE_NORMALIZATION=0|1            (default: 0, i.e. --disable_normalization)
 #   EXPT_NAME=custom_name            (default: auto-generated from precision+episodes)
 #   MAX_EPISODES=50                  (default: 0 = all episodes, read by Python via configs.py)
+#   VAL_EPISODES=0,1                 held-out episode indices (default 0,1; "" disables validation)
+#   VAL_EVERY_N_EPOCHS=10            validation cadence
+#   ORI_IMAGE_NORM=0|1               ImageNet mean/std on camera images (default 1)
+#   ORI_NORM_DISABLE_KEYS=k1,k2      force these features to identity while the rest normalize
+#   BACKBONE_WEIGHTS=/path.pth       local ResNet ckpt instead of the torch hub download
+#   RESUME_PATH=/path.ckpt           resume (weights + optimizer + scheduler + epoch/step)
+#   PRETRAINED_PATH=/path.ckpt       weights only, fresh schedule
+#   EXTRA_ARGS="--foo 1 --bar 2"     appended verbatim to the python command line
+#   ORI_LOG_LEVEL / ORI_LOG_LEVELS / ORI_LOG_RANKS   see my_utils/ori_logging.py
 #
-# Note: --load_pretrained_for_newtraining and --resume_path are mutually exclusive:
-#   - Use --load_pretrained_for_newtraining to load a pretrained model and train from scratch
-#   - Use --resume_path to resume training from a checkpoint (continues from epoch/step)
-#   - You cannot use both at the same time
-#   - You MUST provide exactly one of them (training from scratch is not allowed)
+# RESUME_PATH and PRETRAINED_PATH are mutually exclusive; setting neither trains
+# from random init. NOTE: the tactile/state delta_timestamps fix changed the
+# model's input semantics, so checkpoints predating it are NOT resumable.
 
 # Check if the first argument is missing or empty
 if [ -z "$1" ]; then
@@ -75,6 +82,28 @@ else
     NORM_FLAG="--disable_normalization"
 fi
 
+# --- Checkpoint source (env-driven; empty = fresh random init) ---
+# These used to be hardcoded below. They must be settable per-run because the
+# tactile/state delta_timestamps fix changed the model's input semantics: any
+# checkpoint from before that change is NOT resumable.
+#   RESUME_PATH=...      continue a run (epoch, optimizer, scheduler, step)
+#   PRETRAINED_PATH=...  take weights only, start a fresh schedule
+EXTRA_ARGS="${EXTRA_ARGS:-}"          # appended verbatim to the python command line
+RESUME_PATH="${RESUME_PATH:-}"
+PRETRAINED_PATH="${PRETRAINED_PATH:-}"
+if [ -n "$RESUME_PATH" ] && [ -n "$PRETRAINED_PATH" ]; then
+    echo "ERROR: set only one of RESUME_PATH / PRETRAINED_PATH"
+    exit 1
+fi
+CKPT_FLAG=""
+if [ -n "$RESUME_PATH" ]; then
+    CKPT_FLAG="--resume_path $RESUME_PATH"
+elif [ -n "$PRETRAINED_PATH" ]; then
+    CKPT_FLAG="--load_pretrained_for_newtraining $PRETRAINED_PATH"
+else
+    echo "NOTE: neither RESUME_PATH nor PRETRAINED_PATH set -- training from random init."
+fi
+
 # --- Experiment name ---
 MAX_EPISODES_STR="${MAX_EPISODES:-0}"
 if [ "$MAX_EPISODES_STR" = "0" ]; then
@@ -97,6 +126,10 @@ echo "Mixed precision: $MIXED_PRECISION"
 echo "Normalization: $USE_NORMALIZATION ($NORM_LABEL)"
 echo "Max episodes: $MAX_EPISODES_STR"
 echo "Experiment name: $EXPT_NAME"
+echo "Checkpoint     : ${CKPT_FLAG:-<fresh random init>}"
+echo "Image norm     : ${ORI_IMAGE_NORM:-1}"
+echo "Norm excl keys : ${ORI_NORM_DISABLE_KEYS:-<none>}"
+echo "Extra args     : ${EXTRA_ARGS:-<none>}"
 echo "Command: $ACCELERATE_CMD origami_imitate_episodes.py $@"
 echo ""
 
@@ -104,6 +137,7 @@ echo ""
 # Unit = number of open video decoders (not bytes). Each entry ~few MB.
 # 500 comfortably covers many chunk files across 4 cameras without eviction.
 export LEROBOT_VIDEO_DECODER_CACHE_SIZE="${LEROBOT_VIDEO_DECODER_CACHE_SIZE:-500}"
+
 
 # Build/install local modules
 cd dataset/ha_data && pip install -e . && cd ../..
@@ -125,7 +159,8 @@ $ACCELERATE_CMD origami_imitate_episodes.py \
 --doImageTransforms \
 --ckpt_dir ckpt_dir/fold_plane \
 --tb_log_freq 10 \
---resume_path "/home/sr5/sairaj.loke/other/ori/ori/ViTacFormer/ckpt_dir/fold_plane/aug14_h100_20260816_202730_ori_tactile/policy_epoch_23_loss_0.034.ckpt" \
+$CKPT_FLAG \
+$EXTRA_ARGS \
 $NORM_FLAG
 
 

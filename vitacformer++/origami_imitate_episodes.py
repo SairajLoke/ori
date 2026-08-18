@@ -66,7 +66,7 @@ def my_function():
 
 from configs import ( EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
     FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
-    MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS )
+    MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS, NORM_DISABLE_KEYS )
 
 
 def print_time(s, e, name):
@@ -1101,14 +1101,29 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         feature_modes = {k: None for k in recommended_modes(use_tactile=use_tactile)}
     else:
         feature_modes = recommended_modes(use_tactile=use_tactile)
+        # Per-feature ablation: force selected keys to identity while the rest
+        # stay normalized (ORI_NORM_DISABLE_KEYS).
+        for _k in NORM_DISABLE_KEYS:
+            if _k in feature_modes:
+                feature_modes[_k] = None
+                if _k == "observation.tactile" and "observation.tactile_next" in feature_modes:
+                    feature_modes["observation.tactile_next"] = None
+            else:
+                raise ValueError(
+                    f"ORI_NORM_DISABLE_KEYS contains unknown feature {_k!r}. "
+                    f"Valid keys: {sorted(feature_modes)}"
+                )
     config['feature_modes'] = feature_modes
+    config['norm_disable_keys'] = list(NORM_DISABLE_KEYS)
     normalizer = OriNormalizer(
         stats=train_dataset.meta.stats,
         feature_modes=feature_modes,
         device=device,
     )
 
-    norm_log.info("disable_normalization=%s", disable_normalization)
+    norm_log.info("disable_normalization=%s  norm_disable_keys=%s  image_norm=%s",
+                  disable_normalization, NORM_DISABLE_KEYS or "-",
+                  os.environ.get("ORI_IMAGE_NORM", "1"))
     if disable_normalization:
         norm_log.info("ALL features in identity/pass-through mode -- no normalization applied anywhere.")
     for _k, _mode in sorted(normalizer.transforms.items()):

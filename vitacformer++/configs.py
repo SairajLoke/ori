@@ -36,6 +36,14 @@ MAX_EPISODES = int(os.environ.get('MAX_EPISODES', '0'))
 VAL_EPISODES = [int(x) for x in os.environ.get('VAL_EPISODES', '0,1').split(',') if x.strip()]
 VAL_EVERY_N_EPOCHS = int(os.environ.get('VAL_EVERY_N_EPOCHS', '10'))
 
+# Feature keys forced to identity (pass-through) even when normalization is ON.
+# Lets you ablate one modality at a time without editing recommended_modes():
+#   ORI_NORM_DISABLE_KEYS=observation.tactile          -> everything but tactile
+#   ORI_NORM_DISABLE_KEYS=observation.tactile,action   -> and leave actions raw
+# Note "observation.tactile" also covers observation.tactile_next, which is
+# derived from the same normalized tensor in convert_batch.
+NORM_DISABLE_KEYS = [k.strip() for k in os.environ.get('ORI_NORM_DISABLE_KEYS', '').split(',') if k.strip()]
+
 # Optional local ResNet checkpoint for the vision backbone. When unset the
 # backbone downloads ImageNet weights via torch hub (needs network + a writable
 # TORCH_HOME). Point this at a .pth/.ckpt to load your own instead.

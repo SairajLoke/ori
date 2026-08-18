@@ -39,6 +39,69 @@ JOINT_GROUP_COLORS = {
 
 
 # ──────────────────────────────────────────────────────────────────────
+# Per-dimension action loss weights
+# ──────────────────────────────────────────────────────────────────────
+def build_action_dim_weights(state_dim, mode="uniform", group_weights=None,
+                             action_stats=None, degenerate_spread=1e-3):
+    """Build a [state_dim] weight vector for the per-dimension action L1 loss.
+
+    Modes:
+      "uniform"  every dimension weighted 1.0 -- identical to the previous
+                 behaviour, and the default.
+      "group"    per-joint-group multipliers, e.g.
+                 {"left_hand": 2.0, "right_hand": 2.0}. Groups not listed keep
+                 1.0. This is the knob for "the fingers matter more than the
+                 arms".
+
+    Independently, if `action_stats` is given, any dimension whose
+    (q99 - q01) is below `degenerate_spread` gets weight 0. Measured on this
+    dataset that is action dims [58, 59] -- spread 1.3e-5 and 2.9e-5, i.e.
+    constant. They contribute a constant to the loss and no gradient signal, so
+    including them only dilutes the mean.
+
+    The result is rescaled so that the mean weight over NON-ZERO dims is 1.0.
+    That keeps the magnitude of the L1 term comparable to an unweighted run,
+    which matters because it is summed against kl_weight * KL and tac_weight *
+    L1_tac -- rescaling the L1 term silently reweights those too.
+
+    Returns a plain list of floats (JSON-serialisable for the config log).
+    """
+    weights = [1.0] * state_dim
+
+    if mode == "group":
+        gw = {g: 1.0 for g in JOINT_GROUPS}
+        gw.update(group_weights or {})
+        unknown = set(gw) - set(JOINT_GROUPS)
+        if unknown:
+            raise ValueError(f"Unknown joint group(s) {sorted(unknown)}. "
+                             f"Valid: {sorted(JOINT_GROUPS)}")
+        for group_name, indices in JOINT_GROUPS.items():
+            for i in indices:
+                if i < state_dim:
+                    weights[i] = float(gw[group_name])
+    elif mode != "uniform":
+        raise ValueError(f"Unknown loss_dim_weight_mode {mode!r} (expected 'uniform' or 'group')")
+
+    dropped = []
+    if action_stats is not None:
+        q01 = action_stats.get("q01")
+        q99 = action_stats.get("q99")
+        if q01 is not None and q99 is not None:
+            for i in range(min(state_dim, len(q01))):
+                if float(q99[i]) - float(q01[i]) < degenerate_spread:
+                    weights[i] = 0.0
+                    dropped.append(i)
+
+    nonzero = [w for w in weights if w > 0]
+    if not nonzero:
+        raise ValueError("All action dimensions ended up with zero weight.")
+    scale = len(nonzero) / sum(nonzero)
+    weights = [w * scale for w in weights]
+
+    return weights, dropped
+
+
+# ──────────────────────────────────────────────────────────────────────
 # Detailed stats printer
 # ──────────────────────────────────────────────────────────────────────
 def _detailed_stats(name, tensor):

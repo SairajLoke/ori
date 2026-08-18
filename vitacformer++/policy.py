@@ -19,29 +19,68 @@ class ACTPolicy(nn.Module):
         self.model = model # CVAE decoder
         self.optimizer = optimizer
         self.kl_weight = args_override['kl_weight']
-        log.info("ACTPolicy: kl_weight=%s  num_queries=%s  state_dim=%s  use_tactile=%s",
-                 self.kl_weight, args_override.get('num_queries'),
+        self.tac_weight = float(args_override.get('tac_weight', 1.0))
+
+        # Per-dimension weights for the action L1 term. A buffer so it follows
+        # .to(device), but persistent=False so it never enters the state_dict:
+        # the weighting is a training hyperparameter (recorded in
+        # training_configs.json), and keeping it out of the checkpoint means
+        # enabling it does not break strict loading of older checkpoints.
+        dim_weights = args_override.get('action_dim_weights')
+        self.register_buffer(
+            'action_dim_weights',
+            None if dim_weights is None else torch.as_tensor(dim_weights, dtype=torch.float32),
+            persistent=False,
+        )
+
+        log.info("ACTPolicy: kl_weight=%s  tac_weight=%s  num_queries=%s  state_dim=%s  use_tactile=%s",
+                 self.kl_weight, self.tac_weight, args_override.get('num_queries'),
                  args_override.get('state_dim'), args_override.get('use_tactile'))
         log.info("  optimizer=%s  lr=%s  lr_backbone=%s",
                  type(optimizer).__name__, args_override.get('lr'), args_override.get('lr_backbone'))
+        if self.action_dim_weights is None:
+            log.info("  action dim weights: uniform")
+        else:
+            w = self.action_dim_weights
+            log.info("  action dim weights: mean=%.3f min=%.3f max=%.3f, %d dim(s) zeroed",
+                     w.mean().item(), w.min().item(), w.max().item(), int((w == 0).sum().item()))
+            from train_eval_utils import JOINT_GROUPS
+            for g, idx in JOINT_GROUPS.items():
+                log.info("    %-11s -> %s", g,
+                         sorted({round(float(w[i]), 4) for i in idx if i < w.numel()}))
 
 
     @staticmethod
-    def _masked_l1(pred, target, is_pad):
-        """Mean L1 over the UNPADDED entries only.
+    def _masked_l1(pred, target, is_pad, dim_weights=None):
+        """Mean L1 over the UNPADDED entries only, optionally per-dim weighted.
 
         `is_pad` is [B, T] (True = fabricated/out-of-episode). The naive
         `(err * ~is_pad).mean()` zeroes the padded terms but still divides by
         the full B*T*D count, so the reported loss shrinks purely because a
         batch happened to contain more padding. Divide by the number of real
         elements instead: n_valid_timesteps * D.
+
+        `dim_weights` is a [D] vector with mean 1 over its non-zero entries, so
+        the weighted loss stays on the same scale as the unweighted one and the
+        balance against kl_weight/tac_weight is preserved. The denominator uses
+        sum(dim_weights) rather than D for the same reason.
         """
         err = F.l1_loss(pred, target, reduction='none')          # [B, T, D]
+
+        if dim_weights is None:
+            per_step = err.sum(-1)                               # [B, T]
+            width = float(err.shape[-1])
+        else:
+            w = dim_weights.to(dtype=err.dtype, device=err.device)
+            per_step = (err * w).sum(-1)                          # [B, T]
+            width = float(w.sum())
+
         if is_pad is None:
-            return err.mean()
-        valid = (~is_pad).unsqueeze(-1).to(err.dtype)            # [B, T, 1]
-        denom = valid.sum() * err.shape[-1]                      # real elements
-        return (err * valid).sum() / denom.clamp(min=1.0)
+            return per_step.sum() / max(per_step.numel() * width, 1.0)
+
+        valid = (~is_pad).to(per_step.dtype)                      # [B, T]
+        denom = (valid.sum() * width).clamp(min=1.0)
+        return (per_step * valid).sum() / denom
 
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None,
                  tactile_next=None, tactile_next_pad=None, epoch=0, return_a_hat=False):
@@ -65,7 +104,7 @@ class ACTPolicy(nn.Module):
             a_hat, is_pad_hat, (mu, logvar), tac_hat = self.model(qpos, image, env_state, tactile, actions, is_pad, tactile_next, epoch=epoch)
             total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
             loss_dict = dict()
-            loss_dict['l1'] = self._masked_l1(a_hat, actions, is_pad)
+            loss_dict['l1'] = self._masked_l1(a_hat, actions, is_pad, self.action_dim_weights)
             loss_dict['kl'] = total_kld[0]
             loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
 
@@ -74,7 +113,7 @@ class ACTPolicy(nn.Module):
                 # steps), so it needs its own mask -- the action mask has a
                 # different meaning and a different length.
                 loss_dict['l1_tac'] = self._masked_l1(tac_hat, tactile_next, tactile_next_pad)
-                loss_dict['loss'] = loss_dict['loss'] + loss_dict['l1_tac']
+                loss_dict['loss'] = loss_dict['loss'] + loss_dict['l1_tac'] * self.tac_weight
 
             if _loss_gate() and log.isEnabledFor(TRACE):
                 _n_pad = int(is_pad.sum().item())

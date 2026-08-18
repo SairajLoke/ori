@@ -48,7 +48,8 @@ from lerobot.policies.factory import make_pre_post_processors
 # RobotProcessorPipeline for actual h/w inference (unbatched), policy processingis for batched : 
 # ref: https://huggingface.co/docs/lerobot/introduction_processors
 
-from train_eval_utils import JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats, log_input_stats, log_final_model_inputs
+from train_eval_utils import (JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats,
+                              log_input_stats, log_final_model_inputs, build_action_dim_weights)
 from my_utils.log_features import log_problematic_features
 from my_utils.ori_logging import (setup_logging, get_logger, log_tensor, log_tensors,
                                   TRACE, StepGate)
@@ -675,6 +676,31 @@ def main(args):
                  type(train_dataset).__name__, len(train_dataset),
                  len(val_dataset) if val_dataset is not None else "-")
         log.info("dataset stats keys: %s", sorted(train_dataset.meta.stats.keys()))
+
+        # --- Per-dimension action loss weights (needs dataset stats) ---
+        # policy_config is the same dict object train_bc passes to make_policy,
+        # so mutating it here reaches the policy.
+        _group_weights = None
+        if args.get('loss_group_weights'):
+            _group_weights = json.loads(args['loss_group_weights'])
+        _dim_weights, _dropped = build_action_dim_weights(
+            state_dim=args['state_dim'],
+            mode=args.get('loss_dim_weight_mode', 'uniform'),
+            group_weights=_group_weights,
+            action_stats=(train_dataset.meta.stats.get('action')
+                          if args.get('drop_degenerate_action_dims') else None),
+        )
+        _is_uniform = (args.get('loss_dim_weight_mode', 'uniform') == 'uniform' and not _dropped)
+        policy_config['action_dim_weights'] = None if _is_uniform else _dim_weights
+        policy_config['tac_weight'] = args.get('tac_weight', 1.0)
+        config['loss_dim_weight_mode'] = args.get('loss_dim_weight_mode', 'uniform')
+        config['loss_group_weights'] = _group_weights
+        config['action_dim_weights'] = policy_config['action_dim_weights']
+        config['tac_weight'] = policy_config['tac_weight']
+        if _dropped:
+            log.info("action dims zeroed in the L1 loss (constant in this dataset): %s", _dropped)
+        log.info("action loss weighting: mode=%s group_weights=%s tac_weight=%s",
+                 config['loss_dim_weight_mode'], _group_weights, config['tac_weight'])
 
 
         # NOTE: Do NOT create DistributedSampler manually here.
@@ -1664,6 +1690,26 @@ if __name__ == '__main__':
 
     parser.add_argument('--disable_normalization', action='store_true',
                         help='Disable all feature normalization (identity/pass-through mode)')
+
+    # --- loss weighting ---
+    parser.add_argument('--loss_dim_weight_mode', type=str, default='uniform',
+                        choices=['uniform', 'group'],
+                        help="Per-dimension action L1 weighting. 'uniform' (default) reproduces "
+                             "the previous behaviour; 'group' applies --loss_group_weights.")
+    parser.add_argument('--loss_group_weights', type=str, default=None,
+                        help='JSON dict of joint-group multipliers for --loss_dim_weight_mode group, '
+                             'e.g. \'{"left_hand": 2.0, "right_hand": 2.0}\'. Groups not listed keep 1.0. '
+                             'Weights are rescaled to mean 1 so the L1 term stays comparable to an '
+                             'unweighted run (and so kl_weight / tac_weight keep their meaning).')
+    parser.add_argument('--drop_degenerate_action_dims', action='store_true',
+                        help='Give zero loss weight to action dims whose q99-q01 is below the '
+                             'degenerate threshold (dims 58,59 on this dataset -- they are constant, '
+                             'so they add a constant to the loss and no gradient).')
+    parser.add_argument('--tac_weight', type=float, default=1.0,
+                        help='Multiplier on the tactile prediction loss (default 1.0, unchanged). '
+                             'Sweep this together with --kl_weight: the three terms l1, kl*kl_weight '
+                             'and l1_tac*tac_weight were never balanced against each other.')
+
     main(vars(parser.parse_args()))
 
 

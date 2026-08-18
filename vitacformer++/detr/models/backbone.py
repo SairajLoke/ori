@@ -143,16 +143,29 @@ def _load_local_backbone_weights(backbone: nn.Module, path: str):
     log.info("backbone weights loaded from %s", path)
     log.info("  matched %d/%d target tensors%s", best_hits, len(target),
              f" after stripping prefix {best_prefix!r}" if best_prefix else "")
-    if missing:
-        log.error("  %d MISSING key(s) -- these stayed randomly initialised: %s%s",
-                  len(missing), missing[:8], " ..." if len(missing) > 8 else "")
     if unexpected:
+        # Harmless: extra tensors in the source we simply do not need.
         log.warning("  %d unexpected key(s) ignored: %s%s",
                     len(unexpected), unexpected[:8], " ..." if len(unexpected) > 8 else "")
+
+    # Equivalent to strict=True, but with a diagnostic instead of an opaque
+    # exception. load_state_dict(strict=False) is used only so we can report
+    # WHAT is missing; any genuinely missing tensor is still fatal, because
+    # otherwise part of the backbone silently stays randomly initialised and the
+    # run looks fine until the numbers are quietly worse.
     if best_hits == 0:
         raise ValueError(
-            f"{path}: no keys matched the {type(backbone).__name__}. "
-            f"Expected e.g. {sorted(target)[:3]}, got {sorted(obj)[:3]}."
+            f"{path}: no keys matched the backbone.\n"
+            f"  expected e.g. {sorted(target)[:3]}\n"
+            f"  got          {sorted(obj)[:3]}"
+        )
+    if missing:
+        raise ValueError(
+            f"{path}: {len(missing)} tensor(s) missing -- refusing to train with a "
+            f"partially-initialised backbone.\n"
+            f"  matched {best_hits}/{len(target)}"
+            f"{f' after stripping prefix {best_prefix!r}' if best_prefix else ''}\n"
+            f"  missing: {missing[:10]}{' ...' if len(missing) > 10 else ''}"
         )
     return missing, unexpected
 

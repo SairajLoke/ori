@@ -44,10 +44,12 @@ VAL_EVERY_N_EPOCHS = int(os.environ.get('VAL_EVERY_N_EPOCHS', '10'))
 # derived from the same normalized tensor in convert_batch.
 NORM_DISABLE_KEYS = [k.strip() for k in os.environ.get('ORI_NORM_DISABLE_KEYS', '').split(',') if k.strip()]
 
-# Optional local ResNet checkpoint for the vision backbone. When unset the
-# backbone downloads ImageNet weights via torch hub (needs network + a writable
-# TORCH_HOME). Point this at a .pth/.ckpt to load your own instead.
-BACKBONE_WEIGHTS = os.environ.get('BACKBONE_WEIGHTS') or None
+# Local ResNet checkpoint for the vision backbone -- resolved at the bottom of
+# this file, once BACKBONE is known. Precedence:
+#   1. BACKBONE_WEIGHTS env var
+#   2. assets/backbones/<BACKBONE>_imagenet.pth shipped next to this file
+#   3. None -> torchvision downloads via torch hub (needs network + writable TORCH_HOME)
+_BACKBONE_WEIGHTS_ENV = os.environ.get('BACKBONE_WEIGHTS') or None
 
 
 
@@ -151,3 +153,16 @@ else:
 #                                                 'right_hand_j15', 'right_hand_j16', 'right_hand_j17', 'right_hand_j18', 'right_hand_j19', 'right_hand_j20', 'right_hand_j21', 
                                                 
 #                                                 'motor_j0', 'motor_j1', 'motor_j2', 'motor_j3', 'motor_j4', 'motor_j5', 'motor_j6']}
+
+# ---------------------------------------------------------------------------
+# Backbone weights resolution (needs BACKBONE, defined in the branches above)
+# ---------------------------------------------------------------------------
+# Keeping the weights in-repo makes a run self-contained: no torch hub download,
+# no dependency on a writable TORCH_HOME, and identical weights on every node.
+_LOCAL_BACKBONE = Path(__file__).resolve().parent / "assets" / "backbones" / f"{BACKBONE}_imagenet.pth"
+if _BACKBONE_WEIGHTS_ENV:
+    BACKBONE_WEIGHTS = _BACKBONE_WEIGHTS_ENV
+elif _LOCAL_BACKBONE.exists():
+    BACKBONE_WEIGHTS = str(_LOCAL_BACKBONE)
+else:
+    BACKBONE_WEIGHTS = None

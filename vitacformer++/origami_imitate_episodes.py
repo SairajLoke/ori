@@ -1084,31 +1084,47 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         _note = "" if _mode == _requested else f"  (DOWNGRADED from {_requested!r})"
         norm_log.info("  %-38s -> %s%s", _k, _mode, _note)
 
-    # Per-dim denominator health: this is what actually breaks when normalization
-    # is switched back on, so surface it unconditionally at INFO.
+    # Normalization health, reported unconditionally at INFO. The single most
+    # useful number is the worst |normalized value| the dataset can produce:
+    # anything in the hundreds means a denominator problem or an untamed tail.
+    _raw_stats = train_dataset.meta.stats
     for _k, _fs in normalizer._stats.items():
         if _fs.q01 is None or _fs.q99 is None:
             continue
         _denom = (_fs.q99 - _fs.q01).float()
-        _tiny = torch.nonzero(_denom < 1e-2).flatten().tolist()
         norm_log.info("  stats[%s]: dim=%d  (q99-q01) min=%.3e median=%.3e max=%.3e",
                       _k, _denom.numel(), _denom.min().item(),
                       _denom.median().item(), _denom.max().item())
-        if _tiny:
-            norm_log.warning("  stats[%s]: %d dims with (q99-q01) < 1e-2 -> normalization will "
-                             "amplify them hard. dims=%s", _k, len(_tiny), _tiny)
+        if _fs.degenerate_dims:
+            norm_log.info("  stats[%s]: %d degenerate dim(s) %s pinned to unit scale "
+                          "(spread < %g) instead of being amplified",
+                          _k, len(_fs.degenerate_dims), _fs.degenerate_dims,
+                          normalizer.degenerate_spread)
+        _stats_key = normalizer.key_aliases.get(_k, _k)
+        _src = _raw_stats.get(_stats_key)
+        if _src is not None and "min" in _src and "max" in _src:
+            _mn = torch.as_tensor(np.asarray(_src["min"], dtype=np.float32)).flatten().to(_denom.device)
+            _mx = torch.as_tensor(np.asarray(_src["max"], dtype=np.float32)).flatten().to(_denom.device)
+            _lo = (_mn - _fs.q01) / (_denom + 1e-6) * 2 - 1
+            _hi = (_mx - _fs.q01) / (_denom + 1e-6) * 2 - 1
+            _worst = torch.maximum(_lo.abs(), _hi.abs())
+            _clip = normalizer.clip.get(_k)
+            norm_log.info("  stats[%s]: worst |normalized| over dataset = %.1f (dim %d)%s",
+                          _k, _worst.max().item(), int(_worst.argmax().item()),
+                          f", clipped at +/-{_clip:g}" if _clip else "")
+            if _clip is None and _worst.max().item() > 20:
+                norm_log.warning("  stats[%s]: %d dim(s) exceed |20| after normalization and are "
+                                 "NOT clipped -- consider adding this key to the clip dict",
+                                 _k, int((_worst > 20).sum().item()))
 
-    # Cast stats to bf16/fp16 if mixed precision is enabled
-    if accelerator.mixed_precision in ("fp16", "bf16"):
-        _mp_dtype = torch.float16 if accelerator.mixed_precision == "fp16" else torch.bfloat16
-        if normalizer._stats:
-            norm_log.warning("casting normalizer stats to %s: bf16 keeps ~3 significant digits, "
-                             "so small (q99-q01) denominators can round toward zero", _mp_dtype)
-        for key in normalizer._stats:
-            for param_name in ['mean', 'std', 'min', 'max', 'q01', 'q99']:
-                if hasattr(normalizer._stats[key], param_name):
-                    setattr(normalizer._stats[key], param_name,
-                        getattr(normalizer._stats[key], param_name).to(_mp_dtype))
+    # NOTE: normalizer stats are deliberately kept in fp32 under mixed precision.
+    # They used to be cast to bf16/fp16 here, which is destructive:
+    # bf16 has 8 mantissa bits, so its spacing near 0.56 is ~2e-3, while
+    # action[58]'s q99-q01 is 1.3e-5 -- q01 and q99 round to the SAME bf16 value,
+    # the denominator collapses to 0, and (x-q01)/(0+1e-6) explodes. fp16's
+    # spacing there is ~5e-4, still 40x larger than the real spread.
+    # Normalization runs on fp32 inputs before autocast anyway, so there is
+    # nothing to gain.
 
     if accelerator.is_main_process:
         dims_to_exclude = log_problematic_features(

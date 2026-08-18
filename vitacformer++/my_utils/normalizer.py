@@ -82,6 +82,7 @@ feature, as lists/np arrays).
 
 from __future__ import annotations
 
+import os
 import warnings
 from typing import Dict, Optional, Union
 
@@ -89,6 +90,51 @@ import numpy as np
 import torch
 
 EPS = 1e-6
+
+# Minimum spread a dimension must have before we are willing to divide by it.
+#
+# Measured on this dataset (meta/stats.json):
+#   action[58]           q99-q01 = 1.3e-05   std = 1.0e-06   -> effectively constant
+#   action[59]           q99-q01 = 2.9e-05   std = 1.6e-06   -> effectively constant
+#   observation.state[58] q99-q01 = 5.3e-04
+#   observation.state[59] q99-q01 = 3.3e-04
+#   observation.tactile   14 dims below 1e-2, 4 of them below 1e-3
+#
+# Dividing by 1.3e-05 multiplies sensor noise by ~150,000x. The old workaround
+# was to copy raw values back over action[:, :, 58] and [:, :, 59] in
+# convert_batch -- but observation.state[58]/[59] got no such treatment, so the
+# SAME physical quantity reached the policy normalized on the input side and
+# unnormalized on the output side. Clamping the denominator here fixes both
+# sides identically and needs no per-dim hardcoding.
+#
+# 1e-3 is chosen to sit above state[58]/[59] (5.3e-4 / 3.3e-4) and well below
+# the median spread (~0.53 for state/action, ~0.12 for tactile), so genuinely
+# informative low-range dims -- e.g. tactile[16], spread 8.2e-3, std 2.2e-3,
+# which normalizes to a healthy std of ~0.53 -- are left alone.
+DEGENERATE_SPREAD = 1e-3
+
+# Post-normalization clipping, per feature key.
+#
+# Quantile normalization maps [q01, q99] -> [-1, 1] by construction, so the 2%
+# of samples outside that window land outside [-1, 1]. How far outside depends
+# entirely on the tail. Measured on this dataset AFTER the degenerate-spread
+# guard, worst |normalized value| over the whole dataset:
+#
+#   action             6.1   (0 of 65 dims above 10)
+#   observation.state  6.1   (0 of 65 dims above 10)
+#   observation.tactile  135.0 (13 of 60 dims above 10; dim 18 is the worst)
+#
+# Tactile is heavy-tailed because contact events are spikes. Feeding a +135
+# activation into input_proj_tactile destabilises the encoder for that step, so
+# tactile is clipped. State/action are left unclipped -- their tails never reach
+# the threshold, and clipping the action would corrupt the regression target.
+#
+# Override with ORI_NORM_CLIP (a single float applied to tactile) or by passing
+# clip={...} explicitly. ORI_NORM_CLIP=0 disables clipping.
+_DEFAULT_CLIP = {
+    "observation.tactile": 10.0,
+    "observation.tactile_next": 10.0,
+}
 
 # Modes supported per feature. `None` / "identity" = pass-through.
 _VALID_MODES = {None, "identity", "mean_std", "gaussian", "quantile", "min_max"}
@@ -146,7 +192,7 @@ def _to_tensor(x, device) -> torch.Tensor:
 class _FeatureStats:
     """Holds one feature's stats as flat 1-D torch tensors, ready to broadcast."""
 
-    __slots__ = ("mean", "std", "min", "max", "q01", "q99", "dim")
+    __slots__ = ("mean", "std", "min", "max", "q01", "q99", "dim", "degenerate_dims")
 
     def __init__(self, raw_stats: dict, device):
         def flat(key):
@@ -164,6 +210,37 @@ class _FeatureStats:
         # dim = length of the flattened feature vector (e.g. 65 for
         # observation.state, or 3 for an image's per-channel stats).
         self.dim = self.mean.numel() if self.mean is not None else None
+        self.degenerate_dims = []
+
+    def guard_spread(self, mode: str, threshold: float = DEGENERATE_SPREAD):
+        """Neutralise dimensions whose spread is too small to divide by.
+
+        For each such dim the scale is forced to 1 and the offset to the dim's
+        own centre, so the dim passes through as (x - centre): unit scale, zero
+        amplification, and still centred like its neighbours. Records the
+        affected indices in `degenerate_dims` for logging.
+        """
+        if mode in ("mean_std", "gaussian"):
+            bad = self.std < threshold
+            if bool(bad.any()):
+                self.degenerate_dims = torch.nonzero(bad).flatten().tolist()
+                self.std = torch.where(bad, torch.ones_like(self.std), self.std)
+        elif mode == "quantile":
+            spread = self.q99 - self.q01
+            bad = spread < threshold
+            if bool(bad.any()):
+                self.degenerate_dims = torch.nonzero(bad).flatten().tolist()
+                # centre the pass-through interval on the dim's own value so
+                # (x - q01)/1 * 2 - 1 does not push it far from the other dims
+                self.q01 = torch.where(bad, self.q01 - 0.5, self.q01)
+                self.q99 = torch.where(bad, self.q01 + 1.0, self.q99)
+        elif mode == "min_max":
+            spread = self.max - self.min
+            bad = spread < threshold
+            if bool(bad.any()):
+                self.degenerate_dims = torch.nonzero(bad).flatten().tolist()
+                self.min = torch.where(bad, self.min - 0.5, self.min)
+                self.max = torch.where(bad, self.min + 1.0, self.max)
 
 
 class OriNormalizer:
@@ -194,10 +271,23 @@ class OriNormalizer:
         device: Union[str, torch.device] = "cpu",
         key_aliases: Optional[Dict[str, str]] = None,
         strict: bool = False,
+        degenerate_spread: float = DEGENERATE_SPREAD,
+        clip: Optional[Dict[str, float]] = None,
     ):
         self.device = torch.device(device)
         self.strict = strict
+        self.degenerate_spread = degenerate_spread
         self.key_aliases = {**_DEFAULT_KEY_ALIASES, **(key_aliases or {})}
+
+        if clip is None:
+            _env = os.environ.get("ORI_NORM_CLIP")
+            if _env is None:
+                clip = dict(_DEFAULT_CLIP)
+            elif float(_env) <= 0:
+                clip = {}
+            else:
+                clip = {k: float(_env) for k in _DEFAULT_CLIP}
+        self.clip = dict(clip)
 
         bad_modes = {k: m for k, m in feature_modes.items() if m not in _VALID_MODES}
         if bad_modes:
@@ -277,6 +367,17 @@ class OriNormalizer:
                 self.transforms[key] = None
                 continue
 
+            # Per-dimension guard: neutralise individual near-constant dims
+            # instead of either amplifying them ~1e5x or disabling the whole
+            # feature. See DEGENERATE_SPREAD for the measured numbers.
+            fstats.guard_spread(mode, self.degenerate_spread)
+            if fstats.degenerate_dims:
+                warnings.warn(
+                    f"[OriNormalizer] '{key}': dims {fstats.degenerate_dims} have spread < "
+                    f"{self.degenerate_spread:g} and are passed through with unit scale "
+                    f"(centred, not amplified)."
+                )
+
             self._stats[key] = fstats
 
     def _warn_or_raise(self, msg: str):
@@ -326,19 +427,24 @@ class OriNormalizer:
         if mode in ("mean_std", "gaussian"):
             mean = self._aligned(s.mean, x)
             std = self._aligned(s.std, x)
-            return (x - mean) / (std + EPS)
-
-        if mode == "quantile":
+            out = (x - mean) / (std + EPS)
+        elif mode == "quantile":
             q01 = self._aligned(s.q01, x)
             q99 = self._aligned(s.q99, x)
-            return (x - q01) / (q99 - q01 + EPS) * 2.0 - 1.0
-
-        if mode == "min_max":
+            out = (x - q01) / (q99 - q01 + EPS) * 2.0 - 1.0
+        elif mode == "min_max":
             xmin = self._aligned(s.min, x)
             xmax = self._aligned(s.max, x)
-            return (x - xmin) / (xmax - xmin + EPS) * 2.0 - 1.0
+            out = (x - xmin) / (xmax - xmin + EPS) * 2.0 - 1.0
+        else:
+            raise RuntimeError(f"unreachable: mode={mode}")
 
-        raise RuntimeError(f"unreachable: mode={mode}")
+        # Tail clipping (inputs only -- denormalize() never clips, so a
+        # round-trip of an in-range value is still exact).
+        limit = self.clip.get(key)
+        if limit:
+            out = out.clamp(-limit, limit)
+        return out
 
     def denormalize(self, key: str, x: torch.Tensor) -> torch.Tensor:
         """Inverse of normalize() — e.g. to turn a predicted action chunk
@@ -378,7 +484,13 @@ class OriNormalizer:
         for key, mode in self.transforms.items():
             stats_key = self.key_aliases.get(key, key)
             note = f" (stats: {stats_key})" if stats_key != key else ""
+            clip = self.clip.get(key)
+            note += f"  [clip +/-{clip:g}]" if clip else ""
             lines.append(f"  {key:40s} -> {mode!s:10s}{note}")
+            fs = self._stats.get(key)
+            if fs is not None and fs.degenerate_dims:
+                lines.append(f"  {'':40s}    degenerate dims (unit scale, spread < "
+                             f"{self.degenerate_spread:g}): {fs.degenerate_dims}")
         return "\n".join(lines)
 
     def __repr__(self):

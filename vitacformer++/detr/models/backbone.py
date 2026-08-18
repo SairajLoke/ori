@@ -152,4 +152,6 @@ def build_backbone(args):
              return_interm_layers, args.dilation)
     log.info("  norm_layer=FrozenBatchNorm2d  imagenet_pretrained=True (all ranks)  pos_embed=%s",
              args.position_embedding)
+    log.info("  expects ImageNet-standardised input (mean .485/.456/.406, std .229/.224/.225); "
+             "applied in convert_batch, disable with ORI_IMAGE_NORM=0")
     return model

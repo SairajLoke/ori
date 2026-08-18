@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 
 import torch
 from enum import Enum
@@ -27,6 +28,31 @@ torchvision_transforms = v2.Compose([
     v2.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
     v2.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
 ])
+
+# ImageNet statistics. The backbone is an ImageNet-pretrained ResNet, so its
+# first conv expects inputs standardised with these -- upstream ViTacFormer does
+# exactly this in dataset/pipelines_v2/transform.py::ImageProcess
+# (`cur_img = cur_img / 255.0; cur_img = (cur_img - self.mean) / self.std`,
+# configured from data_tactile.py with these same constants). The LeRobot
+# origami path skipped it and fed raw [0,1], which is why the old logs show
+# image ranges of [0,1] where the original pipeline shows [-2.12, 2.64].
+IMAGENET_MEAN = [0.485, 0.456, 0.406]
+IMAGENET_STD = [0.229, 0.224, 0.225]
+
+# Set ORI_IMAGE_NORM=0 to reproduce the old un-normalized behaviour.
+USE_IMAGENET_NORM = os.environ.get("ORI_IMAGE_NORM", "1") not in ("0", "false", "False")
+
+_imagenet_mean_t = None
+_imagenet_std_t = None
+
+
+def _apply_imagenet_norm(img):
+    """Standardise a [B, 3, H, W] float tensor in [0,1] with ImageNet stats."""
+    global _imagenet_mean_t, _imagenet_std_t
+    if _imagenet_mean_t is None or _imagenet_mean_t.device != img.device or _imagenet_mean_t.dtype != img.dtype:
+        _imagenet_mean_t = torch.tensor(IMAGENET_MEAN, device=img.device, dtype=img.dtype).view(1, 3, 1, 1)
+        _imagenet_std_t = torch.tensor(IMAGENET_STD, device=img.device, dtype=img.dtype).view(1, 3, 1, 1)
+    return (img - _imagenet_mean_t) / _imagenet_std_t
 #can also create custom trasnsforms : https://huggingface.co/docs/lerobot/lerobot-dataset-v3
 
 def log_before_after(name, data_raw, data_norm):
@@ -110,14 +136,12 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     # Action
     action_raw = batch["action"]
     action = normalizer.normalize("action", action_raw) if normalizer else action_raw
-
-    if normalizer:
-        action[:, :, 58] = action_raw[:, :, 58] #NOTE::::::::::::::
-        action[:, :, 59] = action_raw[:, :, 59] #NOTE::::::::::::::
-        if _verbose:
-            # These two motor dims deliberately bypass normalization while the
-            # matching observation.state dims do NOT -- flag it so it isn't lost.
-            log.debug("  action dims 58,59 left UNNORMALIZED (state dims 58,59 are normalized)")
+    # NOTE: action dims 58/59 used to be copied back raw here to dodge their
+    # tiny q99-q01 (1.3e-5 / 2.9e-5). observation.state[58]/[59] got no such
+    # treatment, so the same physical quantity arrived normalized on the input
+    # side and unnormalized on the output side. OriNormalizer now clamps
+    # degenerate spreads for every feature symmetrically -- see
+    # my_utils/normalizer.py:DEGENERATE_SPREAD.
 
     if _verbose:
         log_before_after("action", action_raw, action)
@@ -170,13 +194,16 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     resized = []
     for img in cams:
         # Images already converted to float32 [0,1] above (uint8→float32 conversion)
-        # Just resize - no need for /255 here anymore
         img = F.interpolate(
             img,
             size=(224, 320),
             mode="bilinear",
             align_corners=False,
         )
+        # Resize BEFORE standardising so the interpolation happens in [0,1]
+        # space, matching the upstream ImageProcess ordering.
+        if USE_IMAGENET_NORM:
+            img = _apply_imagenet_norm(img)
         resized.append(img)
     image = torch.stack(resized, dim=1)
     assert action.shape[0] == image.shape[0] and action.shape[1] == len(delta_timestamps["action"])
@@ -184,9 +211,10 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     timing['resize'] = time.time() - _t_resize_start
 
     if _verbose:
-        log.debug("  cams %s -> resized (224,320) -> stacked %s (order: head_L, head_R, wrist_R, wrist_L)",
-                  tuple(cams[0].shape), tuple(image.shape))
-        log.debug("  NOTE images are [0,1]; no ImageNet mean/std applied before the pretrained backbone")
+        log.debug("  cams %s -> resized (224,320) -> imagenet_norm=%s -> stacked %s "
+                  "(order: head_L, head_R, wrist_R, wrist_L)",
+                  tuple(cams[0].shape), USE_IMAGENET_NORM, tuple(image.shape))
+        log_tensor(log, TRACE, "  image (model input)", image)
 
     B, T = action.shape[:2]
     # LeRobot clamps out-of-episode queries to the last real frame and reports
@@ -265,6 +293,15 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
             log.debug("  tactile_next_mask: %d/%d padded target steps",
                       int(output["tactile_next_mask"].sum().item()),
                       output["tactile_next_mask"].numel())
+            # The value half and the delta half share one input_proj_tactile.
+            # Under normalization a 1/30 s delta is far smaller than a value, so
+            # the value half can dominate the projection. Surface both scales.
+            _D = output["tactile"].shape[-1] // 2
+            log.debug("  tactile halves: values std=%.4g | deltas std=%.4g  (ratio %.1fx)",
+                      output["tactile"][..., :_D].std().item(),
+                      output["tactile"][..., _D:].std().item(),
+                      output["tactile"][..., :_D].std().item()
+                      / max(output["tactile"][..., _D:].std().item(), 1e-9))
             log_tensor(log, TRACE, "  out/tactile", output["tactile"])
             log_tensor(log, TRACE, "  out/tactile_next", output["tactile_next"])
 

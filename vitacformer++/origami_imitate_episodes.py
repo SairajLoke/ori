@@ -1226,6 +1226,35 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         with open(stats_save_path, 'wb') as f:
             pickle.dump(normalizer._stats, f)
 
+        # Portable sidecar so inference can rebuild the EXACT same normalizer.
+        # training_stats.pkl above holds _FeatureStats objects containing torch
+        # tensors on the training device, which will not unpickle on a CPU-only
+        # inference box. This instead stores the raw stats that went IN, plus the
+        # modes; OriNormalizer re-derives the grouping and degenerate guard
+        # deterministically from them.
+        _norm_sidecar = os.path.join(ckpt_dir, 'normalizer_config.json')
+        _keys = list(feature_modes.keys())
+        _raw = {}
+        for _k in _keys:
+            _sk = normalizer.key_aliases.get(_k, _k)
+            _src = train_dataset.meta.stats.get(_sk)
+            if _src is None:
+                continue
+            _raw[_sk] = {_f: np.asarray(_v).tolist()
+                         for _f, _v in _src.items()
+                         if _f in ('mean', 'std', 'min', 'max', 'q01', 'q99')}
+        with open(_norm_sidecar, 'w') as f:
+            json.dump({
+                'feature_modes': feature_modes,
+                'stats': _raw,
+                'degenerate_spread': normalizer.degenerate_spread,
+                'clip': normalizer.clip,
+                'disable_normalization': disable_normalization,
+                'norm_disable_keys': list(NORM_DISABLE_KEYS),
+                'image_norm': os.environ.get('ORI_IMAGE_NORM', '1') not in ('0', 'false', 'False'),
+            }, f, indent=2)
+        log.info("wrote %s (inference rebuilds the normalizer from this)", _norm_sidecar)
+
     
 
     # === 构建 scheduler ===

@@ -113,27 +113,52 @@ EPS = 1e-6
 # which normalizes to a healthy std of ~0.53 -- are left alone.
 DEGENERATE_SPREAD = 1e-3
 
-# Post-normalization clipping, per feature key.
+# ---------------------------------------------------------------------------
+# Shared-scale groups
+# ---------------------------------------------------------------------------
+# observation.tactile is 60 dims = 10 sensors x [fx, fy, fz, tx, ty, tz]
+# (left/right x thumb, index, middle, ring, little -- confirmed from
+# meta/info.json "names").
 #
-# Quantile normalization maps [q01, q99] -> [-1, 1] by construction, so the 2%
-# of samples outside that window land outside [-1, 1]. How far outside depends
-# entirely on the tail. Measured on this dataset AFTER the degenerate-spread
-# guard, worst |normalized value| over the whole dataset:
+# Normalizing each of those 60 dims by ITS OWN q01/q99 is wrong for this signal.
+# Measured on the real frames (91338 of them):
 #
-#   action             6.1   (0 of 65 dims above 10)
-#   observation.state  6.1   (0 of 65 dims above 10)
-#   observation.tactile  135.0 (13 of 60 dims above 10; dim 18 is the worst)
+#   sensor         mean(q99-q01)   raw |max|   max |normalized|
+#   left_thumb          8.56          30.0            3.1
+#   left_index          6.15          34.6            3.9
+#   left_ring           0.011          0.78         135.0   <-- idle finger
+#   left_little         0.214         13.6           63.3   <-- mostly idle
 #
-# Tactile is heavy-tailed because contact events are spikes. Feeding a +135
-# activation into input_proj_tactile destabilises the encoder for that step, so
-# tactile is clipped. State/action are left unclipped -- their tails never reach
-# the threshold, and clipping the action would corrupt the regression target.
+# The thumb and index fingers do the work, so their percentile band describes a
+# real operating range. The ring and little fingers are idle in most episodes,
+# so THEIR band describes sensor noise -- per-dim scaling blows that noise up to
+# unit variance, and then a genuine press reads as 135. The 135 is not a glitch:
+# it is a smooth 10-frame ramp to -0.78 N in episode 4, i.e. a real contact seen
+# through a scale calibrated on an idle sensor.
 #
-# Override with ORI_NORM_CLIP (a single float applied to tactile) or by passing
-# clip={...} explicitly. ORI_NORM_CLIP=0 disables clipping.
+# Sharing one scale across all 10 sensors per axis type fixes both directions at
+# once: idle-finger noise stays small, real contacts stay on-scale, and the
+# relative loading between fingers (a thumb press really is ~100x a ring press)
+# is preserved. Measured: max |normalized| drops 135 -> 3.2 with ZERO values
+# above 10, while the working fingers keep the same resolution (std 0.66 vs
+# 0.68). The 6.9-second sustained left_little contact in episode 4 -- real task
+# signal that a clip would have flattened -- peaks at 2.2 and survives intact.
+#
+# Group ids are per-dim: dims sharing an id share one scale. For tactile that is
+# `i % 6`, i.e. group by axis type.
+_DEFAULT_STAT_GROUPS = {
+    "observation.tactile": lambda d: [i % 6 for i in range(d)],
+    "observation.tactile_next": lambda d: [i % 6 for i in range(d)],
+}
+
+# Post-normalization clipping, per feature key. With grouped scaling nothing
+# reaches these limits (max |normalized| is ~3.2 for tactile, ~6.1 for
+# state/action), so this is a safety net against an unseen season with a wilder
+# tail rather than something the current data needs.
+# Override with ORI_NORM_CLIP (float, 0 disables) or clip={...}.
 _DEFAULT_CLIP = {
-    "observation.tactile": 10.0,
-    "observation.tactile_next": 10.0,
+    "observation.tactile": 25.0,
+    "observation.tactile_next": 25.0,
 }
 
 # Modes supported per feature. `None` / "identity" = pass-through.
@@ -192,7 +217,8 @@ def _to_tensor(x, device) -> torch.Tensor:
 class _FeatureStats:
     """Holds one feature's stats as flat 1-D torch tensors, ready to broadcast."""
 
-    __slots__ = ("mean", "std", "min", "max", "q01", "q99", "dim", "degenerate_dims")
+    __slots__ = ("mean", "std", "min", "max", "q01", "q99", "dim",
+                 "degenerate_dims", "shared_groups")
 
     def __init__(self, raw_stats: dict, device):
         def flat(key):
@@ -211,6 +237,37 @@ class _FeatureStats:
         # observation.state, or 3 for an image's per-channel stats).
         self.dim = self.mean.numel() if self.mean is not None else None
         self.degenerate_dims = []
+        self.shared_groups = None
+
+    def share_scale(self, group_ids):
+        """Collapse q01/q99 (and min/max) so every dim in a group shares a scale.
+
+        Uses min(q01) / max(q99) over each group. That is computable from
+        stats.json alone -- no raw frames needed -- and was verified against the
+        true pooled 1st/99th percentile over all 91338 frames: it gives a
+        slightly WIDER (more conservative) band, max |normalized| 3.2 vs 5.1,
+        with zero values above 10 either way. Aggregating with median() or
+        mean() instead does NOT work (median gives max |normalized| 105).
+        """
+        if group_ids is None:
+            return
+        d = self.q01.numel() if self.q01 is not None else (
+            self.min.numel() if self.min is not None else 0)
+        if d == 0 or len(group_ids) != d:
+            return
+        for lo_name, hi_name in (("q01", "q99"), ("min", "max")):
+            lo = getattr(self, lo_name)
+            hi = getattr(self, hi_name)
+            if lo is None or hi is None:
+                continue
+            lo_new, hi_new = lo.clone(), hi.clone()
+            for g in sorted(set(group_ids)):
+                cols = [i for i, gi in enumerate(group_ids) if gi == g]
+                idx = torch.as_tensor(cols, device=lo.device, dtype=torch.long)
+                lo_new[idx] = lo[idx].min()
+                hi_new[idx] = hi[idx].max()
+            setattr(self, lo_name, lo_new)
+            setattr(self, hi_name, hi_new)
 
     def guard_spread(self, mode: str, threshold: float = DEGENERATE_SPREAD):
         """Neutralise dimensions whose spread is too small to divide by.
@@ -273,11 +330,14 @@ class OriNormalizer:
         strict: bool = False,
         degenerate_spread: float = DEGENERATE_SPREAD,
         clip: Optional[Dict[str, float]] = None,
+        stat_groups: Optional[Dict[str, object]] = None,
     ):
         self.device = torch.device(device)
         self.strict = strict
         self.degenerate_spread = degenerate_spread
         self.key_aliases = {**_DEFAULT_KEY_ALIASES, **(key_aliases or {})}
+        self.stat_groups = ({**_DEFAULT_STAT_GROUPS, **(stat_groups or {})}
+                            if stat_groups is not False else {})
 
         if clip is None:
             _env = os.environ.get("ORI_NORM_CLIP")
@@ -366,6 +426,18 @@ class OriNormalizer:
                 )
                 self.transforms[key] = None
                 continue
+
+            # Share one scale across grouped dims BEFORE the degenerate guard:
+            # grouping is what stops idle sensors from being scaled by their own
+            # noise floor, and it also lifts most of their spreads above the
+            # degenerate threshold so fewer dims need pinning at all.
+            group_ids = self.stat_groups.get(key)
+            if callable(group_ids):
+                _d = fstats.q01.numel() if fstats.q01 is not None else fstats.min.numel()
+                group_ids = group_ids(_d)
+            if group_ids is not None:
+                fstats.share_scale(group_ids)
+                fstats.shared_groups = len(set(group_ids))
 
             # Per-dimension guard: neutralise individual near-constant dims
             # instead of either amplifying them ~1e5x or disabling the whole
@@ -488,6 +560,9 @@ class OriNormalizer:
             note += f"  [clip +/-{clip:g}]" if clip else ""
             lines.append(f"  {key:40s} -> {mode!s:10s}{note}")
             fs = self._stats.get(key)
+            if fs is not None and fs.shared_groups:
+                lines.append(f"  {'':40s}    scale shared across {fs.shared_groups} group(s) "
+                             f"(per-axis for tactile)")
             if fs is not None and fs.degenerate_dims:
                 lines.append(f"  {'':40s}    degenerate dims (unit scale, spread < "
                              f"{self.degenerate_spread:g}): {fs.degenerate_dims}")

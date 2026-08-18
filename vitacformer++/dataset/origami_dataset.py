@@ -362,12 +362,14 @@ class SPLIT_TYPE(str, Enum):
     VAL = "val" 
 
 
-def plan_train_val_episodes(dataset_root, max_episodes, num_val_episodes):
-    """Decide which episode indices go to train and which are held out.
+def plan_train_val_episodes(dataset_root, max_episodes, val_episodes):
+    """Split episode indices into train and held-out val sets.
 
-    The holdout is taken from the END of the loaded range so that raising
-    MAX_EPISODES only ever grows the train set -- the val episodes stay the same
-    only if MAX_EPISODES is unchanged, so pin it when comparing runs.
+    `val_episodes` is an EXPLICIT list of indices (configs.VAL_EPISODES,
+    default [0, 1]). Explicit beats "last N" because the holdout then stays
+    identical when MAX_EPISODES changes -- otherwise a 50-episode run and a
+    500-episode run validate on different episodes and their numbers cannot be
+    compared.
 
     Splitting by EPISODE (never by frame) is essential: consecutive frames are
     near-duplicates, so a frame-level split leaks the val set into training and
@@ -382,18 +384,26 @@ def plan_train_val_episodes(dataset_root, max_episodes, num_val_episodes):
         log.warning("MAX_EPISODES=%d exceeds total_episodes=%d; clamping", max_episodes, total_episodes)
         all_eps = list(range(total_episodes))
 
-    if num_val_episodes <= 0:
-        return all_eps, []
-    if num_val_episodes >= len(all_eps):
+    val_eps = sorted({int(e) for e in (val_episodes or [])})
+
+    out_of_range = [e for e in val_eps if e not in all_eps]
+    if out_of_range:
         raise ValueError(
-            f"NUM_VAL_EPISODES={num_val_episodes} leaves no training episodes "
-            f"(only {len(all_eps)} available)."
+            f"VAL_EPISODES {out_of_range} are outside the loaded episode range "
+            f"{all_eps[0]}..{all_eps[-1]} (MAX_EPISODES={max_episodes}, "
+            f"total_episodes={total_episodes})."
         )
 
-    val_eps = all_eps[-num_val_episodes:]
-    train_eps = all_eps[:-num_val_episodes]
-    log.info("episode split: %d train %s..%s | %d val %s",
-             len(train_eps), train_eps[0], train_eps[-1], len(val_eps), val_eps)
+    train_eps = [e for e in all_eps if e not in set(val_eps)]
+    if not train_eps:
+        raise ValueError(f"VAL_EPISODES {val_eps} leaves no training episodes.")
+
+    if not val_eps:
+        log.warning("VAL_EPISODES is empty -- validation disabled, no val metrics "
+                    "and no policy_best.ckpt")
+    else:
+        log.info("episode split: %d train (%s..%s) | %d val %s",
+                 len(train_eps), train_eps[0], train_eps[-1], len(val_eps), val_eps)
     return train_eps, val_eps
 
 

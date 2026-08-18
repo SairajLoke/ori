@@ -66,7 +66,7 @@ def my_function():
 
 from configs import ( EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
     FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
-    MAX_EPISODES, NUM_VAL_EPISODES, VAL_EVERY_N_EPOCHS )
+    MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS )
 
 
 def print_time(s, e, name):
@@ -520,7 +520,8 @@ def main(args):
                          'camera_names': CAMERA_NAMES, #TODO check this order in list
                          'use_tactile': use_tactile,
                          'state_dim': args['state_dim'],
-                         'proprioceptive_temporal_horizon': PROPRIOCEPTIVE_TEMPORAL_HORIZON
+                         'proprioceptive_temporal_horizon': PROPRIOCEPTIVE_TEMPORAL_HORIZON,
+                         'backbone_weights': BACKBONE_WEIGHTS,
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': LR_BACKBONE, 'backbone' : LR_BACKBONE, 'num_queries': 1,
@@ -642,7 +643,7 @@ def main(args):
         train_eps, val_eps = plan_train_val_episodes(
             dataset_root=FULL_DATASET,
             max_episodes=MAX_EPISODES,
-            num_val_episodes=NUM_VAL_EPISODES,
+            val_episodes=VAL_EPISODES,
         )
         config['train_episodes'] = train_eps
         config['val_episodes'] = val_eps
@@ -1601,9 +1602,9 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         log.info("saved final weights -> %s", ckpt_path)
 
         if best_ckpt_info is None:
-            # Only possible when NUM_VAL_EPISODES=0. Fall back to the last epoch,
+            # Only possible when VAL_EPISODES is empty. Fall back to the last epoch,
             # but say so -- this is NOT a validated best checkpoint.
-            log.warning("no validation was run (NUM_VAL_EPISODES=0); "
+            log.warning("no validation was run (VAL_EPISODES empty); "
                         "policy_last.ckpt is the only meaningful checkpoint")
         else:
             best_epoch, min_val_loss, _ = best_ckpt_info

@@ -28,10 +28,18 @@ FULL_DATASET   =  Path(_DATASET_ROOT)
 # Max episodes to use (0 = all episodes). Set via MAX_EPISODES env var.
 MAX_EPISODES = int(os.environ.get('MAX_EPISODES', '0'))
 
-# Episodes held out for validation. These are taken from the END of the loaded
-# episode range so that changing MAX_EPISODES keeps the train set a prefix.
-NUM_VAL_EPISODES = int(os.environ.get('NUM_VAL_EPISODES', '2'))
+# Episode indices held out for validation, as explicit indices so the holdout is
+# identical across runs no matter what MAX_EPISODES is set to -- which is what
+# makes two runs comparable. Set VAL_EPISODES="" to disable validation.
+#   VAL_EPISODES=0,1      -> default
+#   VAL_EPISODES=3,17,42  -> any indices you like
+VAL_EPISODES = [int(x) for x in os.environ.get('VAL_EPISODES', '0,1').split(',') if x.strip()]
 VAL_EVERY_N_EPOCHS = int(os.environ.get('VAL_EVERY_N_EPOCHS', '10'))
+
+# Optional local ResNet checkpoint for the vision backbone. When unset the
+# backbone downloads ImageNet weights via torch hub (needs network + a writable
+# TORCH_HOME). Point this at a .pth/.ckpt to load your own instead.
+BACKBONE_WEIGHTS = os.environ.get('BACKBONE_WEIGHTS') or None
 
 
 

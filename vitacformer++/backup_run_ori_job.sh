@@ -22,7 +22,9 @@ cd $HOME/other/ori/ori/ViTacFormer
 export DATASET_ROOT="${DATASET_ROOT:-$HOME/other/new_data/larger_data}"
 echo "DATASET_ROOT     : $DATASET_ROOT"
 echo "MAX_EPISODES     : ${MAX_EPISODES:-0} (0=all)"
-echo "NUM_VAL_EPISODES : ${NUM_VAL_EPISODES:-2}"
+echo "VAL_EPISODES     : ${VAL_EPISODES:-0,1}"
+echo "VAL_EVERY_N_EPOCHS: ${VAL_EVERY_N_EPOCHS:-10}"
+echo "BACKBONE_WEIGHTS : ${BACKBONE_WEIGHTS:-<torch hub ImageNet>}"
 echo "USE_NORMALIZATION: ${USE_NORMALIZATION:-0}"
 echo "MIXED_PRECISION  : ${MIXED_PRECISION:-bf16}"
 

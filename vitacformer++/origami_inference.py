@@ -604,6 +604,9 @@ def run_episode_inference(dataset, policy, device, use_tactile, episode_idx,
 def main():
     parser = argparse.ArgumentParser(description="Origami Inference & Open-Loop Evaluation")
     parser.add_argument('--ckpt_path', type=str, required=True, help='path to policy_*.ckpt')
+    parser.add_argument('--dataset_root', type=str, default=None,
+                        help='dataset to run inference over. Defaults to configs.INFERENCE_DATASET_ROOT, '
+                             'which is a hardcoded absolute server path -- set this to run anywhere else.')
     parser.add_argument('--stats_path', type=str, default=None,
                         help='DEPRECATED and ignored. Normalization is rebuilt from '
                              'normalizer_config.json next to the checkpoint.')
@@ -673,8 +676,10 @@ def main():
     # ── Load dataset ──────────────────────────────────────────────────
     print("\n[Dataset] Loading origami dataset...")
     
+    _ds_root = Path(args.dataset_root) if args.dataset_root else INFERENCE_DATASET_ROOT
+    print(f"  Dataset root: {_ds_root}")
     dataset = get_origami_full_dataset(
-        dataset_root=INFERENCE_DATASET_ROOT,
+        dataset_root=_ds_root,
         split="full", #NOTE: till i don't have train/test /val splits
         TOLERANCE=TOLERANCE,
         delta_timestamps=DELTA_TIMESTAMPS,

@@ -34,28 +34,35 @@ if [[ ! "$NUM_GPUS" =~ ^(1|2|4|8)$ ]]; then
 fi
 
 # --- Mixed precision config selection ---
+# Config files are named uniformly: accelerate_config_<N>gpu_<precision>.yaml
+# for every N in {1,2,4,8} and every precision in {bf16,fp16,fp32}. There are no
+# special cases and no unsuffixed files, so a request can never silently
+# resolve to a config with a different precision than the one you asked for.
 MIXED_PRECISION="${MIXED_PRECISION:-bf16}"
 case "$MIXED_PRECISION" in
-    bf16|fp16)
-        ACCELERATE_CONFIG="accelerate_configs/accelerate_config_${NUM_GPUS}gpu_${MIXED_PRECISION}.yaml"
-        ;;
-    fp32)
-        ACCELERATE_CONFIG="accelerate_configs/accelerate_config_${NUM_GPUS}gpu.yaml"
-        ;;
+    bf16|fp16|fp32) ;;
     *)
         echo "ERROR: MIXED_PRECISION must be one of: bf16, fp16, fp32. Got: $MIXED_PRECISION"
         exit 1
         ;;
 esac
-
-# For 4 GPUs, bf16 uses the default config (already bf16)
-if [ "$MIXED_PRECISION" = "bf16" ] && [ "$NUM_GPUS" = "4" ]; then
-    ACCELERATE_CONFIG="accelerate_configs/accelerate_config_${NUM_GPUS}gpu.yaml"
-fi
-
+ACCELERATE_CONFIG="accelerate_configs/accelerate_config_${NUM_GPUS}gpu_${MIXED_PRECISION}.yaml"
 
 if [ ! -f "$ACCELERATE_CONFIG" ]; then
     echo "ERROR: Accelerate config file not found: $ACCELERATE_CONFIG"
+    echo "Available configs:"
+    ls -1 accelerate_configs/ | sed 's/^/  /'
+    exit 1
+fi
+
+# Fail fast if the file's precision does not match what was requested.
+case "$MIXED_PRECISION" in
+    fp32) EXPECT_MP="'no'" ;;
+    *)    EXPECT_MP="'${MIXED_PRECISION}'" ;;
+esac
+ACTUAL_MP=$(grep -E "^mixed_precision:" "$ACCELERATE_CONFIG" | awk '{print $2}')
+if [ "$ACTUAL_MP" != "$EXPECT_MP" ]; then
+    echo "ERROR: $ACCELERATE_CONFIG declares mixed_precision=$ACTUAL_MP but MIXED_PRECISION=$MIXED_PRECISION expects $EXPECT_MP"
     exit 1
 fi
 
@@ -106,7 +113,7 @@ cd detr && pip install -e . && cd ..
 $ACCELERATE_CMD origami_imitate_episodes.py \
 --task_name fold_plane \
 --expt_name  "$EXPT_NAME" \
---policy_class ACT --kl_weight 10 --chunk_size 00 --hidden_dim 512 \
+--policy_class ACT --kl_weight 10 --hidden_dim 512 \
 --batch_size 64 --dim_feedforward 3200 \
 --ckpt_save_epochs 1 \
 --num_epochs 100  \

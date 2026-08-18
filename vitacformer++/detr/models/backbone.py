@@ -11,7 +11,7 @@ from torch import nn
 from torchvision.models._utils import IntermediateLayerGetter
 from typing import Dict, List
 
-from util.misc import NestedTensor, is_main_process
+from util.misc import NestedTensor, is_main_process, is_dist_avail_and_initialized
 
 from .position_encoding import build_position_encoding
 
@@ -100,9 +100,24 @@ class Backbone(BackboneBase):
                  train_backbone: bool,
                  return_interm_layers: bool,
                  dilation: bool):
+        # Upstream ACT/DETR passes `pretrained=is_main_process()`, which loads
+        # ImageNet weights on rank 0 ONLY -- every other rank builds a randomly
+        # initialised ResNet and relies on DDP's construction-time broadcast to
+        # overwrite it. That is fine upstream (single process => always True)
+        # but here it is silent, load-bearing luck: any code path that reads the
+        # weights before accelerator.prepare() sees garbage on ranks 1..N-1.
+        #
+        # Instead: every rank loads real pretrained weights, and a barrier makes
+        # rank 0 populate the torch-hub cache first so the ranks never race on
+        # the download.
+        _distributed = is_dist_avail_and_initialized()
+        if _distributed and not is_main_process():
+            torch.distributed.barrier()
         backbone = getattr(torchvision.models, name)(
             replace_stride_with_dilation=[False, False, dilation],
-            pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d) # pretrained # TODO do we want frozen batch_norm??
+            weights="DEFAULT", norm_layer=FrozenBatchNorm2d)
+        if _distributed and is_main_process():
+            torch.distributed.barrier()
         num_channels = 512 if name in ('resnet18', 'resnet34') else 2048
         super().__init__(backbone, train_backbone, num_channels, return_interm_layers)
 
@@ -131,14 +146,10 @@ def build_backbone(args):
     model = Joiner(backbone, position_embedding)
     model.num_channels = backbone.num_channels
 
-    _pretrained = is_main_process()
     log.info("backbone=%s num_channels=%d train_backbone=%s (lr_backbone=%s) "
              "return_interm_layers=%s dilation=%s",
              args.backbone, backbone.num_channels, train_backbone, args.lr_backbone,
              return_interm_layers, args.dilation)
-    log.info("  norm_layer=FrozenBatchNorm2d  imagenet_pretrained=%s  pos_embed=%s",
-             _pretrained, args.position_embedding)
-    if not _pretrained:
-        log.info("  (non-main rank: weights are random here; DDP broadcasts rank 0's at wrap time)")
-    log.info("  NOTE: inputs are expected in [0,1] with NO ImageNet mean/std applied upstream")
+    log.info("  norm_layer=FrozenBatchNorm2d  imagenet_pretrained=True (all ranks)  pos_embed=%s",
+             args.position_embedding)
     return model

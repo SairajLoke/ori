@@ -17,6 +17,15 @@ ${LD_LIBRARY_PATH:-}
 # Working directory — must be ViTacFormer for relative paths to work
 cd $HOME/other/ori/ori/ViTacFormer
 
+# --- Dataset location (REQUIRED: configs.py reads DATASET_ROOT and now fails
+#     loudly if it is unset, instead of raising Path(None) -> TypeError) ---
+export DATASET_ROOT="${DATASET_ROOT:-$HOME/other/new_data/larger_data}"
+echo "DATASET_ROOT     : $DATASET_ROOT"
+echo "MAX_EPISODES     : ${MAX_EPISODES:-0} (0=all)"
+echo "NUM_VAL_EPISODES : ${NUM_VAL_EPISODES:-2}"
+echo "USE_NORMALIZATION: ${USE_NORMALIZATION:-0}"
+echo "MIXED_PRECISION  : ${MIXED_PRECISION:-bf16}"
+
 # --- Run the multi-GPU training ---
 # Usage: bash run_ori_job.sh [NUM_GPUS]
 # Default: 4 GPUs

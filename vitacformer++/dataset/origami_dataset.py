@@ -122,15 +122,13 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     if _verbose:
         log_before_after("action", action_raw, action)
 
-    # Joint torque (log even if not used, to debug)
-    if "observation.state.joint_torque" in batch:
-        joint_torque_raw = batch["observation.state.joint_torque"]
-        joint_torque = normalizer.normalize("observation.state.joint_torque", joint_torque_raw) if normalizer else joint_torque_raw
-        joint_torque[:, 58:65] = 0.0  #NOTE::::::::::::::
-
-        if _verbose:
-            log.debug("  joint_torque computed but NOT forwarded to the model (dead work)")
-            log_before_after("observation.state.joint_torque", joint_torque_raw, joint_torque)
+    # observation.state.joint_torque is NOT a model input. It used to be
+    # normalized, moved to GPU and mutated here every single batch, then
+    # dropped -- pure overhead on the critical path. Trace it if you want to
+    # inspect it, but do no work by default.
+    if _verbose and "observation.state.joint_torque" in batch:
+        log_tensor(log, TRACE, "  raw/joint_torque (unused by the model)",
+                   batch["observation.state.joint_torque"])
 
     # Images - convert uint8→float32 first (required for model input, logging)
     # return_uint8=True means images arrive as uint8 [0,255] - must convert to float32 [0,1]
@@ -191,13 +189,19 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         log.debug("  NOTE images are [0,1]; no ImageNet mean/std applied before the pretrained backbone")
 
     B, T = action.shape[:2]
-    action_mask = torch.zeros(
-        (B, T),
-        dtype=torch.bool,
-        device=action.device,
-    )
+    # LeRobot clamps out-of-episode queries to the last real frame and reports
+    # which entries it faked in "<key>_is_pad". Near an episode end that means
+    # the final action is duplicated for up to CHUNK_SIZE steps -- training on
+    # those as if they were real teaches the policy to freeze. Use the real mask.
+    if "action_is_pad" in batch:
+        action_mask = batch["action_is_pad"][:, :T].to(torch.bool)
+    else:
+        action_mask = torch.zeros((B, T), dtype=torch.bool, device=action.device)
+        log.warning("batch has no 'action_is_pad' -- falling back to an all-False action mask")
     if _verbose:
-        log.debug("  action_mask synthesised as all-False [%d,%d]; batch['action_is_pad'] is IGNORED", B, T)
+        _npad = int(action_mask.sum().item())
+        log.debug("  action_mask from action_is_pad [%d,%d]: %d/%d padded steps (%.2f%%)",
+                  B, T, _npad, action_mask.numel(), 100.0 * _npad / max(action_mask.numel(), 1))
 
     output = {
         "image": image,
@@ -225,7 +229,19 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
 
         tactile_next = tactile_pastNfuture[:, TACTILE_TEMPORAL_HORIZON : , :]
         tactile_next_deltas = torch.diff(tactile_next, dim=1)
-        output["tactile_next"] =  torch.concat((tactile_next[:, 1:, : ], tactile_next_deltas), dim=-1)    # [B, 18, 60] # [B, 18, 60]
+        output["tactile_next"] =  torch.concat((tactile_next[:, 1:, : ], tactile_next_deltas), dim=-1)    # [B, 18, 120]
+
+        # Padding mask for the tactile *target*. Row j of tactile_next holds the
+        # value at offset j+1 and the delta (j+1)-(j), so it is only a real
+        # supervision target when BOTH endpoints are inside the episode.
+        if "observation.tactile_is_pad" in batch:
+            _tac_pad = batch["observation.tactile_is_pad"].to(torch.bool)          # [B, 37]
+            _next_pad = _tac_pad[:, TACTILE_TEMPORAL_HORIZON:]                     # [B, 19] offsets 0..+18
+            output["tactile_next_mask"] = _next_pad[:, 1:] | _next_pad[:, :-1]     # [B, 18]
+        else:
+            output["tactile_next_mask"] = torch.zeros(
+                output["tactile_next"].shape[:2], dtype=torch.bool, device=tactile_next.device)
+            log.warning("batch has no 'observation.tactile_is_pad' -- tactile target mask is all-False")
 
         timing['tactile'] = time.time() - _t_tac_start
 
@@ -246,6 +262,9 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
                             "current frame is dropped by past[1:], and diff(next)[0] spans "
                             "offset %d -> %d. See configs.TACTILE_TEMPORAL_TOTAL_TIMESTAMPS.",
                             _idx[TACTILE_TEMPORAL_HORIZON], _idx[TACTILE_TEMPORAL_HORIZON + 1])
+            log.debug("  tactile_next_mask: %d/%d padded target steps",
+                      int(output["tactile_next_mask"].sum().item()),
+                      output["tactile_next_mask"].numel())
             log_tensor(log, TRACE, "  out/tactile", output["tactile"])
             log_tensor(log, TRACE, "  out/tactile_next", output["tactile_next"])
 

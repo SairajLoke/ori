@@ -12,12 +12,26 @@ CHUNK_SIZE = 100
 
 #----------- :NOTE:------------------ expts 
 MASK_FINGERS = False 
-MAXDURATION_IN_EPISODE_SEC =  None #120 
-# Read dataset path from env var (set by run_ori_job.sh for scratch storage), fallback to NFS
-FULL_DATASET   =  Path(os.environ.get('DATASET_ROOT', None))
+MAXDURATION_IN_EPISODE_SEC =  None #120
+# Dataset path comes from the DATASET_ROOT env var, which run_ori_job.sh points
+# either at local scratch NVMe or at the NFS source. Fail loudly if it is unset:
+# Path(None) used to raise an opaque TypeError here.
+_DATASET_ROOT = os.environ.get('DATASET_ROOT')
+if not _DATASET_ROOT:
+    raise RuntimeError(
+        "DATASET_ROOT env var is not set. Export it before launching, e.g.\n"
+        "  export DATASET_ROOT=$HOME/other/new_data/larger_data\n"
+        "run_ori_job.sh / backup_scratch_run_ori_job.sh normally do this for you."
+    )
+FULL_DATASET   =  Path(_DATASET_ROOT)
 
 # Max episodes to use (0 = all episodes). Set via MAX_EPISODES env var.
 MAX_EPISODES = int(os.environ.get('MAX_EPISODES', '0'))
+
+# Episodes held out for validation. These are taken from the END of the loaded
+# episode range so that changing MAX_EPISODES keeps the train set a prefix.
+NUM_VAL_EPISODES = int(os.environ.get('NUM_VAL_EPISODES', '2'))
+VAL_EVERY_N_EPOCHS = int(os.environ.get('VAL_EVERY_N_EPOCHS', '10'))
 
 
 

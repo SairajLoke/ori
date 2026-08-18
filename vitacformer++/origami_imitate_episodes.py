@@ -486,9 +486,6 @@ def main(args):
         log.info("  DELTA_TIMESTAMPS[%-22s] %d offsets, frame idx %s%s",
                  _k, len(_v), [round(t * FPS) for t in _v[:6]],
                  " ..." if len(_v) > 6 else "")
-    if args.get('chunk_size') not in (None, CHUNK_SIZE):
-        log.warning("--chunk_size=%s is IGNORED; num_queries comes from configs.CHUNK_SIZE=%s",
-                    args.get('chunk_size'), CHUNK_SIZE)
 
     # episode_len = 10000
     # camera_names = ['/observe/vision/head/stereo/lefteye/rgb',
@@ -552,8 +549,12 @@ def main(args):
         'lr_config': {
             'policy': 'CosineAnnealing',
             'warmup': 'linear',
-            'warmup_iters': 500,
-            'warmup_ratio': 1.0 / 10,
+            # Warmup as a FRACTION of the total schedule, not an absolute step
+            # count: 500 fixed steps meant something completely different at
+            # 50 episodes vs 500, and at 1 GPU vs 8. Resolved to an absolute
+            # number once total_iters is known (see train_bc).
+            'warmup_ratio_of_total': float(os.environ.get('WARMUP_RATIO', '0.03')),
+            'warmup_iters_min': 100,
             'min_lr_ratio': 1e-1,
         },
         'ckpt_save_epochs': args['ckpt_save_epochs'],
@@ -879,13 +880,20 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
         # tactile_next_norm = normalizer.normalize("observation.tactile_next", tactile_next)
         # tactile_next_norm = normalize_tactile_next(tactile_next, normalizer)  # normalize
         tactile_next_norm = tactile_next_norm.to(device)# , non_blocking=True)
-        #TODO: TO/or not to mask tactile ? seems like they didn't???
+
+        # Padding mask for the tactile target (built in convert_batch from
+        # observation.tactile_is_pad). Used only for the l1_tac denominator.
+        tactile_next_pad = data.get("tactile_next_mask", None)
+        if tactile_next_pad is not None:
+            tactile_next_pad = tactile_next_pad.to(device)
 
         if log_final_inputs:
             log_final_model_inputs(qpos_data_norm, image_data, action_data_norm, is_pad,
                                    tactile_norm, tactile_next_norm, writer, global_step)
 
-        return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device, tactile_norm, tactile_next_norm, epoch)
+        return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
+                      tactile_norm, tactile_next_norm,
+                      tactile_next_pad=tactile_next_pad, epoch=epoch)
 
     if log_final_inputs:
         log_final_model_inputs(qpos_data_norm, image_data, action_data_norm, is_pad,
@@ -1023,18 +1031,24 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
     # === 构建 scheduler ===
     total_iters = num_epochs * len(train_dataloader)
 
+    # total_iters is computed BEFORE prepare(), i.e. in "whole dataset" units.
+    # AcceleratedScheduler advances the wrapped scheduler num_processes times per
+    # optimizer step, so the schedule lives in exactly these units too -- which
+    # means warmup_iters here really is `ratio` of the run, on any GPU count.
+    _wu_ratio = config['lr_config']['warmup_ratio_of_total']
+    warmup_iters = max(config['lr_config']['warmup_iters_min'], int(_wu_ratio * total_iters))
+    config['lr_config']['warmup_iters'] = warmup_iters
+
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
-        num_warmup_steps=config['lr_config']['warmup_iters'],
+        num_warmup_steps=warmup_iters,
         num_training_steps=total_iters,
     )
-    log.info("scheduler: cosine, warmup=%d, total=%d (=%d epochs x %d pre-shard batches)",
-             config['lr_config']['warmup_iters'], total_iters, num_epochs, len(train_dataloader))
-    if accelerator.num_processes > 1:
-        log.info("  accelerate steps the wrapped scheduler %dx per optimizer step, so warmup "
-                 "completes after ~%d real steps",
-                 accelerator.num_processes,
-                 config['lr_config']['warmup_iters'] // accelerator.num_processes)
+    log.info("scheduler: cosine, total=%d schedule-steps (=%d epochs x %d pre-shard batches)",
+             total_iters, num_epochs, len(train_dataloader))
+    log.info("  warmup=%d schedule-steps (%.1f%% of total, ratio=%.3f) -> ~%d real optimizer steps on %d rank(s)",
+             warmup_iters, 100.0 * warmup_iters / max(total_iters, 1), _wu_ratio,
+             warmup_iters // max(accelerator.num_processes, 1), accelerator.num_processes)
 
     if load_pretrained_for_newtraining is not None and os.path.exists(load_pretrained_for_newtraining):
         log.info("loading pretrained WEIGHTS ONLY (fresh optimizer/scheduler/epoch) from %s",
@@ -1068,12 +1082,19 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         optimizer.load_state_dict(checkpoint['optimizer'])
         if 'scheduler' in checkpoint:
             scheduler.load_state_dict(checkpoint['scheduler'])
-        start_epoch = checkpoint.get('epoch', 0)
+        # +1: the stored epoch is the last one that COMPLETED, so re-running it
+        # would train on it twice. (For a mid-epoch sigterm/globalstep ckpt this
+        # forfeits the remainder of that epoch, which is the safer trade.)
+        start_epoch = checkpoint.get('epoch', -1) + 1
         global_step = checkpoint.get('global_step', 0)
         min_val_loss = checkpoint.get('min_val_loss', np.inf)
         best_ckpt_info = checkpoint.get('best_ckpt_info', None)
-        log.info("[Resume] restored epoch=%d global_step=%d min_val_loss=%s lr=%s",
-                 start_epoch, global_step, min_val_loss, optimizer.param_groups[0]['lr'])
+        log.info("[Resume] restored epoch=%d (resuming at %d) global_step=%d min_val_loss=%s lr=%s",
+                 checkpoint.get('epoch', -1), start_epoch, global_step, min_val_loss,
+                 optimizer.param_groups[0]['lr'])
+        if start_epoch >= num_epochs:
+            log.warning("[Resume] start_epoch=%d >= num_epochs=%d -- the training loop will not "
+                        "run. Raise --num_epochs.", start_epoch, num_epochs)
 
     elif resume_path is not None:
         log.error("--resume_path=%s does not exist -- SILENTLY training from random init", resume_path)
@@ -1104,26 +1125,27 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
     timed_dataloader = TimingDataLoader(train_dataloader)
 
     train_history = []
-
     validation_history = []
-    if global_step != 0 or best_ckpt_info is not None:
-        log.warning("resetting global_step %d -> 0 and best_ckpt_info after resume "
-                    "(start_epoch=%d is kept). TensorBoard steps and globalstep_*.ckpt "
-                    "names will restart and overlay the previous run.",
-                    global_step, start_epoch)
-    global_step = 0
-    min_val_loss = np.inf
-    best_ckpt_info = None
+    # NOTE: global_step / min_val_loss / best_ckpt_info are initialised above and
+    # then overwritten by the resume block. They used to be reset to 0/inf/None
+    # right here, which silently discarded everything the resume had just
+    # restored -- TensorBoard curves restarted at 0 and overlaid the previous
+    # run, and policy_globalstep_*.ckpt names collided. Do not re-initialise.
     epoch_start_idx = 0  # track start index of current epoch in train_history
+    log.info("training loop: epochs %d..%d, starting at global_step=%d",
+             start_epoch, num_epochs - 1, global_step)
 
     # === TensorBoard writer ===
     tb_log_dir = os.path.join(ckpt_dir, 'tensorboard', timestamp)
-    writer = SummaryWriter(log_dir=tb_log_dir)
-    print(f"[TensorBoard] Logging to {tb_log_dir}")
-    # log hyperparameters as text
-    hparam_str = "\n".join([f"{k}: {v}" for k, v in config.items()
-                            if k != 'policy_config'])
-    writer.add_text("config/hparams", hparam_str, 0)
+    # Only rank 0 owns the event files; other ranks previously created their own
+    # writer in the same directory, producing duplicate/interleaved event files.
+    writer = SummaryWriter(log_dir=tb_log_dir) if accelerator.is_main_process else None
+    if writer is not None:
+        log.info("[TensorBoard] logging to %s", tb_log_dir)
+        # log hyperparameters as text
+        hparam_str = "\n".join([f"{k}: {v}" for k, v in config.items()
+                                if k != 'policy_config'])
+        writer.add_text("config/hparams", hparam_str, 0)
 
     # === saving untrained for debug ===
     # ckpt_path = os.path.join(ckpt_dir, f'untrained_policy.ckpt')
@@ -1242,7 +1264,8 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
 
                     # ── forward pass (includes .to(device) transfer + policy forward) ──
                     _t_fwd_start = time.time()
-                    log_final = epoch % 10 == 0 and batch_idx < viz_n_batches
+                    log_final = (accelerator.is_main_process
+                                 and epoch % 10 == 0 and batch_idx < viz_n_batches)
                     forward_dict = origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=epoch,
                                                         log_final_inputs=log_final, writer=writer, global_step=global_step)
                     _t_fwd_total = time.time() - _t_fwd_start
@@ -1265,26 +1288,24 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                 #need to time each batch step 
 
 
-                # === input stats logging: first 3 batches of the first epoch ===
-                if epoch % 10 == 0 and batch_idx < viz_n_batches:
+                # === diagnostics: first N batches every 10th epoch, MAIN PROCESS ONLY ===
+                # (all ranks used to run these and race on the same PNG/log paths)
+                _diag = accelerator.is_main_process and epoch % 10 == 0 and batch_idx < viz_n_batches
+                if _diag:
                     try:
                         log_input_stats(data, use_tactile, writer, global_step, info_log_path)
                     except Exception as e:
-                        print(f"[InputStats] Could not log input stats for batch {batch_idx}: {e}")
-                    print("batch idx", batch_idx)
-                    # break #TODO remove this 
-
-                # === batch visualization: sample 0, first 3 batches, every 10th epoch ===
+                        log.warning("could not log input stats for batch %d: %s", batch_idx, e)
 
                 # NOTE: must be AFTER convert_batch so data has "image", "lowdim", "action" keys
-                if viz_enabled and epoch % 10 == 0 and batch_idx < viz_n_batches:
+                if _diag and viz_enabled:
                     try:
                         visualize_batch(
                             data, batch_idx=batch_idx, epoch=epoch,
                             save_dir=viz_dir, use_tactile=use_tactile,
                         )
                     except Exception as e:
-                        print(f"[Viz] Could not visualize batch {batch_idx}: {e}")
+                        log.warning("could not visualize batch %d: %s", batch_idx, e)
 
                 
                 # backward
@@ -1460,7 +1481,9 @@ if __name__ == '__main__':
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
-    parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)
+    # NOTE: no --chunk_size. The action chunk length is CHUNK_SIZE in configs.py,
+    # because it also defines DELTA_TIMESTAMPS["action"]; a CLI value could not
+    # change the dataset and was silently ignored.
     parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False)
     parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     parser.add_argument('--temporal_agg', action='store_true')

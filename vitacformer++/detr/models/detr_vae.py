@@ -13,6 +13,35 @@ import numpy as np
 import IPython
 e = IPython.embed
 
+# `detr` is pip-installed as its own package, so my_utils may not be importable
+# when it is used standalone. Degrade to no-op logging rather than blow up.
+try:
+    from my_utils.ori_logging import (get_logger, log_tensor, log_module_shapes,
+                                      TRACE, StepGate)
+except ImportError:  # pragma: no cover
+    import logging as _logging
+    TRACE = 5
+
+    def get_logger(name):
+        return _logging.getLogger("ori." + name)
+
+    def log_tensor(*a, **k):
+        pass
+
+    def log_module_shapes(*a, **k):
+        pass
+
+    class StepGate:
+        def __init__(self, **k):
+            pass
+
+        def __call__(self):
+            return False
+
+log = get_logger("model")
+# forward() runs every step; only trace the first few calls + a periodic sample.
+_fwd_gate = StepGate(first_n=2, every=1000)
+
 
 def reparametrize(mu, logvar):
     std = logvar.div(2).exp()
@@ -89,6 +118,26 @@ class DETRVAE(nn.Module):
         else:
             self.additional_pos_embed = nn.Embedding(2, hidden_dim) # learned position embedding for proprio and latent
 
+        # ---- architecture summary (once, at build time) ----
+        log.info("DETRVAE built:")
+        log.info("  hidden_dim=%d  state_dim=%d  num_queries=%d  latent_dim=%d",
+                 hidden_dim, state_dim, num_queries, self.latent_dim)
+        log.info("  qpos_dim=%d (= state_dim %d x proprio_horizon %d) -> input_proj_robot_state",
+                 qpos_dim, state_dim, proprioceptive_temporal_horizon)
+        log.info("  cameras=%d %s  (ONE shared backbone is used for all of them)",
+                 len(camera_names), camera_names)
+        log.info("  backbone out channels=%s -> input_proj -> hidden_dim",
+                 backbones[0].num_channels if backbones else None)
+        log.info("  use_tactile=%s", use_tactile)
+        if use_tactile:
+            log.info("    tactile_dim=%d per step, flattened=%d (18 x %d) -> input_proj_tactile",
+                     tactile_dim, tactile_dim_all, tactile_dim)
+            log.info("    tactile_head -> %d ; query_embed_tactile=18 queries", tactile_dim)
+            log.info("    additional_pos_embed slots: [0]=tactile [1]=tactile_pred [2]=latent [3]=proprio")
+        else:
+            log.info("    additional_pos_embed slots: [0]=latent [1]=proprio")
+        log_module_shapes(log, TRACE, self, max_params=200)
+
 
     def forward(self, qpos, image, env_state, tactile=None, actions=None, is_pad=None, tactile_next=None, epoch=0):
         """
@@ -101,6 +150,17 @@ class DETRVAE(nn.Module):
         """
         is_training = actions is not None # train or val
         bs, _ = qpos.shape
+
+        _trace = _fwd_gate() and log.isEnabledFor(TRACE)
+        if _trace:
+            log.log(TRACE, "--- DETRVAE.forward  bs=%d is_training=%s epoch=%s ---", bs, is_training, epoch)
+            log_tensor(log, TRACE, "in/qpos", qpos)
+            log_tensor(log, TRACE, "in/image", image)
+            log_tensor(log, TRACE, "in/actions", actions)
+            log_tensor(log, TRACE, "in/is_pad", is_pad)
+            log_tensor(log, TRACE, "in/tactile", tactile)
+            log_tensor(log, TRACE, "in/tactile_next", tactile_next)
+
         ### Obtain latent z from action sequence
         if is_training:
             # project action sequence to embedding dim, and concat with a CLS token
@@ -125,10 +185,18 @@ class DETRVAE(nn.Module):
             logvar = latent_info[:, self.latent_dim:]
             latent_sample = reparametrize(mu, logvar)
             latent_input = self.latent_out_proj(latent_sample)
+            if _trace:
+                log.log(TRACE, "CVAE encoder: input %s (cls + qpos + %d actions)",
+                        tuple(encoder_input.shape), action_embed.shape[1])
+                log_tensor(log, TRACE, "cvae/mu", mu)
+                log_tensor(log, TRACE, "cvae/logvar", logvar)
+                log_tensor(log, TRACE, "cvae/latent_input", latent_input)
         else:
             mu = logvar = None
             latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
             latent_input = self.latent_out_proj(latent_sample)
+            if _trace:
+                log.log(TRACE, "CVAE encoder skipped (inference): latent sampled as zeros")
 
         if self.backbones is not None:
             # Image observation features and position embeddings
@@ -141,23 +209,37 @@ class DETRVAE(nn.Module):
                 pos = pos[0]
                 all_cam_features.append(self.input_proj(features))
                 all_cam_pos.append(pos)
+                if _trace:
+                    log_tensor(log, TRACE, f"backbone/cam{cam_id}({cam_name.split('.')[-1]})", features)
             # proprioception features
             proprio_input = self.input_proj_robot_state(qpos)
             # fold camera dimension into width dimension
             src = torch.cat(all_cam_features, axis=3)
             pos = torch.cat(all_cam_pos, axis=3)
+            if _trace:
+                log.log(TRACE, "vision: %d cams concatenated along W -> src %s (=%d image tokens)",
+                        len(all_cam_features), tuple(src.shape), src.shape[2] * src.shape[3])
+                log_tensor(log, TRACE, "proprio_input", proprio_input)
             if self.use_tactile:
                 tactile_input = self.input_proj_tactile(tactile)
+                if _trace:
+                    log_tensor(log, TRACE, "tactile_input (pass1)", tactile_input)
                 hs_tactile = self.transformer(src, None, self.query_embed_tactile.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, None)[0]
                 tactile_hat = self.tactile_head(hs_tactile)  ##[bs, 18, tactile_dim]
-                # print("tactile_hat", tactile_hat.shape)
                 B, T, D = tactile_hat.shape
-                # print("tactile_next", tactile_next.shape)
-                if epoch < 75:
+                _teacher_forced = epoch < 75
+                if _teacher_forced:
                     tactile_pred_input = tactile_next.view(B, T * D)
                 else:
                     tactile_pred_input = tactile_hat.view(B, T * D)
                 tactile_pred_input = self.input_proj_tactile(tactile_pred_input)
+                if _trace:
+                    log.log(TRACE, "pass1 -> tactile_hat %s ; pass2 tactile_pred source=%s (epoch=%s, threshold=75)",
+                            tuple(tactile_hat.shape),
+                            "GROUND TRUTH tactile_next" if _teacher_forced else "SELF-PREDICTED tactile_hat",
+                            epoch)
+                    log_tensor(log, TRACE, "tactile_hat", tactile_hat)
+                    log_tensor(log, TRACE, "tactile_pred_input (pass2)", tactile_pred_input)
                 hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, tactile_pred_input)[0]
             else:
                 hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight)[0]
@@ -169,6 +251,11 @@ class DETRVAE(nn.Module):
             hs = self.transformer(transformer_input, None, self.query_embed.weight, self.pos.weight)[0]
         a_hat = self.action_head(hs)
         is_pad_hat = self.is_pad_head(hs)
+        if _trace:
+            log_tensor(log, TRACE, "decoder/hs", hs)
+            log_tensor(log, TRACE, "out/a_hat", a_hat)
+            log_tensor(log, TRACE, "out/tactile_hat", tactile_hat)
+            log.log(TRACE, "--- DETRVAE.forward done ---")
         return a_hat, is_pad_hat, [mu, logvar], tactile_hat
 
 
@@ -288,7 +375,13 @@ def build(args):
     )
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
-    print("number of parameters: %.2fM" % (n_parameters/1e6,))
+    log.info("ACT model built: %.2fM trainable parameters", n_parameters / 1e6)
+    log.info("  transformer: d_model=%d nhead=%d enc_layers=%d dec_layers=%d ffn=%d dropout=%s pre_norm=%s",
+             args.hidden_dim, args.nheads, args.enc_layers, args.dec_layers,
+             args.dim_feedforward, args.dropout, args.pre_norm)
+    log.info("  cvae encoder: %d layers (shares TransformerEncoderLayer, use_tactile=False)", args.enc_layers)
+    log.info("  backbone=%s lr_backbone=%s dilation=%s position_embedding=%s",
+             args.backbone, args.lr_backbone, args.dilation, args.position_embedding)
 
     return model
 

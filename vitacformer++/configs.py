@@ -59,7 +59,10 @@ if IS_ORIGAMI_TASK:
     
     PROPRIOCEPTIVE_TEMPORAL_HORIZON = 6
     TACTILE_TEMPORAL_HORIZON        = 18
-    TACTILE_TEMPORAL_TOTAL_TIMESTAMPS  = [ -1* (i/FPS)  for i in range(TACTILE_TEMPORAL_HORIZON + 1)] + [ (i/FPS)  for i in range(1, TACTILE_TEMPORAL_HORIZON +1)] 
+    
+    #NOTE: this corrects but also changes input semantics...can no longer resume path 
+    TACTILE_TEMPORAL_TOTAL_TIMESTAMPS  = [ -1*(i/FPS)  for i in range(TACTILE_TEMPORAL_HORIZON, -1, -1)] \
+                                       + [    (i/FPS)  for i in range(1, TACTILE_TEMPORAL_HORIZON +1)] 
     #[ -18 -17 .... 0 ] + [1 , 2.... 18]
     
     
@@ -67,7 +70,7 @@ if IS_ORIGAMI_TASK:
     #==================================== OBSERVATION HISTORY/FUTURES ==============================================
     DELTA_TIMESTAMPS = {
 
-        "observation.state" : [ -1* (i/ FPS) for i in range(PROPRIOCEPTIVE_TEMPORAL_HORIZON)], #last [B, 6, 65]
+        "observation.state" : [ -1* (i/ FPS) for i in range(PROPRIOCEPTIVE_TEMPORAL_HORIZON-1,-1,-1)], #last [B, 6, 65]
 
         "action":             [  i / FPS     for i in range(CHUNK_SIZE)],         #next [B, 100, 65]
         

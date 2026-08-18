@@ -4,10 +4,12 @@ import torch.nn as nn
 import torch
 
 from detr.main import build_ACT_model_and_optimizer
+from my_utils.ori_logging import get_logger, log_tensor, TRACE, StepGate
 import IPython
 e = IPython.embed
 
-
+log = get_logger("policy")
+_loss_gate = StepGate(first_n=3, every=500)
 
 
 class ACTPolicy(nn.Module):
@@ -17,7 +19,11 @@ class ACTPolicy(nn.Module):
         self.model = model # CVAE decoder
         self.optimizer = optimizer
         self.kl_weight = args_override['kl_weight']
-        print(f'KL Weight {self.kl_weight}')
+        log.info("ACTPolicy: kl_weight=%s  num_queries=%s  state_dim=%s  use_tactile=%s",
+                 self.kl_weight, args_override.get('num_queries'),
+                 args_override.get('state_dim'), args_override.get('use_tactile'))
+        log.info("  optimizer=%s  lr=%s  lr_backbone=%s",
+                 type(optimizer).__name__, args_override.get('lr'), args_override.get('lr_backbone'))
 
 
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None, tactile_next=None, epoch=0):
@@ -51,13 +57,26 @@ class ACTPolicy(nn.Module):
             B, T, D = actions.shape
 
             if tac_hat is not None:
+                # NOTE: this reuses the *action* pad mask on the *tactile* time
+                # axis. It is a no-op today because is_pad is all-False.
                 is_pad_tac = is_pad[:, :tac_hat.shape[1]]
                 all_l1_tac = F.l1_loss(tactile_next, tac_hat, reduction='none')
                 l1_tac = (all_l1_tac * ~is_pad_tac.unsqueeze(-1)).mean()
                 loss_dict['l1_tac'] = l1_tac
                 loss_dict['loss'] = loss_dict['loss'] + loss_dict['l1_tac']
-                
-            
+
+            if _loss_gate() and log.isEnabledFor(TRACE):
+                _n_pad = int(is_pad.sum().item())
+                log.log(TRACE, "loss: l1=%.5f kl=%.5f (xw=%s -> %.5f)%s | total=%.5f | masked action steps=%d/%d",
+                        loss_dict['l1'].item(), loss_dict['kl'].item(), self.kl_weight,
+                        (loss_dict['kl'] * self.kl_weight).item(),
+                        f" l1_tac={loss_dict['l1_tac'].item():.5f}" if 'l1_tac' in loss_dict else "",
+                        loss_dict['loss'].item(), _n_pad, is_pad.numel())
+                log_tensor(log, TRACE, "loss/a_hat", a_hat)
+                log_tensor(log, TRACE, "loss/actions(target)", actions)
+                if tac_hat is not None:
+                    log_tensor(log, TRACE, "loss/tac_hat", tac_hat)
+                    log_tensor(log, TRACE, "loss/tactile_next(target)", tactile_next)
 
             return loss_dict
         else: # inference time

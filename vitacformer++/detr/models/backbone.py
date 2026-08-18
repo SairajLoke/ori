@@ -18,6 +18,17 @@ from .position_encoding import build_position_encoding
 import IPython
 e = IPython.embed
 
+try:
+    from my_utils.ori_logging import get_logger
+except ImportError:  # pragma: no cover -- detr used standalone
+    import logging as _logging
+
+    def get_logger(name):
+        return _logging.getLogger("ori." + name)
+
+log = get_logger("backbone")
+
+
 class FrozenBatchNorm2d(torch.nn.Module):
     """
     BatchNorm2d where the batch statistics and the affine parameters are fixed.
@@ -119,4 +130,15 @@ def build_backbone(args):
     backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
     model = Joiner(backbone, position_embedding)
     model.num_channels = backbone.num_channels
+
+    _pretrained = is_main_process()
+    log.info("backbone=%s num_channels=%d train_backbone=%s (lr_backbone=%s) "
+             "return_interm_layers=%s dilation=%s",
+             args.backbone, backbone.num_channels, train_backbone, args.lr_backbone,
+             return_interm_layers, args.dilation)
+    log.info("  norm_layer=FrozenBatchNorm2d  imagenet_pretrained=%s  pos_embed=%s",
+             _pretrained, args.position_embedding)
+    if not _pretrained:
+        log.info("  (non-main rank: weights are random here; DDP broadcasts rank 0's at wrap time)")
+    log.info("  NOTE: inputs are expected in [0,1] with NO ImageNet mean/std applied upstream")
     return model

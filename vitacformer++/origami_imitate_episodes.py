@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import time
 import os
+import logging
 import pickle
 import argparse
 import matplotlib.pyplot as plt
@@ -48,6 +49,11 @@ from lerobot.policies.factory import make_pre_post_processors
 
 from train_eval_utils import JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats, log_input_stats, log_final_model_inputs
 from my_utils.log_features import log_problematic_features
+from my_utils.ori_logging import (setup_logging, get_logger, log_tensor, log_tensors,
+                                  TRACE, StepGate)
+
+log = get_logger("train")
+_step_gate = StepGate(first_n=3, every=200)
 
 def my_function():
     # Only loaded if this specific line is executed during a debug session
@@ -460,6 +466,30 @@ def main(args):
         timestamp = timestamp + "_tactile"
     os.makedirs(ckpt_dir, exist_ok=True)
 
+    # --- logging: configure as early as ckpt_dir is known ---
+    # accelerate has already exported RANK by the time main() runs.
+    _rank = int(os.environ.get("RANK", os.environ.get("LOCAL_RANK", 0)))
+    setup_logging(rank=_rank, log_dir=ckpt_dir)
+    log.info("=" * 70)
+    log.info("run start: expt=%s  ckpt_dir=%s", expt_name, ckpt_dir)
+    log.info("=" * 70)
+    log.info("CLI args:")
+    for _k in sorted(args):
+        log.info("  %-34s %s", _k, args[_k])
+    log.info("configs.py:")
+    log.info("  IS_ORIGAMI_TASK=%s FPS=%s CHUNK_SIZE=%s STATE_DIM=%s BACKBONE=%s LR_BACKBONE=%s",
+             IS_ORIGAMI_TASK, FPS, CHUNK_SIZE, STATE_DIM, BACKBONE, LR_BACKBONE)
+    log.info("  MASK_FINGERS=%s  MAXDURATION_IN_EPISODE_SEC=%s  PROPRIO_HORIZON=%s",
+             MASK_FINGERS, MAXDURATION_IN_EPISODE_SEC, PROPRIOCEPTIVE_TEMPORAL_HORIZON)
+    log.info("  FULL_DATASET=%s", FULL_DATASET)
+    for _k, _v in DELTA_TIMESTAMPS.items():
+        log.info("  DELTA_TIMESTAMPS[%-22s] %d offsets, frame idx %s%s",
+                 _k, len(_v), [round(t * FPS) for t in _v[:6]],
+                 " ..." if len(_v) > 6 else "")
+    if args.get('chunk_size') not in (None, CHUNK_SIZE):
+        log.warning("--chunk_size=%s is IGNORED; num_queries comes from configs.CHUNK_SIZE=%s",
+                    args.get('chunk_size'), CHUNK_SIZE)
+
     # episode_len = 10000
     # camera_names = ['/observe/vision/head/stereo/lefteye/rgb',
     #                 '/observe/vision/head/stereo/righteye/rgb',
@@ -612,10 +642,10 @@ def main(args):
             doImageTransforms = config.get('doImageTransforms', False) 
         )
 
-        # valid_dataset = 
-        # test_dataset = 
-        print(type(train_dataset)) #, vars(train_dataset))
-        print("stats keys" , train_dataset.meta.stats.keys())
+        # valid_dataset =
+        # test_dataset =
+        log.info("dataset type=%s  len=%d frames", type(train_dataset).__name__, len(train_dataset))
+        log.info("dataset stats keys: %s", sorted(train_dataset.meta.stats.keys()))
 
 
         # NOTE: Do NOT create DistributedSampler manually here.
@@ -624,7 +654,9 @@ def main(args):
         _num_cpus = os.cpu_count() or 64
         _num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 1
         _auto_workers = max(4, (_num_cpus - 6) // _num_gpus)
-        print(f"[DataLoader] CPUs={_num_cpus}, GPUs={_num_gpus}, num_workers={_auto_workers}")
+        log.info("DataLoader: CPUs=%d GPUs=%d -> num_workers=%d (batch_size=%d, prefetch_factor=10, "
+                 "persistent_workers=True, pin_memory=True, drop_last=True, shuffle=True)",
+                 _num_cpus, _num_gpus, _auto_workers, batch_size_train)
         train_dataloader = DataLoader(
             train_dataset, 
             batch_size=batch_size_train, 
@@ -703,7 +735,7 @@ def main(args):
     #     pickle.dump(normalizer, f)  #pickle.dump(preprocessor,f) if IS_ORIGAMI_TASK else 
     
     
-    print("batches/epi", len(train_dataloader))
+    log.info("batches per epoch (pre-shard) = %d", len(train_dataloader))
     # with tqdm(train_dataloader, desc=f"Sanity Check Train Epoch {-1}", leave=False) as tepoch:
     #         for batch_idx, data in enumerate(tepoch): 
     #             continue
@@ -900,13 +932,19 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
     accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
     device = accelerator.device
 
+    # Re-configure logging now that the true rank is known (idempotent).
+    setup_logging(rank=accelerator.process_index, log_dir=ckpt_dir)
+    log.info("accelerator: num_processes=%d process_index=%d device=%s mixed_precision=%s",
+             accelerator.num_processes, accelerator.process_index, device,
+             accelerator.mixed_precision)
+
     policy = make_policy(policy_class, policy_config)
     optimizer = make_optimizer(policy_class, policy)
 
     # --- Normalization: use recommended modes, or set all to identity if disabled ---
+    norm_log = get_logger("norm")
     disable_normalization = config.get('disable_normalization', False)
     if disable_normalization:
-        print("[Normalizer] --disable_normalization is set: all features will use identity (pass-through) mode.")
         feature_modes = {k: None for k in recommended_modes(use_tactile=use_tactile)}
     else:
         feature_modes = recommended_modes(use_tactile=use_tactile)
@@ -916,46 +954,49 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         feature_modes=feature_modes,
         device=device,
     )
-    if normalizer:
-        print("\n=== ACTION STATS ===")
-        action_stats = normalizer._stats.get("action")
-        if action_stats:
-            print(f"q01: {action_stats.q01}")
-            print(f"q99: {action_stats.q99}")
-            print(f"q99 - q01: {action_stats.q99 - action_stats.q01}")
-        else:
-            print("Action not in normalizer._stats!")
-    if disable_normalization:
-        print("[Normalizer] Normalization DISABLED — all features in identity/pass-through mode.")
 
+    norm_log.info("disable_normalization=%s", disable_normalization)
+    if disable_normalization:
+        norm_log.info("ALL features in identity/pass-through mode -- no normalization applied anywhere.")
+    for _k, _mode in sorted(normalizer.transforms.items()):
+        _requested = feature_modes.get(_k)
+        _note = "" if _mode == _requested else f"  (DOWNGRADED from {_requested!r})"
+        norm_log.info("  %-38s -> %s%s", _k, _mode, _note)
+
+    # Per-dim denominator health: this is what actually breaks when normalization
+    # is switched back on, so surface it unconditionally at INFO.
+    for _k, _fs in normalizer._stats.items():
+        if _fs.q01 is None or _fs.q99 is None:
+            continue
+        _denom = (_fs.q99 - _fs.q01).float()
+        _tiny = torch.nonzero(_denom < 1e-2).flatten().tolist()
+        norm_log.info("  stats[%s]: dim=%d  (q99-q01) min=%.3e median=%.3e max=%.3e",
+                      _k, _denom.numel(), _denom.min().item(),
+                      _denom.median().item(), _denom.max().item())
+        if _tiny:
+            norm_log.warning("  stats[%s]: %d dims with (q99-q01) < 1e-2 -> normalization will "
+                             "amplify them hard. dims=%s", _k, len(_tiny), _tiny)
 
     # Cast stats to bf16/fp16 if mixed precision is enabled
     if accelerator.mixed_precision in ("fp16", "bf16"):
         _mp_dtype = torch.float16 if accelerator.mixed_precision == "fp16" else torch.bfloat16
+        if normalizer._stats:
+            norm_log.warning("casting normalizer stats to %s: bf16 keeps ~3 significant digits, "
+                             "so small (q99-q01) denominators can round toward zero", _mp_dtype)
         for key in normalizer._stats:
             for param_name in ['mean', 'std', 'min', 'max', 'q01', 'q99']:
                 if hasattr(normalizer._stats[key], param_name):
                     setattr(normalizer._stats[key], param_name,
                         getattr(normalizer._stats[key], param_name).to(_mp_dtype))
 
-                    
-
-    dims_to_exclude = log_problematic_features(
-        stats=train_dataset.meta.stats,
-        normalizer_transforms=normalizer.transforms,
-        log_file_path=Path("logs/feature_report.log"),
-    )
-    print(dims_to_exclude)
-
-    if normalizer:
-        print("\n=== ACTION STATS ===")
-        action_stats = normalizer._stats.get("action")
-        if action_stats:
-            print(f"q01: {action_stats.q01}")
-            print(f"q99: {action_stats.q99}")
-            print(f"q99 - q01: {action_stats.q99 - action_stats.q01}")
-        else:
-            print("Action not in normalizer._stats!")
+    if accelerator.is_main_process:
+        dims_to_exclude = log_problematic_features(
+            stats=train_dataset.meta.stats,
+            normalizer_transforms=normalizer.transforms,
+            log_file_path=Path(ckpt_dir) / "feature_report.log",
+        )
+        norm_log.info("problematic dims per group: %s",
+                      {k: len(v) for k, v in dims_to_exclude.items()})
 
     if accelerator.is_main_process:
         with open(info_log_path, 'a') as f:
@@ -987,9 +1028,17 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         num_warmup_steps=config['lr_config']['warmup_iters'],
         num_training_steps=total_iters,
     )
+    log.info("scheduler: cosine, warmup=%d, total=%d (=%d epochs x %d pre-shard batches)",
+             config['lr_config']['warmup_iters'], total_iters, num_epochs, len(train_dataloader))
+    if accelerator.num_processes > 1:
+        log.info("  accelerate steps the wrapped scheduler %dx per optimizer step, so warmup "
+                 "completes after ~%d real steps",
+                 accelerator.num_processes,
+                 config['lr_config']['warmup_iters'] // accelerator.num_processes)
 
     if load_pretrained_for_newtraining is not None and os.path.exists(load_pretrained_for_newtraining):
-        print(f"Loading pretrained weights (NOT FULL CKPT) from {load_pretrained_for_newtraining}")
+        log.info("loading pretrained WEIGHTS ONLY (fresh optimizer/scheduler/epoch) from %s",
+                 load_pretrained_for_newtraining)
         tmp_checkpoint = torch.load(load_pretrained_for_newtraining, map_location=device)
         policy.load_state_dict(tmp_checkpoint['model'])
         # optimizer.load_state_dict(checkpoint['optimizer'])
@@ -1000,10 +1049,14 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         # min_val_loss = checkpoint.get('min_val_loss', np.inf)
         # best_ckpt_info = checkpoint.get('best_ckpt_info', None)
 
+    elif load_pretrained_for_newtraining is not None:
+        log.error("--load_pretrained_for_newtraining=%s does not exist -- SILENTLY training from "
+                  "random init", load_pretrained_for_newtraining)
+
     if resume_path is not None and os.path.exists(resume_path):
-        print(f"[Resume] Loading checkpoint from {resume_path}")
+        log.info("[Resume] loading full checkpoint from %s", resume_path)
         checkpoint = torch.load(resume_path, map_location=device)
-        print(checkpoint.keys())
+        log.info("[Resume] checkpoint keys: %s", list(checkpoint.keys()))
 
         if isinstance(policy, torch.nn.parallel.DistributedDataParallel):
             policy.module.load_state_dict(checkpoint["model"], strict=True)
@@ -1019,15 +1072,20 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         global_step = checkpoint.get('global_step', 0)
         min_val_loss = checkpoint.get('min_val_loss', np.inf)
         best_ckpt_info = checkpoint.get('best_ckpt_info', None)
+        log.info("[Resume] restored epoch=%d global_step=%d min_val_loss=%s lr=%s",
+                 start_epoch, global_step, min_val_loss, optimizer.param_groups[0]['lr'])
 
+    elif resume_path is not None:
+        log.error("--resume_path=%s does not exist -- SILENTLY training from random init", resume_path)
 
-
-    # policy = torch.compile(policy, mode="reduce-overhead") 
+    # policy = torch.compile(policy, mode="reduce-overhead")
 
     # === Prepare for distributed training ===
     policy, optimizer, train_dataloader, scheduler = accelerator.prepare(
         policy, optimizer, train_dataloader, scheduler
     )
+    log.info("after accelerator.prepare(): %d batches/epoch on this rank (%d ranks)",
+             len(train_dataloader), accelerator.num_processes)
 
     # === Data loader timing instrumentation ===
     timing_log_path = os.path.join(ckpt_dir, 'dataloader_timing.log')
@@ -1048,6 +1106,11 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
     train_history = []
 
     validation_history = []
+    if global_step != 0 or best_ckpt_info is not None:
+        log.warning("resetting global_step %d -> 0 and best_ckpt_info after resume "
+                    "(start_epoch=%d is kept). TensorBoard steps and globalstep_*.ckpt "
+                    "names will restart and overlay the previous run.",
+                    global_step, start_epoch)
     global_step = 0
     min_val_loss = np.inf
     best_ckpt_info = None
@@ -1117,8 +1180,11 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         
         step_log = {}
 
-
-        print(f'\nEpoch {epoch}')
+        log.info("---- epoch %d/%d  (global_step=%d, lr=%.3e) ----",
+                 epoch, num_epochs - 1, global_step, optimizer.param_groups[0]['lr'])
+        if epoch == 75:
+            log.info("tactile teacher forcing OFF from this epoch: the second transformer pass "
+                     "now consumes the model's own tactile_hat instead of ground-truth tactile_next")
         epoch_start_idx = len(train_history)  # mark start of this epoch's entries
         # if epoch % 5 == 0:
         #     # validation
@@ -1224,6 +1290,17 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                 # backward
                 loss = forward_dict['loss']
                 accelerator.backward(loss)
+
+                if _step_gate() and log.isEnabledFor(logging.DEBUG):
+                    _gn = torch.nn.utils.clip_grad_norm_(policy.parameters(), float('inf'))
+                    log.debug("step %d | %s | grad_norm=%.4f lr=%.3e",
+                              global_step,
+                              " ".join(f"{k}={v.item():.5f}" for k, v in forward_dict.items()),
+                              _gn.item(), optimizer.param_groups[0]['lr'])
+                    if not torch.isfinite(_gn):
+                        log.error("step %d: non-finite gradient norm (%s) -- optimizer step will "
+                                  "corrupt the weights", global_step, _gn.item())
+
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
@@ -1273,18 +1350,13 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                         'global_step': global_step,
                         'min_val_loss': min_val_loss,
                     }, ckpt_path)
+                    log.info("saved step checkpoint -> %s", ckpt_path)
 
-
-
-        print('esi', epoch_start_idx)
         epoch_summary = compute_dict_mean(train_history[epoch_start_idx:])
         epoch_train_loss = epoch_summary['loss']
-        print(f'Train loss: {epoch_train_loss:.5f}')
-
-        summary_string = ''
-        for k, v in epoch_summary.items():
-            summary_string += f'{k}: {v.item():.3f} '
-        print(summary_string)
+        log.info("epoch %d done: %d steps | %s",
+                 epoch, len(train_history) - epoch_start_idx,
+                 " ".join(f"{k}={v.item():.5f}" for k, v in epoch_summary.items()))
 
         # === TensorBoard: per-epoch logging (only on main process) ===
         if accelerator.is_main_process:
@@ -1328,6 +1400,7 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                 'global_step': global_step,
                 'min_val_loss': min_val_loss,
             }, ckpt_path)
+            log.info("saved epoch checkpoint -> %s", ckpt_path)
 
     if accelerator.is_main_process:
         ckpt_path = os.path.join(ckpt_dir, f'policy_last.ckpt')

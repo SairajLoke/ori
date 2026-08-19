@@ -8,6 +8,12 @@ TOLERANCE = 0.001 #NOTE
 IS_ORIGAMI_TASK = True 
 FPS = 30.0 
 CHUNK_SIZE = 100 
+# Camera resize target (H, W). 224x224 matches robot_io_spec.md: the organizer
+# squashes native 1920x1536 straight to 224x224 with no aspect-ratio preservation
+# and no letterbox. Our source videos are 480x480 (already square), so this
+# reproduces the deployment transform exactly instead of the old 224x320, which
+# the deploy path can never produce.
+IMAGE_HW = (224, 224)
 # ---
 
 #----------- :NOTE:------------------ expts 

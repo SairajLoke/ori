@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, ConcatDataset, Subset
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 from lerobot.datasets.video_utils import _default_decoder_cache
-from configs import TACTILE_TEMPORAL_HORIZON, MAX_EPISODES
+from configs import TACTILE_TEMPORAL_HORIZON, MAX_EPISODES, IMAGE_HW
 
 import time
 
@@ -196,7 +196,7 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         # Images already converted to float32 [0,1] above (uint8→float32 conversion)
         img = F.interpolate(
             img,
-            size=(224, 320),
+            size=IMAGE_HW,
             mode="bilinear",
             align_corners=False,
         )
@@ -211,9 +211,9 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     timing['resize'] = time.time() - _t_resize_start
 
     if _verbose:
-        log.debug("  cams %s -> resized (224,320) -> imagenet_norm=%s -> stacked %s "
+        log.debug("  cams %s -> resized %s -> imagenet_norm=%s -> stacked %s "
                   "(order: head_L, head_R, wrist_R, wrist_L)",
-                  tuple(cams[0].shape), USE_IMAGENET_NORM, tuple(image.shape))
+                  tuple(cams[0].shape), IMAGE_HW, USE_IMAGENET_NORM, tuple(image.shape))
         log_tensor(log, TRACE, "  image (model input)", image)
 
     B, T = action.shape[:2]

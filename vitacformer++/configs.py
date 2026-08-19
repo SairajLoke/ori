@@ -117,20 +117,63 @@ if IS_ORIGAMI_TASK:
     
     PROPRIOCEPTIVE_TEMPORAL_HORIZON = 6
     TACTILE_TEMPORAL_HORIZON        = 18
-    
+
+    # ---- observation-sampling cadence vs action/robot-control cadence ----
+    # FPS (30) drives the ACTION chunk's spacing (DELTA_TIMESTAMPS["action"]
+    # below) -- this should track the robot's actual control/execution rate,
+    # which the organizer runs independently of how often we recompute a
+    # chunk (receding-horizon control). It must NOT change just because our
+    # own inference is slow.
+    #
+    # OBS_FPS is a SEPARATE rate for the observation history windows
+    # (state, tactile). At inference, robot_io_spec.md gives one reading per
+    # infer() call, spaced however often infer() actually gets called -- not
+    # necessarily 30Hz, likely well below it for a model this size. Training
+    # the history window at FPS=30 spacing when real calls arrive slower
+    # means every deployment observation is temporally wrong: state/tactile
+    # "6 steps back" was 0.2s ago in training, but N seconds ago in reality,
+    # and the tactile DELTA channel especially (which encodes an implicit
+    # 1/FPS time unit into its magnitude) comes out badly mis-scaled.
+    #
+    # USE_OBS_FPS switches the observation windows (NOT the action chunk)
+    # onto OBS_FPS instead of FPS, so both variants can be trained from the
+    # same config with one env var:
+    #   ORI_USE_OBS_FPS=0 (default)  -> old behavior, observation windows at FPS=30
+    #   ORI_USE_OBS_FPS=1            -> observation windows at OBS_FPS
+    # Step COUNTS (PROPRIOCEPTIVE_TEMPORAL_HORIZON / TACTILE_TEMPORAL_HORIZON)
+    # are unchanged either way -- widening the window in TIME, not in the
+    # number of samples, means qpos_dim/tactile_dim and therefore the model
+    # architecture are identical between the two variants; only what the
+    # window covers in real seconds differs. That also means a checkpoint
+    # trained with one setting is semantically incompatible with the other
+    # (like the earlier tactile-ordering fix) even though shapes match.
+    #
+    # Pick OBS_FPS as a divisor of FPS (30, 15, 10, 6, 5, 3, 2, 1...) so every
+    # requested offset lands exactly on a native 30fps frame boundary and
+    # TOLERANCE does not need loosening. A non-divisor still works but each
+    # sample may be pulled from up to ~1/(2*FPS) away from the requested time.
+    USE_OBS_FPS = os.environ.get('ORI_USE_OBS_FPS', '0') in ('1', 'true', 'True')
+    OBS_FPS = float(os.environ.get('ORI_OBS_FPS', '5.0'))
+    if USE_OBS_FPS and FPS % OBS_FPS != 0:
+        print(f"[configs] WARNING: ORI_OBS_FPS={OBS_FPS} does not evenly divide "
+              f"FPS={FPS} -- observation timestamps will not land exactly on "
+              f"native frame boundaries. Consider a divisor of {FPS:.0f} "
+              f"(30, 15, 10, 6, 5, 3, 2, 1...) or loosen TOLERANCE.")
+    _OBS_SAMPLE_FPS = OBS_FPS if USE_OBS_FPS else FPS
+
     #NOTE: this corrects but also changes input semantics...can no longer resume path 
-    TACTILE_TEMPORAL_TOTAL_TIMESTAMPS  = [ -1*(i/FPS)  for i in range(TACTILE_TEMPORAL_HORIZON, -1, -1)] \
-                                       + [    (i/FPS)  for i in range(1, TACTILE_TEMPORAL_HORIZON +1)] 
-    #[ -18 -17 .... 0 ] + [1 , 2.... 18]
+    TACTILE_TEMPORAL_TOTAL_TIMESTAMPS  = [ -1*(i/_OBS_SAMPLE_FPS)  for i in range(TACTILE_TEMPORAL_HORIZON, -1, -1)] \
+                                       + [    (i/_OBS_SAMPLE_FPS)  for i in range(1, TACTILE_TEMPORAL_HORIZON +1)] 
+    #[ -18 -17 .... 0 ] + [1 , 2.... 18]  (frame indices; real spacing is 1/_OBS_SAMPLE_FPS)
     
     
 
     #==================================== OBSERVATION HISTORY/FUTURES ==============================================
     DELTA_TIMESTAMPS = {
 
-        "observation.state" : [ -1* (i/ FPS) for i in range(PROPRIOCEPTIVE_TEMPORAL_HORIZON-1,-1,-1)], #last [B, 6, 65]
+        "observation.state" : [ -1* (i/ _OBS_SAMPLE_FPS) for i in range(PROPRIOCEPTIVE_TEMPORAL_HORIZON-1,-1,-1)], #last [B, 6, 65]
 
-        "action":             [  i / FPS     for i in range(CHUNK_SIZE)],         #next [B, 100, 65]
+        "action":             [  i / FPS     for i in range(CHUNK_SIZE)],         #next [B, 100, 65]  -- always robot-rate, never OBS_FPS
         
         "observation.tactile": TACTILE_TEMPORAL_TOTAL_TIMESTAMPS, 
         #last [B, 19, 3dof*20streams]  # the delta is the second input to be concatenated afterwards in batch_process

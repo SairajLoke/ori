@@ -67,7 +67,8 @@ def my_function():
 
 from configs import ( EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
     FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
-    MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS, NORM_DISABLE_KEYS )
+    MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS, NORM_DISABLE_KEYS,
+    VIT_UNFROZEN_LAYERS )
 
 
 def print_time(s, e, name):
@@ -523,6 +524,7 @@ def main(args):
                          'state_dim': args['state_dim'],
                          'proprioceptive_temporal_horizon': PROPRIOCEPTIVE_TEMPORAL_HORIZON,
                          'backbone_weights': BACKBONE_WEIGHTS,
+                         'vit_unfrozen_layers': VIT_UNFROZEN_LAYERS,
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': LR_BACKBONE, 'backbone' : LR_BACKBONE, 'num_queries': 1,

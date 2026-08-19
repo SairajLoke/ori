@@ -91,6 +91,13 @@ if IS_ORIGAMI_TASK:
     # real freeze, and freezing is the recommended default on a small dataset
     # (86M+ params, a few hundred episodes): e.g. ORI_LR_BACKBONE=0.
     LR_BACKBONE = float(os.environ.get('ORI_LR_BACKBONE', '1e-5'))
+    # ViT only: freeze everything except the LAST N transformer blocks (+ the
+    # final LayerNorm) instead of the all-or-nothing frozen/unfrozen choice
+    # above. Only takes effect when LR_BACKBONE > 0 (still gates whether the
+    # backbone trains at all). Unset (default) = old all-or-nothing behavior.
+    # ResNet ignores this entirely.
+    _vit_unfrozen_env = os.environ.get('ORI_VIT_UNFROZEN_LAYERS')
+    VIT_UNFROZEN_LAYERS = int(_vit_unfrozen_env) if _vit_unfrozen_env else None
 
     
     # ------------------ Dataset configs ------------------

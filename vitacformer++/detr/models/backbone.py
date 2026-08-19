@@ -141,7 +141,8 @@ class ViTBackbone(nn.Module):
     [B, n_h*n_w, C] -> [B, C, n_h, n_w].
     """
 
-    def __init__(self, name: str, train_backbone: bool, weights_path: str = None):
+    def __init__(self, name: str, train_backbone: bool, weights_path: str = None,
+                 unfrozen_layers: int = None):
         super().__init__()
         ctor = getattr(torchvision.models, name)
 
@@ -172,10 +173,37 @@ class ViTBackbone(nn.Module):
         # genuinely respects train_backbone: with a small dataset, a frozen
         # pretrained ViT is usually the right default rather than fine-tuning
         # 86M+ parameters from a few hundred episodes.
+        #
+        # unfrozen_layers (ORI_VIT_UNFROZEN_LAYERS) is a middle ground: freeze
+        # everything except the LAST N transformer blocks (+ the final
+        # LayerNorm, which is cheap and renormalises the output distribution
+        # that input_proj actually reads -- leaving it frozen while the blocks
+        # feeding it change would create a mismatch right at that interface).
+        # Only meaningful when train_backbone is True; ORI_LR_BACKBONE must
+        # still be > 0 for the unfrozen tensors to receive a nonzero update.
+        n_layers = len(self.encoder.layers)
         if not train_backbone:
             for p in self.parameters():
                 p.requires_grad_(False)
             log.info("ViT backbone frozen (train_backbone=False, i.e. lr_backbone<=0)")
+        elif unfrozen_layers is not None:
+            k = max(0, min(unfrozen_layers, n_layers))
+            if unfrozen_layers != k:
+                log.warning("ORI_VIT_UNFROZEN_LAYERS=%d out of range [0,%d], clamped to %d",
+                           unfrozen_layers, n_layers, k)
+            for p in self.parameters():
+                p.requires_grad_(False)
+            trainable_blocks = list(self.encoder.layers.children())[n_layers - k:] if k > 0 else []
+            for block in trainable_blocks:
+                for p in block.parameters():
+                    p.requires_grad_(True)
+            for p in self.encoder.ln.parameters():
+                p.requires_grad_(True)
+            n_train = sum(p.numel() for p in self.parameters() if p.requires_grad)
+            n_total = sum(p.numel() for p in self.parameters())
+            log.info("ViT backbone partially unfrozen: last %d/%d encoder blocks + final LN "
+                     "(%.1fM/%.1fM params trainable, %.0f%%)",
+                     k, n_layers, n_train / 1e6, n_total / 1e6, 100 * n_train / n_total)
 
     def forward(self, x):
         n, c, h, w = x.shape
@@ -270,7 +298,8 @@ def build_backbone(args):
                 "--masks (return_interm_layers) is not implemented for ViT backbones -- "
                 "a ViT has one output resolution, not the 4 stages a ResNet exposes."
             )
-        backbone = ViTBackbone(args.backbone, train_backbone, weights_path=weights_path)
+        backbone = ViTBackbone(args.backbone, train_backbone, weights_path=weights_path,
+                               unfrozen_layers=getattr(args, "vit_unfrozen_layers", None))
         log.info("backbone=%s (ViT) num_channels=%d train_backbone=%s (lr_backbone=%s) "
                  "patch_size=%d image_size=%d",
                  args.backbone, backbone.num_channels, train_backbone, args.lr_backbone,

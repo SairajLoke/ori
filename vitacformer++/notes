@@ -19,3 +19,16 @@ model_num_queries 100
 
 
 #NTOE
+
+
+# Re-run variant 2
+MIXED_PRECISION=bf16 MAX_EPISODES=50 \
+USE_NORMALIZATION=0 ORI_IMAGE_NORM=1 \
+EXPT_NAME=aug18_v2_imgonly \
+phd run -ng 4 -p shr_gpu -GR H100 -l %J.log sh ori/ori/run_ori_job.sh 4
+
+# Re-run variant 3
+MIXED_PRECISION=bf16 MAX_EPISODES=50 \
+USE_NORMALIZATION=1 ORI_IMAGE_NORM=1 ORI_NORM_DISABLE_KEYS=observation.tactile \
+EXPT_NAME=aug18_v3_notactile \
+phd run -ng 4 -p shr_gpu -GR H100 -l %J.log sh ori/ori/run_ori_job.sh 4

@@ -149,7 +149,7 @@ $ACCELERATE_CMD origami_imitate_episodes.py \
 --expt_name  "$EXPT_NAME" \
 --policy_class ACT --kl_weight 10 --hidden_dim 512 \
 --batch_size 64 --dim_feedforward 3200 \
---ckpt_save_epochs 1 \
+--ckpt_save_epochs 5 \
 --num_epochs 100  \
 --lr 3e-4 \
 --seed 0 \

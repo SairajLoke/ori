@@ -1622,18 +1622,18 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                         pass
                     break
 
-                if ( global_step% 2000==0 ) and accelerator.is_main_process:
+                # if ( global_step% 2000==0 ) and accelerator.is_main_process:
 
-                    ckpt_path = os.path.join(ckpt_dir, f'policy_globalstep_{global_step}_loss_{loss.item()}.ckpt')
-                    torch.save({
-                        'model': accelerator.unwrap_model(policy).state_dict(),
-                        'optimizer': optimizer.state_dict(),
-                        'scheduler': scheduler.state_dict(),
-                        'epoch': epoch,
-                        'global_step': global_step,
-                        'min_val_loss': min_val_loss,
-                    }, ckpt_path)
-                    log.info("saved step checkpoint -> %s", ckpt_path)
+                #     ckpt_path = os.path.join(ckpt_dir, f'policy_globalstep_{global_step}_loss_{loss.item()}.ckpt')
+                #     torch.save({
+                #         'model': accelerator.unwrap_model(policy).state_dict(),
+                #         'optimizer': optimizer.state_dict(),
+                #         'scheduler': scheduler.state_dict(),
+                #         'epoch': epoch,
+                #         'global_step': global_step,
+                #         'min_val_loss': min_val_loss,
+                #     }, ckpt_path)
+                #     log.info("saved step checkpoint -> %s", ckpt_path)
 
         epoch_summary = compute_dict_mean(train_history[epoch_start_idx:])
         epoch_train_loss = epoch_summary['loss']
@@ -1673,7 +1673,7 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
 
             writer.flush()
 
-        if (epoch % config['ckpt_save_epochs'] == 0 or global_step%400==0 ) and accelerator.is_main_process:
+        if (epoch % config['ckpt_save_epochs'] == 0  ) and accelerator.is_main_process:
             ckpt_path = os.path.join(ckpt_dir, f'policy_epoch_{epoch}_loss_{epoch_train_loss:.3f}.ckpt')
             torch.save({
                 'model': accelerator.unwrap_model(policy).state_dict(),

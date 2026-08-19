@@ -17,6 +17,14 @@ Always inspect --dry-run output first on a new dataset layout before running
 for real.
 """
 
+# python3 reshape_videos.py \
+#   --dataset_root /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0_shortgop15 \
+#   --output_root  /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0_shortgop15_224 \
+#   --resize_width 224 --resize_height 224 \
+#   --video_keys observation.images.head_left,observation.images.head_right,observation.images.wrist_left,observation.images.wrist_right \
+#   --workers 3
+
+
 import argparse
 import json
 import shutil
@@ -90,9 +98,15 @@ def ffprobe_video_props(path: Path) -> dict:
     return json.loads(result.stdout)["streams"][0]
 
 
-def discover_video_jobs(dataset_root: Path, output_root: Path) -> list[VideoJob]:
+def discover_video_jobs(dataset_root: Path, output_root: Path,
+                        video_keys: list[str] | None = None) -> list[VideoJob]:
     """
     Walk <dataset_root>/videos/<video_key>/chunk-*/file-*.mp4 and create jobs.
+
+    video_keys: if given, only these video-key subdirectories are processed
+    (others under videos/ are left out of output_root entirely). Use this to
+    skip streams the model never decodes, e.g. tactile_raw/tactile_deform,
+    which origami_dataset.py prunes from ds.meta.features before training.
     """
     videos_dir = dataset_root / "videos"
     if not videos_dir.is_dir():
@@ -102,6 +116,16 @@ def discover_video_jobs(dataset_root: Path, output_root: Path) -> list[VideoJob]
     video_key_dirs = sorted(p for p in videos_dir.iterdir() if p.is_dir())
     if not video_key_dirs:
         raise FileNotFoundError(f"No video-key subdirectories found under {videos_dir}")
+
+    if video_keys:
+        wanted = set(video_keys)
+        found = {p.name for p in video_key_dirs}
+        missing = wanted - found
+        if missing:
+            raise FileNotFoundError(
+                f"--video_keys requested {sorted(missing)} but only found: {sorted(found)}"
+            )
+        video_key_dirs = [p for p in video_key_dirs if p.name in wanted]
 
     for key_dir in video_key_dirs:
         video_key = key_dir.name
@@ -152,7 +176,7 @@ def copy_non_video_tree(dataset_root: Path, output_root: Path):
 def update_metadata(output_root: Path, resize_width: int, resize_height: int, video_keys: list[str]):
     """
     Update meta/info.json with new video dimensions after resizing.
-    
+
     LeRobot v3 stores video shape as [height, width, channels] and also
     has video.height and video.width in the info dict.
     """
@@ -259,6 +283,12 @@ def main():
                     help="Target video width (default: 320, as required by model).")
     p.add_argument("--resize_height", type=int, default=224,
                     help="Target video height (default: 224, as required by model).")
+    p.add_argument("--video_keys", type=str, default=None,
+                    help="Comma-separated video keys to resize (e.g. "
+                         "observation.images.head_left,observation.images.head_right). "
+                         "Default: all keys found under videos/. Restrict to the RGB "
+                         "cameras to skip tactile_raw/tactile_deform, which "
+                         "origami_dataset.py never decodes.")
     p.add_argument("--crf", type=int, default=20,
                     help="x264 CRF (quality). Lower = higher quality/larger file. Default: 20.")
     p.add_argument("--preset", type=str, default="veryfast",
@@ -286,6 +316,9 @@ def main():
         sys.stderr = _Tee(sys.stderr, log_file)
         print(f"[INFO] Logging to: {log_file}")
 
+    if args.video_keys:
+        args.video_keys = [k.strip() for k in args.video_keys.split(",") if k.strip()]
+
     dataset_root = args.dataset_root.resolve()
     output_root = args.output_root.resolve()
 
@@ -306,7 +339,7 @@ def main():
     print(f"[INFO] resize to={args.resize_width}x{args.resize_height} "
           f"crf={args.crf} preset={args.preset} workers={args.workers}")
 
-    jobs = discover_video_jobs(dataset_root, output_root)
+    jobs = discover_video_jobs(dataset_root, output_root, video_keys=args.video_keys)
     by_key: dict[str, int] = {}
     for j in jobs:
         by_key[j.video_key] = by_key.get(j.video_key, 0) + 1

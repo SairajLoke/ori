@@ -14,6 +14,13 @@ set -euo pipefail
 #   VAL_EVERY_N_EPOCHS=10            validation cadence
 #   ORI_IMAGE_NORM=0|1               ImageNet mean/std on camera images (default 1)
 #   ORI_NORM_DISABLE_KEYS=k1,k2      force these features to identity while the rest normalize
+#   ORI_USE_OBS_FPS=0|1              observation.state/tactile history spaced at OBS_FPS, not FPS (default 0)
+#   ORI_OBS_FPS=5.0                  the OBS_FPS value used above (default 5.0)
+#   ORI_JITTER_HISTORY=0|1           randomize per-step gaps in the observation.state/tactile
+#                                    PAST history window per training step, to emulate irregular
+#                                    inference cadence (default 0). tactile_next/action targets
+#                                    and images are never jittered. See configs.py for details.
+#   ORI_JITTER_MAX_GAP_MULT=3.0      max jittered gap, as a multiple of the regular step gap (default 3.0)
 #   BACKBONE_WEIGHTS=/path.pth       local ResNet ckpt instead of the torch hub download
 #   RESUME_PATH=/path.ckpt           resume (weights + optimizer + scheduler + epoch/step)
 #   PRETRAINED_PATH=/path.ckpt       weights only, fresh schedule

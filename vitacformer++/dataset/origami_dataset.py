@@ -12,7 +12,10 @@ from torch.utils.data import DataLoader, ConcatDataset, Subset
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 from lerobot.datasets.video_utils import _default_decoder_cache
-from configs import TACTILE_TEMPORAL_HORIZON, MAX_EPISODES, IMAGE_HW
+from configs import (TACTILE_TEMPORAL_HORIZON, MAX_EPISODES, IMAGE_HW,
+                      PROPRIOCEPTIVE_TEMPORAL_HORIZON, JITTER_HISTORY,
+                      JITTER_MAX_GAP_FRAMES, JITTER_BASE_GAP_FRAMES,
+                      TACTILE_PAST_POOL_LEN)
 
 import time
 
@@ -54,6 +57,36 @@ def _apply_imagenet_norm(img):
         _imagenet_std_t = torch.tensor(IMAGENET_STD, device=img.device, dtype=img.dtype).view(1, 3, 1, 1)
     return (img - _imagenet_mean_t) / _imagenet_std_t
 #can also create custom trasnsforms : https://huggingface.co/docs/lerobot/lerobot-dataset-v3
+
+def _jitter_gather(pool, n_out, max_gap_frames):
+    """
+    Randomly subsample a dense native-FPS pool into an n_out-length window,
+    with per-step gaps drawn i.i.d. (independently per batch row) in
+    [1, max_gap_frames] native frames. Used to emulate the irregular history
+    spacing real inference cadence would produce -- see configs.JITTER_HISTORY.
+
+    pool: [B, L, D], pool[:, -1, :] must be "now" (offset 0). L must be >=
+          (n_out-1)*max_gap_frames + 1, which is exactly how configs.py sizes
+          STATE_POOL_LEN / TACTILE_PAST_POOL_LEN.
+
+    Returns:
+        gathered: [B, n_out, D], gathered[:, -1, :] == pool[:, -1, :] ("now").
+        gaps: [B, n_out-1] int64, the realized native-frame gap between each
+              consecutive pair of gathered steps, in the same order as
+              torch.diff(gathered, dim=1) -- gaps[:, k] is the gap between
+              gathered[:, k, :] and gathered[:, k+1, :].
+    """
+    B, L, D = pool.shape
+    n_gaps = n_out - 1
+    gaps = torch.randint(1, max_gap_frames + 1, (B, n_gaps), device=pool.device)
+    # idx_back[:, k] = native frames from gathered step k back to "now".
+    # idx_back[:, k] = sum(gaps[:, k:]); idx_back[:, -1] = 0 ("now" itself).
+    cum_from_now = torch.cumsum(gaps.flip(-1), dim=-1).flip(-1)
+    idx_back = torch.cat([cum_from_now, torch.zeros((B, 1), dtype=gaps.dtype, device=pool.device)], dim=-1)
+    idx = (L - 1 - idx_back).clamp(min=0)
+    gathered = torch.gather(pool, 1, idx.unsqueeze(-1).expand(-1, -1, D).long())
+    return gathered, gaps
+
 
 def log_before_after(name, data_raw, data_norm):
     """Log shape, device, dtype, range before/after normalization."""
@@ -132,6 +165,17 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     lowdim = normalizer.normalize("observation.state", lowdim_raw) if normalizer else lowdim_raw
     if _verbose:
         log_before_after("observation.state (lowdim)", lowdim_raw, lowdim)
+
+    if JITTER_HISTORY:
+        _pool_shape = tuple(lowdim.shape)
+        lowdim, _state_gaps = _jitter_gather(lowdim, PROPRIOCEPTIVE_TEMPORAL_HORIZON, JITTER_MAX_GAP_FRAMES)
+        # state carries no derived/scale-sensitive quantity (no diff is taken
+        # of it), so jitter only changes WHICH raw pool samples are selected --
+        # no delta rescaling needed here, unlike the tactile case below.
+        if _verbose:
+            log.debug("  jitter/observation.state: pool %s -> gathered %s, "
+                      "row0 gaps(frames)=%s", _pool_shape, tuple(lowdim.shape),
+                      _state_gaps[0].tolist())
 
     # Action
     action_raw = batch["action"]
@@ -251,25 +295,66 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         if _verbose:
             log_before_after("observation.tactile", tactile_raw, tactile_pastNfuture)
 
-        tactile_past = tactile_pastNfuture[:, :TACTILE_TEMPORAL_HORIZON+1, :]  # -18, -17 ... 0
-        tactile_deltas = torch.diff(tactile_past, dim=1)                             #idx#  0 ,  1,     18
-        output["tactile"] = torch.concat((tactile_past[:, 1:, : ], tactile_deltas), dim=-1)    # [B, 18, 120]
+        if JITTER_HISTORY:
+            # Past half is a dense pool (TACTILE_PAST_POOL_LEN, native-FPS
+            # spaced, ending at "now"/offset 0); future half is unchanged --
+            # exactly TACTILE_TEMPORAL_HORIZON entries at offsets +1..+18,
+            # since the prediction target is never jittered.
+            past_pool = tactile_pastNfuture[:, :TACTILE_PAST_POOL_LEN, :]
+            future = tactile_pastNfuture[:, TACTILE_PAST_POOL_LEN:, :]
 
-        tactile_next = tactile_pastNfuture[:, TACTILE_TEMPORAL_HORIZON : , :]
-        tactile_next_deltas = torch.diff(tactile_next, dim=1)
-        output["tactile_next"] =  torch.concat((tactile_next[:, 1:, : ], tactile_next_deltas), dim=-1)    # [B, 18, 120]
+            tactile_past, _tac_gaps = _jitter_gather(past_pool, TACTILE_TEMPORAL_HORIZON + 1, JITTER_MAX_GAP_FRAMES)
+            # Raw diff / realized-gap-in-frames gives a per-frame rate; scale
+            # back up by JITTER_BASE_GAP_FRAMES so the delta's units stay
+            # "change per JITTER_BASE_GAP_FRAMES native frames" regardless of
+            # which gap was actually drawn -- i.e. the same units the
+            # unjittered delta (and the normalizer's tactile stats) already
+            # use, rather than introducing a differently-scaled quantity.
+            _raw_tac_deltas = torch.diff(tactile_past, dim=1)
+            tactile_deltas = _raw_tac_deltas * (JITTER_BASE_GAP_FRAMES / _tac_gaps.unsqueeze(-1).to(_raw_tac_deltas.dtype))
+            output["tactile"] = torch.concat((tactile_past[:, 1:, :], tactile_deltas), dim=-1)  # [B, 18, 120]
 
-        # Padding mask for the tactile *target*. Row j of tactile_next holds the
-        # value at offset j+1 and the delta (j+1)-(j), so it is only a real
-        # supervision target when BOTH endpoints are inside the episode.
-        if "observation.tactile_is_pad" in batch:
-            _tac_pad = batch["observation.tactile_is_pad"].to(torch.bool)          # [B, 37]
-            _next_pad = _tac_pad[:, TACTILE_TEMPORAL_HORIZON:]                     # [B, 19] offsets 0..+18
-            output["tactile_next_mask"] = _next_pad[:, 1:] | _next_pad[:, :-1]     # [B, 18]
+            # "now" (== past_pool[:, -1, :] == tactile_past[:, -1, :]) prepended
+            # to the fixed future half reconstructs the exact unjittered
+            # tactile_next window (offsets 0..+18) the non-jitter path builds.
+            tactile_next = torch.cat((tactile_past[:, -1:, :], future), dim=1)  # [B, 19, 60]
+            tactile_next_deltas = torch.diff(tactile_next, dim=1)
+            output["tactile_next"] = torch.concat((tactile_next[:, 1:, :], tactile_next_deltas), dim=-1)  # [B, 18, 120]
+
+            if "observation.tactile_is_pad" in batch:
+                _tac_pad = batch["observation.tactile_is_pad"].to(torch.bool)              # [B, TACTILE_PAST_POOL_LEN+18]
+                _next_pad = _tac_pad[:, TACTILE_PAST_POOL_LEN - 1:]                        # [B, 19] offsets 0..+18
+                output["tactile_next_mask"] = _next_pad[:, 1:] | _next_pad[:, :-1]         # [B, 18]
+            else:
+                output["tactile_next_mask"] = torch.zeros(
+                    output["tactile_next"].shape[:2], dtype=torch.bool, device=tactile_next.device)
+                log.warning("batch has no 'observation.tactile_is_pad' -- tactile target mask is all-False")
+
+            if _verbose:
+                log.debug("  jitter/observation.tactile: past_pool %s -> gathered %s, "
+                          "row0 gaps(frames)=%s, base_gap=%d",
+                          tuple(past_pool.shape), tuple(tactile_past.shape),
+                          _tac_gaps[0].tolist(), JITTER_BASE_GAP_FRAMES)
         else:
-            output["tactile_next_mask"] = torch.zeros(
-                output["tactile_next"].shape[:2], dtype=torch.bool, device=tactile_next.device)
-            log.warning("batch has no 'observation.tactile_is_pad' -- tactile target mask is all-False")
+            tactile_past = tactile_pastNfuture[:, :TACTILE_TEMPORAL_HORIZON+1, :]  # -18, -17 ... 0
+            tactile_deltas = torch.diff(tactile_past, dim=1)                             #idx#  0 ,  1,     18
+            output["tactile"] = torch.concat((tactile_past[:, 1:, : ], tactile_deltas), dim=-1)    # [B, 18, 120]
+
+            tactile_next = tactile_pastNfuture[:, TACTILE_TEMPORAL_HORIZON : , :]
+            tactile_next_deltas = torch.diff(tactile_next, dim=1)
+            output["tactile_next"] =  torch.concat((tactile_next[:, 1:, : ], tactile_next_deltas), dim=-1)    # [B, 18, 120]
+
+            # Padding mask for the tactile *target*. Row j of tactile_next holds the
+            # value at offset j+1 and the delta (j+1)-(j), so it is only a real
+            # supervision target when BOTH endpoints are inside the episode.
+            if "observation.tactile_is_pad" in batch:
+                _tac_pad = batch["observation.tactile_is_pad"].to(torch.bool)          # [B, 37]
+                _next_pad = _tac_pad[:, TACTILE_TEMPORAL_HORIZON:]                     # [B, 19] offsets 0..+18
+                output["tactile_next_mask"] = _next_pad[:, 1:] | _next_pad[:, :-1]     # [B, 18]
+            else:
+                output["tactile_next_mask"] = torch.zeros(
+                    output["tactile_next"].shape[:2], dtype=torch.bool, device=tactile_next.device)
+                log.warning("batch has no 'observation.tactile_is_pad' -- tactile target mask is all-False")
 
         timing['tactile'] = time.time() - _t_tac_start
 
@@ -278,18 +363,28 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
             # verbatim by LeRobot, so this is what each slice really contains.
             _ts = delta_timestamps["observation.tactile"]
             _idx = [round(t * 30.0) for t in _ts]   # frame offsets, FPS=30
-            log.debug("  tactile delta idx order = %s", _idx)
-            log.debug("  tactile_past  = idx[:%d] -> frame offsets %s",
-                      TACTILE_TEMPORAL_HORIZON + 1, _idx[:TACTILE_TEMPORAL_HORIZON + 1])
-            log.debug("  tactile       = concat(past[1:], diff(past)) %s   (past[1:] offsets %s)",
-                      tuple(output["tactile"].shape), _idx[1:TACTILE_TEMPORAL_HORIZON + 1])
-            log.debug("  tactile_next  = concat(nxt[1:], diff(nxt))  %s   (nxt offsets %s)",
-                      tuple(output["tactile_next"].shape), _idx[TACTILE_TEMPORAL_HORIZON:])
-            if _idx[0] == 0:
-                log.warning("  tactile window is NEWEST-FIRST (idx[0]==0): history is time-reversed, "
-                            "current frame is dropped by past[1:], and diff(next)[0] spans "
-                            "offset %d -> %d. See configs.TACTILE_TEMPORAL_TOTAL_TIMESTAMPS.",
-                            _idx[TACTILE_TEMPORAL_HORIZON], _idx[TACTILE_TEMPORAL_HORIZON + 1])
+            if JITTER_HISTORY:
+                log.debug("  tactile delta idx order: dense past pool[:%d] frame offsets %s..%s, "
+                          "fixed future[%d:] offsets %s",
+                          TACTILE_PAST_POOL_LEN, _idx[0], _idx[TACTILE_PAST_POOL_LEN - 1],
+                          TACTILE_PAST_POOL_LEN, _idx[TACTILE_PAST_POOL_LEN:])
+                log.debug("  tactile       = concat(gathered_past[1:], scaled diff) %s  (row0 gaps(frames)=%s)",
+                          tuple(output["tactile"].shape), _tac_gaps[0].tolist())
+                log.debug("  tactile_next  = concat(nxt[1:], diff(nxt)) %s  (unjittered, offsets 0..+%d)",
+                          tuple(output["tactile_next"].shape), TACTILE_TEMPORAL_HORIZON)
+            else:
+                log.debug("  tactile delta idx order = %s", _idx)
+                log.debug("  tactile_past  = idx[:%d] -> frame offsets %s",
+                          TACTILE_TEMPORAL_HORIZON + 1, _idx[:TACTILE_TEMPORAL_HORIZON + 1])
+                log.debug("  tactile       = concat(past[1:], diff(past)) %s   (past[1:] offsets %s)",
+                          tuple(output["tactile"].shape), _idx[1:TACTILE_TEMPORAL_HORIZON + 1])
+                log.debug("  tactile_next  = concat(nxt[1:], diff(nxt))  %s   (nxt offsets %s)",
+                          tuple(output["tactile_next"].shape), _idx[TACTILE_TEMPORAL_HORIZON:])
+                if _idx[0] == 0:
+                    log.warning("  tactile window is NEWEST-FIRST (idx[0]==0): history is time-reversed, "
+                                "current frame is dropped by past[1:], and diff(next)[0] spans "
+                                "offset %d -> %d. See configs.TACTILE_TEMPORAL_TOTAL_TIMESTAMPS.",
+                                _idx[TACTILE_TEMPORAL_HORIZON], _idx[TACTILE_TEMPORAL_HORIZON + 1])
             log.debug("  tactile_next_mask: %d/%d padded target steps",
                       int(output["tactile_next_mask"].sum().item()),
                       output["tactile_next_mask"].numel())

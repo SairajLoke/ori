@@ -161,23 +161,70 @@ if IS_ORIGAMI_TASK:
               f"(30, 15, 10, 6, 5, 3, 2, 1...) or loosen TOLERANCE.")
     _OBS_SAMPLE_FPS = OBS_FPS if USE_OBS_FPS else FPS
 
-    #NOTE: this corrects but also changes input semantics...can no longer resume path 
-    TACTILE_TEMPORAL_TOTAL_TIMESTAMPS  = [ -1*(i/_OBS_SAMPLE_FPS)  for i in range(TACTILE_TEMPORAL_HORIZON, -1, -1)] \
-                                       + [    (i/_OBS_SAMPLE_FPS)  for i in range(1, TACTILE_TEMPORAL_HORIZON +1)] 
-    #[ -18 -17 .... 0 ] + [1 , 2.... 18]  (frame indices; real spacing is 1/_OBS_SAMPLE_FPS)
-    
-    
+    # ---- history jitter: emulate irregular/lagged inference-time sampling ----
+    # OBS_FPS/USE_OBS_FPS above assumes deployment calls infer() at one known,
+    # REGULAR rate. In reality infer() cadence is unknown and likely irregular
+    # (queueing, variable model latency, etc). If training only ever sees
+    # perfectly regular history spacing, the model has never seen the ragged
+    # gaps deployment will actually produce.
+    #
+    # Two input windows are exposed to this: observation.state (past window)
+    # and observation.tactile (past window only -- its delta channel, an
+    # explicit torch.diff, is the more dangerous case since its magnitude
+    # scales with elapsed time). NOT affected: images (single current frame,
+    # no history window at all) and the two things we PREDICT -- action and
+    # tactile_next -- whose spacing is our own modeling choice (robot-control
+    # rate / prediction horizon), not something inference cadence imposes on
+    # us, so they always stay on the regular grid.
+    #
+    # Mechanics: LeRobotDataset's delta_timestamps is fixed once at dataset
+    # construction, so it cannot be redrawn every training step. Instead we
+    # request a DENSE POOL of every native-FPS frame here (once, wide enough
+    # to cover the worst-case max gap), and dataset/origami_dataset.py's
+    # convert_batch draws fresh random per-step gaps -- independently per
+    # sample, not just per batch -- on every call and subsamples the pool with
+    # them. The fetch is fixed; the realized spacing is not. This is cheap:
+    # state/tactile are small float arrays (not video), so a wider window is a
+    # few extra KB, not a decode.
+    JITTER_HISTORY = os.environ.get('ORI_JITTER_HISTORY', '0') in ('1', 'true', 'True')
+    # Max per-step gap as a multiple of the regular (unjittered) step gap in
+    # native frames. 1.0 would degenerate to the regular grid; higher = wider
+    # possible gaps = exposure to slower/more irregular inference cadences.
+    JITTER_MAX_GAP_MULT = float(os.environ.get('ORI_JITTER_MAX_GAP_MULT', '3.0'))
+    # Regular per-step gap in native frames (e.g. FPS=30, OBS_FPS=5 -> 6).
+    JITTER_BASE_GAP_FRAMES = max(1, round(FPS / _OBS_SAMPLE_FPS))
+    JITTER_MAX_GAP_FRAMES = max(1, round(JITTER_BASE_GAP_FRAMES * JITTER_MAX_GAP_MULT))
+    # Dense pool sizes (frame COUNTS, native-FPS-spaced, each pool ending at
+    # "now"/offset 0) sized for the worst case where every one of the
+    # HORIZON-1 gaps in the window hits JITTER_MAX_GAP_FRAMES.
+    STATE_POOL_LEN        = (PROPRIOCEPTIVE_TEMPORAL_HORIZON - 1) * JITTER_MAX_GAP_FRAMES + 1
+    TACTILE_PAST_POOL_LEN = TACTILE_TEMPORAL_HORIZON * JITTER_MAX_GAP_FRAMES + 1
+
+    #NOTE: this corrects but also changes input semantics...can no longer resume path
+    if JITTER_HISTORY:
+        _state_past_offsets   = [-1 * (i / FPS) for i in range(STATE_POOL_LEN - 1, -1, -1)]
+        _tactile_past_offsets = [-1 * (i / FPS) for i in range(TACTILE_PAST_POOL_LEN - 1, -1, -1)]
+    else:
+        _state_past_offsets   = [-1 * (i / _OBS_SAMPLE_FPS) for i in range(PROPRIOCEPTIVE_TEMPORAL_HORIZON - 1, -1, -1)]
+        _tactile_past_offsets = [-1 * (i / _OBS_SAMPLE_FPS) for i in range(TACTILE_TEMPORAL_HORIZON, -1, -1)]
+    _tactile_future_offsets = [(i / _OBS_SAMPLE_FPS) for i in range(1, TACTILE_TEMPORAL_HORIZON + 1)]
+
+    TACTILE_TEMPORAL_TOTAL_TIMESTAMPS = _tactile_past_offsets + _tactile_future_offsets
+    #[ -18 -17 .... 0 ] + [1 , 2.... 18]  (frame indices; real spacing is 1/_OBS_SAMPLE_FPS,
+    # or dense native-FPS spacing for the past half when JITTER_HISTORY is on)
 
     #==================================== OBSERVATION HISTORY/FUTURES ==============================================
     DELTA_TIMESTAMPS = {
 
-        "observation.state" : [ -1* (i/ _OBS_SAMPLE_FPS) for i in range(PROPRIOCEPTIVE_TEMPORAL_HORIZON-1,-1,-1)], #last [B, 6, 65]
+        "observation.state" : _state_past_offsets, #last [B, 6, 65] normally; [B, STATE_POOL_LEN, 65] pool when jittered
 
-        "action":             [  i / FPS     for i in range(CHUNK_SIZE)],         #next [B, 100, 65]  -- always robot-rate, never OBS_FPS
-        
-        "observation.tactile": TACTILE_TEMPORAL_TOTAL_TIMESTAMPS, 
+        "action":             [  i / FPS     for i in range(CHUNK_SIZE)],         #next [B, 100, 65]  -- always robot-rate, never OBS_FPS/jittered
+
+        "observation.tactile": TACTILE_TEMPORAL_TOTAL_TIMESTAMPS,
         #last [B, 19, 3dof*20streams]  # the delta is the second input to be concatenated afterwards in batch_process
-        #19 is used to get the delta, then 19th old obs is discarded in convert batch 
+        #19 is used to get the delta, then 19th old obs is discarded in convert batch
+        # (past half is a dense pool instead of exactly 19 when JITTER_HISTORY is on;
+        # future half -- the tactile_next prediction target -- is always exactly 18, unjittered)
     }
 
     

@@ -159,3 +159,125 @@ Sequencing note (unchanged from the original roadmap discussion): item 2 before
 item 3. Cheaper labels, fixes a known BC failure mode, and produces a second
 working instance of the predict-then-condition pattern before attempting it a
 third time here.
+
+---
+
+## 4. Ablate the tactile delta channels -- they may be pure redundancy
+
+`observation.tactile` is `concat(values, diff(values))` -- but the raw window
+already hands the model every consecutive reading from t-18 to t
+(`TACTILE_TEMPORAL_TOTAL_TIMESTAMPS`, every 1/30s step, not subsampled). So
+`x(t)` and `x(t-1)` are already both present as separate elements in
+`tactile_past` before any delta is computed, and the only thing consuming
+that window is `input_proj_tactile = nn.Linear(18*120, hidden_dim)` -- a
+single linear projection, which is trivially capable of computing `x(t) -
+x(t-1)` itself (a fixed linear combination at two deterministic positions).
+The delta half is not new information; it is a hand-engineered feature that
+is a linear function of what the raw half already contains.
+
+**What it might buy:** faster/more-reliable convergence on that subtraction
+pattern under limited data, vs the network having to discover it via
+gradient descent (plausible, likely modest -- it is about as easy a pattern
+as a linear model can learn).
+
+**What it costs:**
+- The entire deployment-timing fragility discussed for item 2-adjacent work
+  (`concerns.md` #2): the delta channel explicitly encodes a time interval
+  into its magnitude, so it breaks under irregular `infer()` call spacing in
+  a way the raw values do not. This is the ONLY part of `observation.tactile`
+  sensitive to that problem.
+- Doubles tactile input dimensionality (120 vs 60/timestep) for a linearly
+  redundant feature.
+
+**The test, cheap and direct -- do this instead of reasoning further:** train
+with `observation.tactile` truncated to the value half only (`tactile_dim`
+120->60, halves `input_proj_tactile`'s input and `tactile_head`'s output
+correspondingly), compare `val_l1` / `val/l1_tac` against the current
+with-deltas run.
+- Roughly unchanged -> deltas were redundant, drop them, the deployment-timing
+  problem for tactile is eliminated for free.
+- Measurably worse -> the network has not discovered the subtraction pattern
+  on its own (plausible given the amount of training so far); keep deltas,
+  and the elapsed-time-scaled-delta correction (`delta / elapsed_frames`,
+  `elapsed_frames = round((t_now - t_prev) * FPS)`) becomes something that
+  actually needs building for deployment.
+
+**Asymmetry worth remembering:** this argument is about the INPUT side
+(`observation.tactile`). The OUTPUT side (`tactile_next`, predicted by
+`tac_hat`) has the same value+delta structure but is not deployment-timing
+sensitive the same way -- it is the model's own multi-step prediction, not
+derived from irregular real sensor timestamps. Predicting deltas explicitly
+there is a separate, softer question (auxiliary supervision for local
+dynamics) this argument does not settle.
+
+---
+
+## 5. Condition the model on what to attend to -- text or other embedding
+
+Currently the model has zero mechanism to be told what matters right now --
+every input is fused through the same fixed architecture regardless of task
+phase or intent. `robot_io_spec.md`'s protocol already carries a `prompt`
+field ("fold the plane") in every observation, and LeRobotDataset already
+surfaces a `task` string per frame -- confirmed neither is read anywhere in
+the training code (`convert_batch` drops `batch["task"]`; `task_name` is only
+ever a CLI/checkpoint-naming string). This is a ready-made, currently-idle
+hook.
+
+**Why this over the hardcoded crop/filter idea (concerns.md #4 option B):**
+that idea was deprioritized specifically because "a hardcoded center-prior is
+redundant with what training already discovers, and risks removing signal
+that legitimately lives off-center." A LEARNED conditioning signal sidesteps
+that objection -- it is not a fixed prior, it is something the network
+adapts its own attention around, driven by a genuinely informative external
+signal instead of a guess about where the ROI usually is.
+
+**This is not a new idea in isolation -- it is a mechanism that items 2 and 3
+above can be BUILT ON, not a fourth separate thing:**
+- **Stage predictor (item 2)**, reframed: instead of (or in addition to) a
+  learned numeric stage-ID embedding, use a short text description per stage
+  ("picking up left corner", "aligning fold line", "pressing crease"),
+  encoded via a frozen sentence/CLIP text encoder, injected as one more
+  conditioning token. More flexible than a fixed stage-ID vocabulary
+  (generalizes to phase descriptions not seen as a discrete ID at train
+  time), more expensive (needs per-stage TEXT labels, not just numeric IDs,
+  and a text encoder in the loop). Whether the extra flexibility is worth the
+  extra labelling cost is exactly the kind of thing to decide once item 2's
+  simpler numeric-ID version is already built and validated.
+- **Keypoint predictor (item 3)**, reframed: the current/target keypoint
+  location is itself a conditioning signal -- inject it (as a learned
+  positional embedding, DETR-object-query style) to bias cross-attention
+  toward a specific image region, a learned analogue of the ROI-crop idea
+  from `concerns.md` #4 that does not require guessing a fixed crop box.
+
+**Integration mechanisms, in rough order of invasiveness:**
+1. **One more token**, mirroring exactly how tactile/latent/proprio already
+   enter the transformer (`additional_pos_embed` slot + a small projection of
+   the conditioning vector). Architecturally the cheapest, reuses an existing
+   pattern, but is the same hardcoded-token-slice territory in
+   `transformer.py` flagged as the reason item 2 needs its own careful pass.
+2. **FiLM-style conditioning** (feature-wise linear modulation): the
+   conditioning vector predicts a per-channel scale+shift applied to the
+   vision backbone's or transformer's intermediate activations, rather than
+   entering as a token. Well-established in language-conditioned robot
+   learning (RT-1/RT-2-adjacent work); a different, arguably lighter
+   mechanism than adding tokens, worth comparing against option 1 rather than
+   assuming the token-based pattern is automatically right just because it is
+   already used elsewhere in this codebase.
+3. **Predicted soft spatial attention** derived from the conditioning signal,
+   applied to weight image tokens before they enter the transformer -- the
+   most direct realization of "tell the model where to look," and the
+   closest in spirit to the ROI-crop idea, but the most new machinery to
+   build and validate.
+
+**Scope note:** given the dataset is a single task ("fold_plane" is the only
+`task_name` used across every run so far), full open-vocabulary language
+conditioning (RT-1/RT-2 style, built for many varied task instructions) is
+almost certainly overkill and under-informative here -- a constant prompt
+string carries no discriminative signal across episodes. The stage-text
+framing above (varying WITHIN an episode, not across episodes) is the
+version of "text conditioning" that would actually carry information in this
+setting.
+
+Sequencing: after item 2's simpler version exists and is validated, since
+this is best understood as "item 2, done with a richer conditioning
+representation" rather than independent work.

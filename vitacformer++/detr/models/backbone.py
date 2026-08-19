@@ -95,79 +95,26 @@ class BackboneBase(nn.Module):
 
 
 def _load_local_backbone_weights(backbone: nn.Module, path: str):
-    """Load ResNet weights from a local checkpoint instead of the torch hub cache.
+    """Load ResNet weights from a local file with strict=True.
 
-    Accepts a bare torchvision resnet state_dict, or a wrapper dict under any of
-    'model' / 'state_dict' / 'weights'. Common prefixes are stripped
-    automatically, so a full ACT checkpoint (keys like
-    'model.backbones.0.0.body.conv1.weight') works as well as a plain
-    'resnet18-f37072fd.pth'.
+    Expects a plain torchvision state_dict, e.g. resnet18-f37072fd.pth or the
+    copy in assets/backbones/. strict=True means a file that does not match the
+    architecture exactly is an error -- silently accepting a partial match would
+    leave part of the backbone randomly initialised.
 
-    Note FrozenBatchNorm2d has no num_batches_tracked buffer; its
-    _load_from_state_dict drops that key, so a stock torchvision state_dict
-    loads cleanly.
+    Verified against the stock resnet18-f37072fd.pth (102 keys, byte-identical
+    to the copy in assets/) and against the failure cases: a truncated file, a
+    resnet34 state_dict, and a full ACT checkpoint all raise RuntimeError rather
+    than partially loading.
+
+    (FrozenBatchNorm2d also deletes any num_batches_tracked keys in
+    _load_from_state_dict before the strict check, so files saved from a live
+    nn.Module load too, even though the published torchvision weights carry
+    none.)
     """
-    obj = torch.load(path, map_location="cpu", weights_only=False)
-    if isinstance(obj, dict):
-        for k in ("model", "state_dict", "weights"):
-            if k in obj and isinstance(obj[k], dict):
-                obj = obj[k]
-                break
-    if not isinstance(obj, dict):
-        raise ValueError(f"{path}: expected a state_dict, got {type(obj).__name__}")
-
-    target = set(backbone.state_dict().keys())
-
-    # Try the raw keys plus a set of prefix strips; keep whichever matches most.
-    def _strip(sd, prefix):
-        return {k[len(prefix):]: v for k, v in sd.items() if k.startswith(prefix)}
-
-    candidates = [("", obj)]
-    prefixes = set()
-    for k in obj:
-        for anchor in ("conv1.", "layer1."):
-            i = k.find(anchor)
-            if i > 0:
-                prefixes.add(k[:i])
-    for pre in prefixes:
-        candidates.append((pre, _strip(obj, pre)))
-
-    best_prefix, best_sd, best_hits = "", obj, len(target & set(obj.keys()))
-    for pre, sd in candidates[1:]:
-        hits = len(target & set(sd.keys()))
-        if hits > best_hits:
-            best_prefix, best_sd, best_hits = pre, sd, hits
-
-    missing, unexpected = backbone.load_state_dict(best_sd, strict=False)
-    missing = [m for m in missing if "num_batches_tracked" not in m]
-    log.info("backbone weights loaded from %s", path)
-    log.info("  matched %d/%d target tensors%s", best_hits, len(target),
-             f" after stripping prefix {best_prefix!r}" if best_prefix else "")
-    if unexpected:
-        # Harmless: extra tensors in the source we simply do not need.
-        log.warning("  %d unexpected key(s) ignored: %s%s",
-                    len(unexpected), unexpected[:8], " ..." if len(unexpected) > 8 else "")
-
-    # Equivalent to strict=True, but with a diagnostic instead of an opaque
-    # exception. load_state_dict(strict=False) is used only so we can report
-    # WHAT is missing; any genuinely missing tensor is still fatal, because
-    # otherwise part of the backbone silently stays randomly initialised and the
-    # run looks fine until the numbers are quietly worse.
-    if best_hits == 0:
-        raise ValueError(
-            f"{path}: no keys matched the backbone.\n"
-            f"  expected e.g. {sorted(target)[:3]}\n"
-            f"  got          {sorted(obj)[:3]}"
-        )
-    if missing:
-        raise ValueError(
-            f"{path}: {len(missing)} tensor(s) missing -- refusing to train with a "
-            f"partially-initialised backbone.\n"
-            f"  matched {best_hits}/{len(target)}"
-            f"{f' after stripping prefix {best_prefix!r}' if best_prefix else ''}\n"
-            f"  missing: {missing[:10]}{' ...' if len(missing) > 10 else ''}"
-        )
-    return missing, unexpected
+    state_dict = torch.load(path, map_location="cpu", weights_only=True)
+    backbone.load_state_dict(state_dict, strict=True)
+    log.info("backbone weights loaded from %s (strict)", path)
 
 
 class Backbone(BackboneBase):

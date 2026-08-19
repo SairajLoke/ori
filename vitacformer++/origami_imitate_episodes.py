@@ -51,6 +51,7 @@ from lerobot.policies.factory import make_pre_post_processors
 from train_eval_utils import (JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats,
                               log_input_stats, log_final_model_inputs, build_action_dim_weights)
 from my_utils.log_features import log_problematic_features
+from my_utils.gradcam import save_gradcam_grid
 from my_utils.ori_logging import (setup_logging, get_logger, log_tensor, log_tensors,
                                   TRACE, StepGate)
 
@@ -567,6 +568,8 @@ def main(args):
         'disable_normalization': disable_normalization,
         'max_train_steps': args.get('max_train_steps'),
         'max_val_steps': args.get('max_val_steps'),
+        'gradcam': args.get('gradcam', False),
+        'gradcam_n_samples': args.get('gradcam_n_samples', 2),
     }
     
     
@@ -985,7 +988,8 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
 
 @torch.no_grad()
 def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, epoch,
-                     max_steps=None):
+                     max_steps=None, gradcam=False, gradcam_dir=None, gradcam_n_samples=2,
+                     camera_names=None):
     """Run the held-out episodes and return a dict of scalar metrics.
 
     `policy` must be the UNWRAPPED module (accelerator.unwrap_model), and this
@@ -1008,6 +1012,12 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
     against a physical baseline (e.g. "copy the current pose", ~0.044 rad).
 
     With normalization off, denormalize() is identity, so nothing changes.
+
+    If gradcam=True, also saves a Grad-CAM overlay per camera for the first
+    `gradcam_n_samples` examples of the FIRST validation batch only (one extra
+    isolated forward+backward pass, see my_utils/gradcam.py). Off by default --
+    this is a debug/analysis tool, not something every validation pass should
+    pay for.
     """
     policy.eval()
 
@@ -1022,6 +1032,17 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
         data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
                              epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
         data.pop("_timing", None)
+
+        if gradcam and batch_idx == 0:
+            try:
+                save_gradcam_grid(
+                    policy=policy, data=data, device=device,
+                    camera_names=camera_names or [], out_dir=gradcam_dir,
+                    n_samples=gradcam_n_samples,
+                )
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                log.warning("gradcam failed for epoch %d, skipping: %s", epoch, e)
 
         forward_dict, a_hat = origami_forward_pass(
             data, policy, normalizer, device, use_tactile, epoch=epoch, return_a_hat=True)
@@ -1457,7 +1478,11 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                 _t_val = time.time()
                 val_metrics = origami_validate(
                     val_dataloader, accelerator.unwrap_model(policy), normalizer,
-                    device, use_tactile, epoch, max_steps=config.get('max_val_steps'))
+                    device, use_tactile, epoch, max_steps=config.get('max_val_steps'),
+                    gradcam=config.get('gradcam', False),
+                    gradcam_dir=os.path.join(ckpt_dir, 'gradcam', f'epoch_{epoch}'),
+                    gradcam_n_samples=config.get('gradcam_n_samples', 2),
+                    camera_names=config.get('camera_names'))
                 validation_history.append((epoch, val_metrics))
 
                 if val_metrics:
@@ -1800,6 +1825,12 @@ if __name__ == '__main__':
                              'note the LR schedule is still sized for the full epoch.')
     parser.add_argument('--max_val_steps', type=int, default=None,
                         help='DEBUG: cap the number of validation batches.')
+    parser.add_argument('--gradcam', action='store_true',
+                        help='Save a Grad-CAM overlay per camera on the first validation batch '
+                             'of every validation epoch (see my_utils/gradcam.py). One extra '
+                             'isolated forward+backward pass -- off by default.')
+    parser.add_argument('--gradcam_n_samples', type=int, default=2,
+                        help='Number of examples from the first val batch to run Grad-CAM on.')
     parser.add_argument('--tac_weight', type=float, default=1.0,
                         help='Multiplier on the tactile prediction loss (default 1.0, unchanged). '
                              'Sweep this together with --kl_weight: the three terms l1, kl*kl_weight '

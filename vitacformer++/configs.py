@@ -76,8 +76,21 @@ if IS_ORIGAMI_TASK:
                     'observation.images.wrist_right',
                     'observation.images.wrist_left']
     STATE_DIM = 65
-    LR_BACKBONE = 1e-5
-    BACKBONE = 'resnet18'
+    # BACKBONE: 'resnet18'/'resnet34'/'resnet50' (existing default, unchanged)
+    # or a ViT: 'vit_b_16'/'vit_b_32'/'vit_l_16'/'vit_l_32'/'vit_h_14'
+    # (torchvision.models constructors; see detr/models/backbone.py for what
+    # each is dispatched to). vit_b_16 is the one with local weights fetched
+    # to assets/backbones/ so far -- others will torch-hub download until you
+    # fetch their weights the same way.
+    BACKBONE = os.environ.get('ORI_BACKBONE', 'resnet18')
+    # LR_BACKBONE > 0 fine-tunes the backbone at this LR; <= 0 freezes it
+    # entirely for a ViT (train_backbone = lr_backbone > 0 in
+    # detr/models/backbone.py). For ResNet this is a no-op distinction --
+    # its freeze loop has been commented out since before this project, so it
+    # is never truly frozen, only ever trained at this LR. For a ViT it is a
+    # real freeze, and freezing is the recommended default on a small dataset
+    # (86M+ params, a few hundred episodes): e.g. ORI_LR_BACKBONE=0.
+    LR_BACKBONE = float(os.environ.get('ORI_LR_BACKBONE', '1e-5'))
 
     
     # ------------------ Dataset configs ------------------

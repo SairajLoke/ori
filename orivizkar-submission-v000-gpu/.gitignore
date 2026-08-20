@@ -1,3 +1,11 @@
 *.pth
 *ckpt
 *__pycache__/
+
+# Per-checkpoint sidecars written next to the .ckpt during training. They must
+# always match the checkpoint sitting beside them, so a committed copy is a
+# footgun -- a stale pair would silently build an image whose architecture or
+# normalization disagrees with its weights. Regenerate for testing with
+# scripts/make_untrained_ckpt.py; use the real ones from training to deploy.
+checkpoints/training_configs.json
+checkpoints/normalizer_config.json

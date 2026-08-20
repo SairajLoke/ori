@@ -48,6 +48,20 @@ runs/
 logs/
 checkpoints_raw/
 
+# Local backup of the previous vendored tree -- never built from, but ~376MB
+# of build context sent on every build if not excluded.
+old_vitacformer/
+
+# Dev-only trees inside the vendored vitacformer/ copy. Nothing under these is
+# imported by the inference path (vitac_policy_server.py needs policy.py,
+# detr/, configs.py, train_utils.py, my_utils/, assets/backbones/ only).
+vitacformer/benchmarkdataloader/
+vitacformer/paper_crop_check/
+vitacformer/ckpt_dir/
+vitacformer/accelerate_configs/
+**/*.time_log
+**/__pycache__/
+
 # Secrets and credentials
 *.pem
 *.key

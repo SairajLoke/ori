@@ -8,12 +8,15 @@
 # waits for the policy server to report READY, opens separate terminals for
 # the router/policy logs, then runs examples/check_zenoh_policy.py against it.
 #
-# Every container is force-removed by name before being (re)created, so a
-# crashed or half-cleaned previous run never blocks this one.
+# The image is rebuilt on every launch so you can never validate a stale one;
+# Docker's layer cache makes that near-free when nothing changed. Every
+# container is force-removed by name before being (re)created, so a crashed or
+# half-cleaned previous run never blocks this one.
 #
-#   ./scripts/local_contract_test.sh                 # synthetic + dataset checks
+#   ./scripts/local_contract_test.sh                 # build + synthetic + dataset checks
 #   ./scripts/local_contract_test.sh --obs-type synthetic
-#   ./scripts/local_contract_test.sh --build         # docker build first
+#   ./scripts/local_contract_test.sh --no-build      # skip the rebuild (may be stale)
+#   ./scripts/local_contract_test.sh --no-cache      # full rebuild, ignore layer cache
 #   ./scripts/local_contract_test.sh --no-terminals  # logs inline, no GUI windows
 #   ./scripts/local_contract_test.sh --keep          # leave containers up afterwards
 #   ./scripts/local_contract_test.sh down            # just tear everything down
@@ -72,12 +75,18 @@ MEMORY="${MEMORY:-32g}"
 CPUS="${CPUS:-8}"
 SHM_SIZE="${SHM_SIZE:-8g}"
 
-DO_BUILD=0
+# Build every launch by default. Docker's layer cache makes this near-free
+# when nothing changed, and the Dockerfile puts every expensive step (apt,
+# torch, requirements lock) ABOVE the first source COPY, so editing
+# vitac_policy_server.py or vitacformer/ only re-runs cheap file-copy layers.
+# The point is that you can never accidentally validate a stale image.
+DO_BUILD=1
 USE_TERMINALS=1
 KEEP_UP=0
 USE_GPU="auto"
 RELAX_SANDBOX=0
 SUBCOMMAND="up"
+BUILD_NO_CACHE=0
 
 # ---------------------------------------------------------------------------
 # Pretty output
@@ -103,14 +112,16 @@ die() { err "$*"; exit 1; }
 # ---------------------------------------------------------------------------
 
 usage() {
-    sed -n '3,22p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    sed -n '3,25p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
     exit 0
 }
 
 while [ $# -gt 0 ]; do
     case "$1" in
         up|down)          SUBCOMMAND="$1"; shift ;;
-        --build)          DO_BUILD=1; shift ;;
+        --build)          DO_BUILD=1; shift ;;            # default; kept for explicitness
+        --no-build)       DO_BUILD=0; shift ;;
+        --no-cache)       DO_BUILD=1; BUILD_NO_CACHE=1; shift ;;
         --no-terminals)   USE_TERMINALS=0; shift ;;
         --keep)           KEEP_UP=1; shift ;;
         --gpu)            USE_GPU="yes"; shift ;;
@@ -212,7 +223,11 @@ if [ "$DO_BUILD" = "1" ]; then
     for f in training_configs.json normalizer_config.json; do
         [ -s "${SUBMISSION_DIR}/checkpoints/${f}" ] || missing+=("$f")
     done
-    if ! ls "${SUBMISSION_DIR}"/checkpoints/*.ckpt >/dev/null 2>&1; then
+    # The Dockerfile takes the checkpoint's filename as a build arg, so any name
+    # works -- but exactly one .ckpt must be present, or which to deploy is
+    # ambiguous and picking silently would be worse than failing.
+    mapfile -t ckpts < <(find "${SUBMISSION_DIR}/checkpoints" -maxdepth 1 -name '*.ckpt' -printf '%f\n' 2>/dev/null | sort)
+    if [ ${#ckpts[@]} -eq 0 ]; then
         missing+=("<policy>.ckpt")
     fi
     if [ ${#missing[@]} -gt 0 ]; then
@@ -222,14 +237,32 @@ if [ "$DO_BUILD" = "1" ]; then
         err "  ${SUBMISSION_DIR}/checkpoints/ before building."
         exit 1
     fi
+    if [ ${#ckpts[@]} -gt 1 ]; then
+        err "checkpoints/ holds ${#ckpts[@]} .ckpt files: ${ckpts[*]}"
+        err "  Leave exactly one, or set CKPT_FILE=<name> to pick explicitly."
+        exit 1
+    fi
+    CKPT_FILE="${CKPT_FILE:-${ckpts[0]}}"
+    log "checkpoint: $CKPT_FILE"
+    BUILD_ARGS=(--build-arg "CKPT_FILE=${CKPT_FILE}")
+    if [ "$BUILD_NO_CACHE" = "1" ]; then
+        warn "--no-cache: rebuilding every layer including apt/torch/pip (slow)"
+        BUILD_ARGS+=(--no-cache)
+    else
+        log "layer cache is used -- unchanged layers are reused, so this is fast"
+        log "  (expensive layers sit above the first source COPY in the Dockerfile)"
+    fi
     log "docker build -t $IMAGE $SUBMISSION_DIR"
-    docker build -t "$IMAGE" "$SUBMISSION_DIR"
-    ok "built $IMAGE"
+    build_start=$SECONDS
+    docker build "${BUILD_ARGS[@]}" -t "$IMAGE" "$SUBMISSION_DIR"
+    ok "built $IMAGE in $(( SECONDS - build_start ))s"
+else
+    warn "--no-build: validating the EXISTING $IMAGE, which may be stale"
 fi
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 \
-    || die "policy image not found: $IMAGE  (build it, or pass --build / --image <name>)"
-ok "policy image present: $IMAGE"
+    || die "policy image not found: $IMAGE  (drop --no-build to build it, or pass --image <name>)"
+ok "policy image present: $IMAGE (built $(docker image inspect "$IMAGE" --format '{{.Created}}' | cut -c1-19))"
 
 [ -f "$VALIDATOR" ] || die "validator not found: $VALIDATOR"
 command -v uv >/dev/null 2>&1 || die "uv not found on PATH (needed to run the validator)"

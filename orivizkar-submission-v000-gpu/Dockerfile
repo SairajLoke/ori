@@ -64,9 +64,15 @@ COPY entrypoint.sh /app/entrypoint.sh
 # building this image, or the container fails fast at startup.
 # Backbone weights (assets/backbones/*.pth, vendored under vitacformer/) are
 # resolved automatically from whichever backbone training_configs.json names.
-COPY checkpoints/policy_epoch_30_loss_0.041.ckpt /app/checkpoints/policy_best.ckpt
-COPY checkpoints/training_configs.json           /app/checkpoints/training_configs.json
-COPY checkpoints/normalizer_config.json          /app/checkpoints/normalizer_config.json
+# CKPT_FILE is the checkpoint's filename inside checkpoints/. It is a build arg
+# rather than a hardcoded name so deploying a different training run does not
+# require editing this file:
+#   docker build --build-arg CKPT_FILE=policy_epoch_50_loss_0.03.ckpt .
+# scripts/local_contract_test.sh auto-detects it from checkpoints/.
+ARG CKPT_FILE=policy_best.ckpt
+COPY checkpoints/${CKPT_FILE}           /app/checkpoints/policy_best.ckpt
+COPY checkpoints/training_configs.json  /app/checkpoints/training_configs.json
+COPY checkpoints/normalizer_config.json /app/checkpoints/normalizer_config.json
 
 # Set environment variables
 ENV VITAC_CKPT_PATH=/app/checkpoints/policy_best.ckpt \

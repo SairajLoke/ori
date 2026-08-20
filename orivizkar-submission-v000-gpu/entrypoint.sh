@@ -35,6 +35,19 @@ if [ ! -s "${VITAC_CKPT_PATH}" ]; then
     exit 1
 fi
 
+# training_configs.json / normalizer_config.json must sit next to the
+# checkpoint -- TeamPolicy rebuilds the whole architecture and normalization
+# from them (see vitac_policy_server.py::_load_training_config/_load_normalizer).
+CKPT_DIR="$(dirname "${VITAC_CKPT_PATH}")"
+for sidecar in training_configs.json normalizer_config.json; do
+    if [ ! -s "${CKPT_DIR}/${sidecar}" ]; then
+        echo "ERROR: ${CKPT_DIR}/${sidecar} not found (or empty)" >&2
+        echo "  This must be copied in next to the checkpoint at build time --" >&2
+        echo "  origami_imitate_episodes.py writes it during training." >&2
+        exit 1
+    fi
+done
+
 # =============================================================================
 # Writable cache/home directories (matches the Dockerfile's pre-created dirs;
 # re-asserted here so the image also behaves correctly if HOME/XDG_CACHE_HOME
@@ -57,7 +70,6 @@ echo "  Endpoint:        ${ORIGAMI_ZENOH_ENDPOINT}"
 echo "  Session ID:      ${ORIGAMI_SESSION_ID}"
 echo "  Action horizon:  ${ORIGAMI_ACTION_HORIZON}"
 echo "  Checkpoint:      ${VITAC_CKPT_PATH}"
-echo "  BACKBONE_PATH    ${BACKBONE_PATH}" 
 echo "  PYTHONPATH:      ${PYTHONPATH:-<unset>}"
 echo "=============================================="
 

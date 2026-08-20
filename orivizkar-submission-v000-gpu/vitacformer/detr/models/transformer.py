@@ -17,6 +17,32 @@ from torch import nn, Tensor
 import IPython
 e = IPython.embed
 
+# `detr` is pip-installed as its own package; degrade gracefully if my_utils
+# is not on the path (see detr_vae.py for the same shim).
+try:
+    from my_utils.ori_logging import get_logger, log_tensor, TRACE, StepGate
+except ImportError:  # pragma: no cover
+    import logging as _logging
+    TRACE = 5
+
+    def get_logger(name):
+        return _logging.getLogger("ori." + name)
+
+    def log_tensor(*a, **k):
+        pass
+
+    class StepGate:
+        def __init__(self, **k):
+            pass
+
+        def __call__(self):
+            return False
+
+log = get_logger("transformer")
+_tf_gate = StepGate(first_n=4, every=2000)     # 2 passes/step, so 4 == first 2 steps
+_enc_gate = StepGate(first_n=2, every=0)       # token-split layout only, it never changes
+
+
 class Transformer(nn.Module):
 
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
@@ -48,12 +74,17 @@ class Transformer(nn.Module):
 
     def forward(self, src, mask, query_embed, pos_embed, latent_input=None, proprio_input=None, additional_pos_embed=None, tactile=None, tactile_pred=None):
 
+        _trace = _tf_gate() and log.isEnabledFor(TRACE)
+
         if len(src.shape) == 4: # has H and W
             # flatten NxCxHxW to HWxNxC
             bs, c, h, w = src.shape
             src = src.flatten(2).permute(2, 0, 1)
             pos_embed = pos_embed.flatten(2).permute(2, 0, 1).repeat(1, bs, 1)
             query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)
+            if _trace:
+                log.log(TRACE, "Transformer.forward: image src [%d,%d,%d,%d] -> %d tokens x bs=%d x d=%d ; %d decoder queries",
+                        bs, c, h, w, h * w, bs, c, query_embed.shape[0])
 
             if tactile is None:
                 additional_pos_embed = additional_pos_embed.unsqueeze(1).repeat(1, bs, 1) # seq, bs, dim
@@ -82,6 +113,12 @@ class Transformer(nn.Module):
 
                 pos_embed = torch.cat([pos_list, pos_embed], dim=0)  # [3 + 1 + HW, B, D]
                 src = torch.cat([addition_input, src], dim=0)  # [3 + 1 + HW, B, D]
+
+                if _trace:
+                    _layout = (["tactile"] + (["tactile_pred"] if tactile_pred is not None else [])
+                               + ["latent", "proprio"] + [f"image x{src.shape[0] - len(tokens)}"])
+                    log.log(TRACE, "  encoder token layout (pred_action=%s): %s  -> total src %s",
+                            pred_action, " | ".join(_layout), tuple(src.shape))
         else:
             assert len(src.shape) == 3
             bs, hw, c = src.shape
@@ -94,6 +131,9 @@ class Transformer(nn.Module):
         hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,
                           pos=pos_embed, query_pos=query_embed)
         hs = hs.transpose(1, 2)
+        if _trace:
+            log_tensor(log, TRACE, "  encoder memory", memory)
+            log_tensor(log, TRACE, "  decoder hs (all layers)", hs)
         return hs
 
 class TransformerEncoder(nn.Module):
@@ -222,6 +262,14 @@ class TransformerEncoderLayer(nn.Module):
                 other_pos = pos[3:]
                 middle_tokens = src[1:3]
                 middle_pos = pos[1:3]
+
+            if _enc_gate() and log.isEnabledFor(TRACE):
+                # The slice boundaries here MUST match the token order built in
+                # Transformer.forward. Log them so a mismatch is obvious.
+                log.log(TRACE,
+                        "  enc layer split (pred_action=%s): tactile=%s middle(latent,proprio)=%s other(image)=%s",
+                        pred_action, tuple(tactile_token.shape),
+                        tuple(middle_tokens.shape), tuple(other_tokens.shape))
 
             tactile_token2 = self.cross_attn_1(
                 query=self.with_pos_embed(tactile_token, tactile_pos),

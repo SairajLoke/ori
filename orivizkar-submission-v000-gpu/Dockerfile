@@ -54,13 +54,22 @@ COPY vitacformer /app/vitacformer
 COPY vitac_policy_server.py /app/vitac_policy_server.py
 COPY entrypoint.sh /app/entrypoint.sh
 
-# Copy baked checkpoints and hub assets
+# Copy the checkpoint set: the .ckpt file (renamed to a fixed path so this
+# Dockerfile doesn't need editing per training run) plus the two sidecars
+# origami_imitate_episodes.py writes next to it during training --
+# training_configs.json (architecture: hidden_dim, backbone, camera order,
+# mask_fingers, ...) and normalizer_config.json (normalization stats).
+# vitac_policy_server.py rebuilds the entire deployed model from those, not
+# hardcoded constants -- place all three under checkpoints/ locally before
+# building this image, or the container fails fast at startup.
+# Backbone weights (assets/backbones/*.pth, vendored under vitacformer/) are
+# resolved automatically from whichever backbone training_configs.json names.
 COPY checkpoints/policy_epoch_30_loss_0.041.ckpt /app/checkpoints/policy_best.ckpt
-COPY checkpoints/resnet18-f37072fd.pth           /app/checkpoints/resnet18-f37072fd.pth
+COPY checkpoints/training_configs.json           /app/checkpoints/training_configs.json
+COPY checkpoints/normalizer_config.json          /app/checkpoints/normalizer_config.json
 
 # Set environment variables
 ENV VITAC_CKPT_PATH=/app/checkpoints/policy_best.ckpt \
-    BACKBONE_PATH=/app/checkpoints/resnet18-f37072fd.pth \
     ORIGAMI_ACTION_HORIZON=25 \
     PYTHONPATH=/app/vitacformer:/app/vitacformer/detr
 

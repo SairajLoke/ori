@@ -207,7 +207,8 @@ class TeamPolicy:
     """VITAC (vitacformer ACT) adapter for the origami-zenoh-v1 protocol.
 
     - qpos:          2D  [B, 390]         (6-step state history, flattened)
-    - image:         5D  [B, 4, 3, 224, 320]  (per-camera resize, NO normalization)
+    - image:         5D  [B, 4, 3, 224, 224]  (per-camera resize, ImageNet-normalized
+                                             if the checkpoint trained with it)
     - tactile (past): 2D  [B, 2160]        (18 steps x [value(60), delta(60)], flattened --
                                              detr_vae.py: `tactile_dim_all = 18 * 120`,
                                              `input_proj_tactile = nn.Linear(tactile_dim_all, ...)`)
@@ -216,74 +217,45 @@ class TeamPolicy:
                                              only .shape is read, content is irrelevant)
     - a_hat:          3D  [B, 100, 65]      (num_queries is architecturally hardcoded to
                                              100 -- `assert num_queries == 100` in
-                                             DETRVAE.__init__ -- CHUNK_SIZE is not tunable)
+                                             DETRVAE.__init__ -- not tunable)
 
-    IMPORTANT -- fill in / verify the hyperparameters below against the exact training
-    run for the checkpoint you deploy. HIDDEN_DIM/DIM_FEEDFORWARD/ENC_LAYERS/DEC_LAYERS/
-    NHEADS/MASK_FINGERS are not stored inside the .ckpt file itself; the values below are
-    origami_inference.py's / origami_imitate_episodes.py's own reference defaults (confirmed
-    by reading those files directly), which is the best available default if you trained
-    without overriding them -- but if your team changed these at training time, this must
-    be updated to match, or load_state_dict will fail (or worse, silently succeed with a
-    mismatched architecture if shapes happen to coincide). BACKBONE is settable via
-    VITAC_BACKBONE (must still match the checkpoint). Normalization is NOT a manual
-    setting -- it is rebuilt automatically from the checkpoint's own
-    normalizer_config.json sidecar, see _load_normalizer().
+    Architecture (hidden_dim, backbone, enc/dec_layers, nheads, camera order,
+    mask_fingers, image_hw, ...) is NOT hardcoded here -- none of it is
+    recoverable from the .ckpt file itself, so it is loaded from
+    training_configs.json, which origami_imitate_episodes.py writes next to
+    the checkpoint. Normalization is loaded the same way, from
+    normalizer_config.json. See _load_training_config() / _load_normalizer().
     """
 
-    # ---- Reference defaults confirmed from origami_inference.py / configs.py ----
-    CHUNK_SIZE = 100          # hardcoded architectural constant, not just a default (see above)
-    HIDDEN_DIM = 512          # origami_inference.py --hidden_dim default
-    DIM_FEEDFORWARD = 3200    # origami_inference.py --dim_feedforward default
-    ENC_LAYERS = 4            # origami_inference.py / origami_imitate_episodes.py
-    DEC_LAYERS = 7            # NOTE: differs from detr/main.py's own default of 6 --
-                               # both origami scripts explicitly override it to 7
-    NHEADS = 8
-    # configs.BACKBONE -- 'resnet18'/'resnet34'/'resnet50' or a ViT ('vit_b_16' etc).
-    # MUST match the deployed checkpoint's training run, or load_state_dict fails.
-    BACKBONE = os.environ.get("VITAC_BACKBONE", "resnet18")
-    # Local weights avoid a torch-hub download at startup (which would just fail
-    # offline) for weights load_state_dict fully overwrites anyway. Falls back to
-    # the same assets/backbones/<BACKBONE>_imagenet.pth path configs.py resolves.
-    BACKBONE_WEIGHTS = os.environ.get("VITAC_BACKBONE_WEIGHTS") or None
-    if not BACKBONE_WEIGHTS:
-        _local = os.path.join(VITACFORMER_ROOT, "assets", "backbones", f"{BACKBONE}_imagenet.pth")
-        BACKBONE_WEIGHTS = _local if os.path.exists(_local) else None
-    LR_BACKBONE = 1e-5        # unused at inference, kept for config parity
-    KL_WEIGHT = 10            # unused at inference, kept for config parity
-    LR = 1e-4                 # unused at inference, kept for config parity
-    STATE_DIM = 65            # configs.STATE_DIM
-    USE_TACTILE = True
-    MASK_FINGERS = False      # configs.MASK_FINGERS -- verify against your training run
-    HAND_MASK = [1] * 5 + [1] * 4 + [1] * 4 + [0] * 4 + [0] * 5  # configs.HAND_MASK
+    TACTILE_TEMPORAL_HORIZON = 18  # detr_vae.py: architecturally fixed, not saved anywhere
+    TACTILE_RAW_DIM = 60           # raw observation/tactile width (per robot_io_spec.md)
+    TACTILE_FEATURE_DIM = 120      # [value(60), delta(60)] per step -- detr_vae.py tactile_dim
 
-    # Camera order the model was trained on (configs.CAMERA_NAMES index order).
-    # NOTE this is NOT the same order as the public observation dict field names --
-    # wrist_left/wrist_right are swapped relative to a naive alphabetical/declared
-    # order. Getting this wrong silently feeds the wrong camera into the wrong
-    # backbone slot without erroring.
-    CAMERA_ORDER = (
-        "observation/image/head_left",
-        "observation/image/head_right",
-        "observation/image/wrist_right",
-        "observation/image/wrist_left",
-    )
-    TRAIN_IMAGE_HW = (224, 224)  # configs.IMAGE_HW -- matches the raw 224x224 delivery, no aspect change
-
-    PROPRIOCEPTIVE_TEMPORAL_HORIZON = 6   # configs.PROPRIOCEPTIVE_TEMPORAL_HORIZON
-    TACTILE_TEMPORAL_HORIZON = 18         # configs.TACTILE_TEMPORAL_HORIZON
-    TACTILE_RAW_DIM = 60                  # raw observation/tactile width (per robot_io_spec.md)
-    TACTILE_FEATURE_DIM = 120             # [value(60), delta(60)] per step -- detr_vae.py tactile_dim
-    
-    
     # Get checkpoint path from environment or use default
     checkpoint_path = os.environ.get("VITAC_CKPT_PATH", None)
     # "/app/checkpoints/policy_best.ckpt"
-    
-    # Get optional settings
-    use_tactile = os.environ.get("VITACFORMER_USE_TACTILE", "true").lower() == "true"
-    # action_horizon = int(os.environ.get("ORIGAMI_ACTION_HORIZON", str(ACTION_HORIZON)))
-    
+
+    def _load_training_config(self) -> dict:
+        """Load training_configs.json from next to the checkpoint -- the
+        ACTPolicy args_override dict (policy_config) plus run settings
+        (mask_fingers, hand_mask, image_hw, ...) origami_imitate_episodes.py
+        writes verbatim. The single source of truth for architecture, since
+        none of it is recoverable from the .ckpt file itself: guessing wrong
+        means load_state_dict fails outright, or worse, silently succeeds
+        with a mismatched architecture if shapes happen to coincide.
+        """
+        ckpt_dir = os.path.dirname(os.path.abspath(self.checkpoint_path))
+        path = os.path.join(ckpt_dir, "training_configs.json")
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                f"{path} not found. Checkpoints from before this file was written "
+                f"cannot be deployed safely -- there is no other record of the "
+                f"training run's architecture."
+            )
+        with open(path) as f:
+            cfg = json.load(f)
+        logging.info("training config loaded from %s", path)
+        return cfg
 
     def _load_normalizer(self) -> tuple[OriNormalizer | None, bool]:
         """Rebuild the normalizer the checkpoint was trained with, from the
@@ -342,8 +314,8 @@ class TeamPolicy:
             self.policy = torch.compile(self.policy, mode=compile_mode)
 
             logging.info("Running dummy forward pass to warm up compiled graph...")
-            dummy_qpos = torch.zeros((1, self.PROPRIOCEPTIVE_TEMPORAL_HORIZON * self.STATE_DIM), device=self.device)
-            dummy_image = torch.zeros((1, len(self.CAMERA_ORDER), 3, *self.TRAIN_IMAGE_HW), device=self.device)
+            dummy_qpos = torch.zeros((1, self.proprioceptive_temporal_horizon * self.state_dim), device=self.device)
+            dummy_image = torch.zeros((1, len(self.camera_order), 3, *self.train_image_hw), device=self.device)
             dummy_tactile = torch.zeros((1, self.TACTILE_TEMPORAL_HORIZON * self.TACTILE_FEATURE_DIM), device=self.device)
             dummy_tactile_next = torch.zeros((1, self.TACTILE_TEMPORAL_HORIZON, self.TACTILE_FEATURE_DIM), device=self.device)
 
@@ -361,61 +333,75 @@ class TeamPolicy:
         
         
     def __init__(self, action_horizon: int) -> None:
-        if action_horizon > self.CHUNK_SIZE:
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        train_cfg = self._load_training_config()
+        policy_config = dict(train_cfg["policy_config"])  # ACTPolicy args_override, copy before mutating
+
+        self.chunk_size = policy_config["num_queries"]
+        if action_horizon > self.chunk_size:
             raise ValueError(
-                f"action_horizon ({action_horizon}) cannot exceed the model's "
-                f"architecturally fixed num_queries ({self.CHUNK_SIZE}); the model "
-                f"only ever predicts CHUNK_SIZE actions per call (num_queries==100 "
-                f"is asserted inside DETRVAE.__init__, not just a default)."
+                f"action_horizon ({action_horizon}) cannot exceed this checkpoint's "
+                f"num_queries ({self.chunk_size}); the model only ever predicts "
+                f"num_queries actions per call."
             )
         self.action_horizon = action_horizon
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.state_dim = policy_config["state_dim"]
+        self.proprioceptive_temporal_horizon = policy_config["proprioceptive_temporal_horizon"]
+        self.mask_fingers = train_cfg.get("mask_fingers", False)
+        self.hand_mask = train_cfg.get("hand_mask", [1] * 5 + [1] * 4 + [1] * 4 + [0] * 4 + [0] * 5)
+        self.train_image_hw = tuple(train_cfg.get("image_hw", (224, 224)))
+
+        # camera_names in policy_config is dataset-format ("observation.images.X");
+        # CAMERA_ORDER is the public protocol's dict keys ("observation/image/X").
+        # Deriving one from the other (instead of a second hand-maintained tuple)
+        # is what guarantees the backbone-slot order always matches training.
+        self.camera_order = tuple(
+            name.replace("observation.images.", "observation/image/")
+            for name in policy_config["camera_names"]
+        )
+
+        # backbone_weights in policy_config is a training-machine-absolute path and
+        # will not exist in this image; re-resolve locally. load_state_dict below
+        # overwrites these weights entirely regardless, so this only matters for
+        # avoiding a network call (which would just fail offline) at construction.
+        backbone = os.environ.get("VITAC_BACKBONE") or policy_config["backbone"]
+        local_weights = os.path.join(VITACFORMER_ROOT, "assets", "backbones", f"{backbone}_imagenet.pth")
+        policy_config["backbone"] = backbone
+        policy_config["backbone_weights"] = (
+            os.environ.get("VITAC_BACKBONE_WEIGHTS")
+            or (local_weights if os.path.exists(local_weights) else None)
+        )
+
         self.normalizer, self.use_image_norm = self._load_normalizer()
 
-        policy_config = {
-            "num_queries": self.CHUNK_SIZE,
-            "hidden_dim": self.HIDDEN_DIM,
-            "dim_feedforward": self.DIM_FEEDFORWARD,
-            "kl_weight": self.KL_WEIGHT,
-            "lr": self.LR,
-            "lr_backbone": self.LR_BACKBONE,
-            "backbone": self.BACKBONE,
-            "backbone_weights": self.BACKBONE_WEIGHTS,
-            "enc_layers": self.ENC_LAYERS,
-            "dec_layers": self.DEC_LAYERS,
-            "nheads": self.NHEADS,
-            "camera_names": list(self.CAMERA_ORDER),
-            "use_tactile": self.USE_TACTILE,
-            "state_dim": self.STATE_DIM,
-            "proprioceptive_temporal_horizon": self.PROPRIOCEPTIVE_TEMPORAL_HORIZON,
-        }
-        optimizations =['compile', 'tflite','none']
+        optimizations = ['compile', 'tflite', 'none']
         OPTIMIZATION_IDX = 0
-        
+
         logging.info("using device: %s", self.device)
-        
-        self.policy = self._load_policy(policy_config = policy_config, 
+
+        self.policy = self._load_policy(policy_config=policy_config,
                                         optimization_type=optimizations[OPTIMIZATION_IDX])
-        
-        
+
+
         # Episode-scoped rolling history. The public protocol only ever sends the
         # *current* frame per infer() call, but the model was trained on short
         # windows of state/tactile history, so the server must reconstruct that
         # window itself across successive infer() calls within one episode, and
         # clear it on reset() (start of a new episode).
         self._state_history: collections.deque[np.ndarray] = collections.deque(
-            maxlen=self.PROPRIOCEPTIVE_TEMPORAL_HORIZON
+            maxlen=self.proprioceptive_temporal_horizon
         )
         # Need TACTILE_TEMPORAL_HORIZON + 1 raw readings to compute
         # TACTILE_TEMPORAL_HORIZON deltas (each delta needs a previous reading).
         self._tactile_history: collections.deque[np.ndarray] = collections.deque(
             maxlen=self.TACTILE_TEMPORAL_HORIZON + 1
         )
-        
+
         logging.info("Done Initializing the TeamPolicy ++++++++++")
-        
+
         #MAYBE WE SHOULD DO A DUMMY FWD PASS HERE JUST SO THE MODELS COME IN CACHE?
-        
+
 
     def reset(self) -> None:
         """Called at the start of every new episode -- must fully clear temporal
@@ -431,7 +417,7 @@ class TeamPolicy:
         tensor = torch.from_numpy(image.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
         tensor = torch.nn.functional.interpolate(
             tensor,
-            size=self.TRAIN_IMAGE_HW,
+            size=self.train_image_hw,
             mode="bilinear",
             align_corners=False,
         )
@@ -448,28 +434,14 @@ class TeamPolicy:
     def infer(self, observation: dict[str, Any]) -> np.ndarray:
         
         
-        logging.info(" TeamPolicy Infer called ++++++++")        
-        # --- images: HWC uint8 [0,255] -> CHW float [0,255] (NOT [0,1]), resized
-        # to the rectangular training resolution. Confirmed no /255 scaling and no
-        # ImageNet mean/std normalization anywhere in the training preprocessing --
-        # do not add either; it would not match what the checkpoint was trained on.
-        # The competition delivers a square 224x224 stretch of the native frame;
-        # training resized dataset frames to (224, 320). Resizing the already-square
-        # image a second time to (224, 320) is a real distribution-shift risk worth
-        # validating against the local Shadow evaluator once you have real observations.
+        logging.info(" TeamPolicy Infer called ++++++++")
+        # --- images: HWC uint8 [0,255] -> resized to train_image_hw -> [0,1] ->
+        # ImageNet-normalized if the checkpoint trained with it (_preprocess_image).
         cams = []
-        for key in self.CAMERA_ORDER:
-            # image = observation[key].astype(np.float32)  # HWC, [0, 255]
-            # tensor = torch.from_numpy(image).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
-            # tensor = torch.nn.functional.interpolate(
-            #     tensor,
-            #     size=self.TRAIN_IMAGE_HW,
-            #     mode="bilinear",
-            #     align_corners=False,
-            # )
+        for key in self.camera_order:
             tensor = self._preprocess_image(observation[key])
             cams.append(tensor)
-        image_tensor = torch.stack(cams, dim=1).to(self.device)  # [1, 4, 3, 224, 320]
+        image_tensor = torch.stack(cams, dim=1).to(self.device)  # [1, n_cams, 3, H, W]
         logging.debug(
             "+++++= img obs min=%s max=%s shape=%s dtype=%s",
             torch.min(image_tensor),
@@ -492,7 +464,7 @@ class TeamPolicy:
             # Cold start at episode begin: no history yet, so backfill with the
             # first reading. Not something the model was explicitly trained for --
             # verify it doesn't cause a visible transient in the first action chunk.
-            for _ in range(self.PROPRIOCEPTIVE_TEMPORAL_HORIZON):
+            for _ in range(self.proprioceptive_temporal_horizon):
                 self._state_history.append(state)
         else:
             self._state_history.append(state)
@@ -501,8 +473,8 @@ class TeamPolicy:
         if self.normalizer is not None:
             qpos_t = self.normalizer.normalize("observation.state", qpos_t)
 
-        if self.MASK_FINGERS:
-            mask = torch.as_tensor(self.HAND_MASK, dtype=qpos_t.dtype, device=qpos_t.device)
+        if self.mask_fingers:
+            mask = torch.as_tensor(self.hand_mask, dtype=qpos_t.dtype, device=qpos_t.device)
             qpos_t[:, 7:7 + len(mask)] *= mask
             qpos_t[:, 7 + 22 + 7:7 + 22 + 7 + len(mask)] *= mask
         qpos_flat = qpos_t.reshape(1, -1)  # [1, 390]

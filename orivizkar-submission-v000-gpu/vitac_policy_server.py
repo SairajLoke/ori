@@ -225,7 +225,10 @@ class TeamPolicy:
     by reading those files directly), which is the best available default if you trained
     without overriding them -- but if your team changed these at training time, this must
     be updated to match, or load_state_dict will fail (or worse, silently succeed with a
-    mismatched architecture if shapes happen to coincide).
+    mismatched architecture if shapes happen to coincide). BACKBONE is settable via
+    VITAC_BACKBONE (must still match the checkpoint). Normalization is NOT a manual
+    setting -- it is rebuilt automatically from the checkpoint's own
+    normalizer_config.json sidecar, see _load_normalizer().
     """
 
     # ---- Reference defaults confirmed from origami_inference.py / configs.py ----
@@ -236,7 +239,16 @@ class TeamPolicy:
     DEC_LAYERS = 7            # NOTE: differs from detr/main.py's own default of 6 --
                                # both origami scripts explicitly override it to 7
     NHEADS = 8
-    BACKBONE = "resnet18"     # configs.BACKBONE
+    # configs.BACKBONE -- 'resnet18'/'resnet34'/'resnet50' or a ViT ('vit_b_16' etc).
+    # MUST match the deployed checkpoint's training run, or load_state_dict fails.
+    BACKBONE = os.environ.get("VITAC_BACKBONE", "resnet18")
+    # Local weights avoid a torch-hub download at startup (which would just fail
+    # offline) for weights load_state_dict fully overwrites anyway. Falls back to
+    # the same assets/backbones/<BACKBONE>_imagenet.pth path configs.py resolves.
+    BACKBONE_WEIGHTS = os.environ.get("VITAC_BACKBONE_WEIGHTS") or None
+    if not BACKBONE_WEIGHTS:
+        _local = os.path.join(VITACFORMER_ROOT, "assets", "backbones", f"{BACKBONE}_imagenet.pth")
+        BACKBONE_WEIGHTS = _local if os.path.exists(_local) else None
     LR_BACKBONE = 1e-5        # unused at inference, kept for config parity
     KL_WEIGHT = 10            # unused at inference, kept for config parity
     LR = 1e-4                 # unused at inference, kept for config parity
@@ -368,6 +380,7 @@ class TeamPolicy:
             "lr": self.LR,
             "lr_backbone": self.LR_BACKBONE,
             "backbone": self.BACKBONE,
+            "backbone_weights": self.BACKBONE_WEIGHTS,
             "enc_layers": self.ENC_LAYERS,
             "dec_layers": self.DEC_LAYERS,
             "nheads": self.NHEADS,

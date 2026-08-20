@@ -31,9 +31,10 @@ import zenoh
 # ---------------------------------------------------------------------------
 # VITACFORMER_ROOT must point at the directory containing policy.py/configs.py
 # inside the image (e.g. /app/vitacformer). The vendored source there needs
-# policy.py, detr/ (incl. its own util/ subpackage), configs.py, train_utils.py --
-# nothing from dataset/ or the lerobot-dependent training scripts is required
-# for inference.
+# policy.py, detr/ (incl. its own util/ subpackage), configs.py, train_utils.py,
+# my_utils/normalizer.py (zero lerobot/dataset dependency -- only os, warnings,
+# typing, numpy, torch -- safe to vendor standalone) -- nothing else from
+# dataset/ or the lerobot-dependent training scripts is required for inference.
 VITACFORMER_ROOT = os.environ.get("VITACFORMER_ROOT", "/app/vitacformer")
 if VITACFORMER_ROOT not in sys.path:
     sys.path.insert(0, VITACFORMER_ROOT)
@@ -49,11 +50,15 @@ if torch.cuda.is_available():
     torch.backends.cuda.enable_mem_efficient_sdp(True)
     torch.backends.cuda.enable_math_sdp(True)
     torch.backends.cuda.enable_cudnn_sdp(True)
-    
+
 
 # policy.py does `from detr.main import build_ACT_model_and_optimizer` and
 # `from train_utils import _stats`, both resolved relative to VITACFORMER_ROOT.
 from policy import ACTPolicy  # noqa: E402
+from my_utils.normalizer import OriNormalizer  # noqa: E402
+
+IMAGENET_MEAN = (0.485, 0.456, 0.406)
+IMAGENET_STD = (0.229, 0.224, 0.225)
 
 TRANSPORT_VERSION = "origami-zenoh-v1"
 SEMANTIC_VERSION = "origami-v1"
@@ -251,7 +256,7 @@ class TeamPolicy:
         "observation/image/wrist_right",
         "observation/image/wrist_left",
     )
-    TRAIN_IMAGE_HW = (224, 320)  # dataset preprocessing resize target
+    TRAIN_IMAGE_HW = (224, 224)  # configs.IMAGE_HW -- matches the raw 224x224 delivery, no aspect change
 
     PROPRIOCEPTIVE_TEMPORAL_HORIZON = 6   # configs.PROPRIOCEPTIVE_TEMPORAL_HORIZON
     TACTILE_TEMPORAL_HORIZON = 18         # configs.TACTILE_TEMPORAL_HORIZON
@@ -267,6 +272,41 @@ class TeamPolicy:
     use_tactile = os.environ.get("VITACFORMER_USE_TACTILE", "true").lower() == "true"
     # action_horizon = int(os.environ.get("ORIGAMI_ACTION_HORIZON", str(ACTION_HORIZON)))
     
+
+    def _load_normalizer(self) -> tuple[OriNormalizer | None, bool]:
+        """Rebuild the normalizer the checkpoint was trained with, from the
+        normalizer_config.json sidecar origami_imitate_episodes.py writes next
+        to it -- mirrors origami_inference.py's load_training_normalizer().
+        Every checkpoint trained with USE_NORMALIZATION=1 needs this or its
+        inputs/outputs are silently in the wrong units. Set
+        VITAC_ASSUME_UNNORMALIZED=1 only for a checkpoint you are certain
+        trained with --disable_normalization and predates this sidecar.
+        """
+        if os.environ.get("VITAC_ASSUME_UNNORMALIZED", "").lower() in ("1", "true"):
+            logging.warning("VITAC_ASSUME_UNNORMALIZED=1 -- running without normalization")
+            return None, os.environ.get("VITAC_IMAGE_NORM", "1").lower() not in ("0", "false")
+
+        sidecar = os.path.join(os.path.dirname(os.path.abspath(self.checkpoint_path)),
+                                "normalizer_config.json")
+        if not os.path.exists(sidecar):
+            raise FileNotFoundError(
+                f"{sidecar} not found. Inference must match the checkpoint's training "
+                f"normalization, or actions come out in the wrong units. Set "
+                f"VITAC_ASSUME_UNNORMALIZED=1 only if certain this checkpoint was "
+                f"trained with --disable_normalization."
+            )
+        with open(sidecar) as f:
+            cfg = json.load(f)
+        use_image_norm = cfg.get("image_norm", True)
+        if cfg.get("disable_normalization", False):
+            logging.info("checkpoint trained WITHOUT normalization (identity)")
+            return None, use_image_norm
+        normalizer = OriNormalizer(
+            stats=cfg["stats"], feature_modes=cfg["feature_modes"], device=self.device,
+            degenerate_spread=cfg.get("degenerate_spread", 1e-3), clip=cfg.get("clip"),
+        )
+        logging.info("normalizer rebuilt from %s", sidecar)
+        return normalizer, use_image_norm
 
     def _load_policy(self, policy_config, optimization_type) :
         logging.info("loading VITAC checkpoint from %s", self.checkpoint_path)
@@ -318,6 +358,7 @@ class TeamPolicy:
             )
         self.action_horizon = action_horizon
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.normalizer, self.use_image_norm = self._load_normalizer()
 
         policy_config = {
             "num_queries": self.CHUNK_SIZE,
@@ -373,7 +414,7 @@ class TeamPolicy:
         self._tactile_history.clear()
         
     def _preprocess_image(self, image: np.ndarray) -> torch.Tensor:
-        #permute | to tensor | resize | normalize 
+        #permute | to tensor | resize | [0,1] | ImageNet norm (if the checkpoint trained with it)
         tensor = torch.from_numpy(image.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
         tensor = torch.nn.functional.interpolate(
             tensor,
@@ -381,8 +422,12 @@ class TeamPolicy:
             mode="bilinear",
             align_corners=False,
         )
-        tensor = tensor/255.0  # Normalize to [0, 1]
-        return tensor       
+        tensor = tensor / 255.0
+        if self.use_image_norm:
+            mean = torch.tensor(IMAGENET_MEAN, device=tensor.device).view(1, 3, 1, 1)
+            std = torch.tensor(IMAGENET_STD, device=tensor.device).view(1, 3, 1, 1)
+            tensor = (tensor - mean) / std
+        return tensor
             
         
 
@@ -438,13 +483,16 @@ class TeamPolicy:
                 self._state_history.append(state)
         else:
             self._state_history.append(state)
-        qpos = np.stack(list(self._state_history), axis=0)  # [6, 65]
-        
+        qpos = np.stack(list(self._state_history), axis=0)  # [6, 65] raw physical units
+        qpos_t = torch.from_numpy(qpos).to(self.device)
+        if self.normalizer is not None:
+            qpos_t = self.normalizer.normalize("observation.state", qpos_t)
+
         if self.MASK_FINGERS:
-            mask = np.asarray(self.HAND_MASK, dtype=np.float32)
-            qpos[:, 7:7 + len(mask)] *= mask
-            qpos[:, 7 + 22 + 7:7 + 22 + 7 + len(mask)] *= mask
-        qpos_flat = torch.from_numpy(qpos.reshape(1, -1)).to(self.device)  # [1, 390]
+            mask = torch.as_tensor(self.HAND_MASK, dtype=qpos_t.dtype, device=qpos_t.device)
+            qpos_t[:, 7:7 + len(mask)] *= mask
+            qpos_t[:, 7 + 22 + 7:7 + 22 + 7 + len(mask)] *= mask
+        qpos_flat = qpos_t.reshape(1, -1)  # [1, 390]
 
         # --- tactile history: 19 raw readings -> 18 x [value, delta] -> flattened ---
         tactile = np.asarray(observation["observation/tactile"], dtype=np.float32)
@@ -461,19 +509,20 @@ class TeamPolicy:
                 self._tactile_history.append(tactile)
         else:
             self._tactile_history.append(tactile)
-        tactile_raw = np.stack(list(self._tactile_history), axis=0)  # [19, 60]
-        tactile_deltas = np.diff(tactile_raw, axis=0)                # [18, 60]
-        tactile_features = np.concatenate(
-            [tactile_raw[1:], tactile_deltas], axis=-1
-        )  # [18, 120] -- matches configs.py's documented [value, delta] construction
+        tactile_raw = np.stack(list(self._tactile_history), axis=0)  # [19, 60] raw physical units
+        tactile_t = torch.from_numpy(tactile_raw).to(self.device)
+        if self.normalizer is not None:
+            # Normalize BEFORE the diff, same as convert_batch: diff(x/s) == diff(x)/s
+            # only holds if both halves see the same per-dim scale, which this ensures.
+            tactile_t = self.normalizer.normalize("observation.tactile", tactile_t)
+        tactile_deltas = torch.diff(tactile_t, dim=0)                # [18, 60]
+        tactile_features = torch.cat([tactile_t[1:], tactile_deltas], dim=-1)  # [18, 120]
         # Flattened to [1, 2160]: detr_vae.py's input_proj_tactile is
         # nn.Linear(tactile_dim_all=18*120, hidden_dim) -- a single projection over
         # the whole flattened window, NOT a per-timestep sequence input. Confirmed
         # directly from the model source; keeping this 3D (an earlier, less-verified
         # version of this adapter did) silently feeds the wrong tensor rank in.
-        tactile_tensor = torch.from_numpy(
-            tactile_features.reshape(1, -1)
-        ).to(self.device)  # [1, 2160]
+        tactile_tensor = tactile_features.reshape(1, -1)  # [1, 2160]
 
         # tactile_next is the model's auxiliary *future*-tactile training target.
         # At inference (epoch>=75 internally) the model uses its own predicted
@@ -492,8 +541,10 @@ class TeamPolicy:
             device=self.device,
             tactile=tactile_tensor,
             tactile_next=tactile_next_tensor,
-        )  # [1, 100, 65], absolute joint-position radians, unnormalized (no
-           # denormalization step exists anywhere in the reference inference path)
+        )  # [1, 100, 65] -- normalized model-space units if self.normalizer is set,
+           # denormalized to absolute joint-position radians below.
+        if self.normalizer is not None:
+            a_hat = self.normalizer.denormalize("action", a_hat.float())
         logging.debug(
             "+++++= a_hat min=%s max=%s shape=%s dtype=%s",
             torch.min(a_hat),
@@ -501,7 +552,7 @@ class TeamPolicy:
             a_hat.shape,
             a_hat.dtype,
         )
-        
+
         actions = a_hat[0, : self.action_horizon].detach().to("cpu").numpy()
         return np.ascontiguousarray(actions.astype(np.float32))
 

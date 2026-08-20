@@ -68,7 +68,7 @@ def my_function():
 from configs import ( EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
     FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
     MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS, NORM_DISABLE_KEYS,
-    VIT_UNFROZEN_LAYERS )
+    VIT_UNFROZEN_LAYERS, IMAGE_HW )
 
 
 def print_time(s, e, name):
@@ -548,6 +548,11 @@ def main(args):
         'camera_names': CAMERA_NAMES,
         # 'real_robot': not is_sim,
         'use_tactile': use_tactile,
+        # Deploy-side reconstruction (vitac_policy_server.py) needs these to avoid
+        # hardcoding preprocessing/masking that must match this exact training run.
+        'mask_fingers': MASK_FINGERS,
+        'hand_mask': HAND_MASK,
+        'image_hw': list(IMAGE_HW),
         'resume_path': resume_path,
         'load_pretrained_for_newtraining': load_pretrained_for_newtraining,
         'visualize_batch': visualize_batch_flag,
@@ -1241,9 +1246,12 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
         config_save_path = os.path.join(ckpt_dir, 'training_configs.json')
         stats_save_path = os.path.join(ckpt_dir, 'training_stats.pkl')
         with open(config_save_path, 'w') as f:
-            # Filter out non-serializable objects
-            config_to_save = {k: v for k, v in config.items() 
-                            if k not in ['policy_config', 'policy']}
+            # policy_config (the ACTPolicy args_override dict: hidden_dim, backbone,
+            # enc/dec_layers, nheads, ...) IS kept -- it's the only record of this
+            # run's architecture and vitac_policy_server.py rebuilds the deployed
+            # model from it. Only 'policy' (the live nn.Module, non-serializable) is
+            # filtered out.
+            config_to_save = {k: v for k, v in config.items() if k != 'policy'}
             json.dump(config_to_save, f, indent=2, default=str)
 
         with open(stats_save_path, 'wb') as f:

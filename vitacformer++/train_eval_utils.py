@@ -41,8 +41,59 @@ JOINT_GROUP_COLORS = {
 # ──────────────────────────────────────────────────────────────────────
 # Per-dimension action loss weights
 # ──────────────────────────────────────────────────────────────────────
+FINGER_SPANS = [("thumb", 0, 5), ("index", 5, 9), ("middle", 9, 13),
+                ("ring", 13, 17), ("pinky", 17, 22)]
+HAND_OFFSETS = {"left_hand": 7, "right_hand": 36}
+
+
+def load_action_weight_spec(path):
+    """Read the JSON written by tools/compute_action_weights.py."""
+    import json
+    with open(path) as f:
+        spec = json.load(f)
+    missing = {"fingers", "groups"} - set(spec)
+    if missing:
+        raise ValueError(f"{path}: missing key(s) {sorted(missing)}")
+    unknown = set(spec["fingers"]) - {n for n, _, _ in FINGER_SPANS}
+    if unknown:
+        raise ValueError(f"{path}: unknown finger(s) {sorted(unknown)}")
+    return spec
+
+
+def constant_action_dims(spec):
+    """{dim: value} for action dims the dataset holds constant. Predicting them
+    wastes gradient, but they still have to be EMITTED (the reply is fixed at 65
+    columns and the evaluator checks jumps/velocity), so the value matters."""
+    return {int(k): float(v) for k, v in (spec.get("constant_dims") or {}).items()}
+
+
+def build_predicted_action_dims(state_dim, mode, weight_spec=None):
+    """Which contract columns the model predicts.
+
+      "all"        every dim (65). Dims the loss zeroes are still emitted.
+      "active"     drop the dims the dataset holds constant, plus ring+pinky.
+                   Lower-dimensional output, but the dropped joints can then
+                   only be EMITTED, not actuated -- see unfilled_action_plan().
+
+    Returns (indices, dropped) with indices in ascending contract order; the
+    order is load-bearing, since it maps model output position -> reply column.
+    """
+    if mode == "all":
+        return list(range(state_dim)), []
+    if mode != "active":
+        raise ValueError(f"Unknown action_dims_mode {mode!r} (expected 'all' or 'active')")
+    drop = set(constant_action_dims(weight_spec or {}))
+    for off in HAND_OFFSETS.values():
+        for name, a, b in FINGER_SPANS:
+            if name in ("ring", "pinky"):
+                drop.update(range(off + a, off + b))
+    drop = {i for i in drop if i < state_dim}
+    return [i for i in range(state_dim) if i not in drop], sorted(drop)
+
+
 def build_action_dim_weights(state_dim, mode="uniform", group_weights=None,
-                             action_stats=None, degenerate_spread=1e-3):
+                             action_stats=None, degenerate_spread=1e-3,
+                             weight_spec=None):
     """Build a [state_dim] weight vector for the per-dimension action L1 loss.
 
     Modes:
@@ -79,10 +130,37 @@ def build_action_dim_weights(state_dim, mode="uniform", group_weights=None,
             for i in indices:
                 if i < state_dim:
                     weights[i] = float(gw[group_name])
+    elif mode == "file":
+        # Per-finger weights derived from dataset torque, plus per-group weights.
+        # Fingers are set first, then any group weight listed for a hand scales
+        # that whole hand on top -- so the two knobs compose rather than clash.
+        if weight_spec is None:
+            raise ValueError("mode='file' needs weight_spec (see load_action_weight_spec)")
+        fw = weight_spec["fingers"]
+        gw = weight_spec.get("groups") or {}
+        for hand, off in HAND_OFFSETS.items():
+            for name, a, b in FINGER_SPANS:
+                if name not in fw:
+                    continue
+                for i in range(off + a, min(off + b, state_dim)):
+                    weights[i] = float(fw[name]) * float(gw.get(hand, 1.0))
+        for group_name, indices in JOINT_GROUPS.items():
+            if group_name in HAND_OFFSETS or group_name not in gw:
+                continue          # hands already handled above
+            for i in indices:
+                if i < state_dim:
+                    weights[i] = float(gw[group_name])
     elif mode != "uniform":
-        raise ValueError(f"Unknown loss_dim_weight_mode {mode!r} (expected 'uniform' or 'group')")
+        raise ValueError(
+            f"Unknown loss_dim_weight_mode {mode!r} (expected 'uniform', 'group' or 'file')")
 
     dropped = []
+    # dims the spec marks constant carry no gradient signal; they are emitted
+    # from constant_action_dims() instead of being predicted
+    for i in constant_action_dims(weight_spec or {}):
+        if i < state_dim and weights[i] != 0.0:
+            weights[i] = 0.0
+            dropped.append(i)
     if action_stats is not None:
         q01 = action_stats.get("q01")
         q99 = action_stats.get("q99")

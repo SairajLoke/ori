@@ -62,7 +62,7 @@ def get_sinusoid_encoding_table(n_position, d_hid):
 
 class DETRVAE(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_tactile, proprioceptive_temporal_horizon):
+    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_tactile, proprioceptive_temporal_horizon, action_dim=None):
         """ Initializes the model.
         Parameters:
             backbones: torch module of the backbone to be used. See backbone.py
@@ -79,7 +79,8 @@ class DETRVAE(nn.Module):
         self.transformer = transformer
         self.encoder = encoder
         hidden_dim = transformer.d_model
-        self.action_head = nn.Linear(hidden_dim, state_dim)
+        self.action_dim = int(action_dim) if action_dim else state_dim
+        self.action_head = nn.Linear(hidden_dim, self.action_dim)
         self.is_pad_head = nn.Linear(hidden_dim, 1)
         self.query_embed = nn.Embedding(num_queries, hidden_dim)
         self.use_tactile = use_tactile
@@ -106,7 +107,7 @@ class DETRVAE(nn.Module):
         # encoder extra parameters
         self.latent_dim = 32 # final size of latent z # TODO tune
         self.cls_embed = nn.Embedding(1, hidden_dim) # extra cls token embedding
-        self.encoder_action_proj = nn.Linear(state_dim, hidden_dim) # project action to embedding  NOTE: instead of self.state_dim, , it was 58 before
+        self.encoder_action_proj = nn.Linear(self.action_dim, hidden_dim)  # CVAE encoder sees the same dims we predict
         self.encoder_joint_proj = nn.Linear(qpos_dim, hidden_dim)  # project qpos to embedding
         self.latent_proj = nn.Linear(hidden_dim, self.latent_dim*2) # project hidden state to latent std, var
         self.register_buffer('pos_table', get_sinusoid_encoding_table(1+1+num_queries, hidden_dim)) # [CLS], qpos, a_seq
@@ -120,8 +121,8 @@ class DETRVAE(nn.Module):
 
         # ---- architecture summary (once, at build time) ----
         log.info("DETRVAE built:")
-        log.info("  hidden_dim=%d  state_dim=%d  num_queries=%d  latent_dim=%d",
-                 hidden_dim, state_dim, num_queries, self.latent_dim)
+        log.info("  hidden_dim=%d  state_dim=%d  action_dim=%d  num_queries=%d  latent_dim=%d",
+                 hidden_dim, state_dim, self.action_dim, num_queries, self.latent_dim)
         log.info("  qpos_dim=%d (= state_dim %d x proprio_horizon %d) -> input_proj_robot_state",
                  qpos_dim, state_dim, proprioceptive_temporal_horizon)
         log.info("  cameras=%d %s  (ONE shared backbone is used for all of them)",
@@ -224,7 +225,10 @@ class DETRVAE(nn.Module):
                 tactile_input = self.input_proj_tactile(tactile)
                 if _trace:
                     log_tensor(log, TRACE, "tactile_input (pass1)", tactile_input)
-                hs_tactile = self.transformer(src, None, self.query_embed_tactile.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, None)[0]
+                hs_tactile = self.transformer(src, None, self.query_embed_tactile.weight, pos, 
+                                              latent_input, proprio_input, self.additional_pos_embed.weight, 
+                                              tactile_input, None)[0]
+                
                 tactile_hat = self.tactile_head(hs_tactile)  ##[bs, 18, tactile_dim]
                 B, T, D = tactile_hat.shape
                 _teacher_forced = epoch < 75
@@ -368,6 +372,7 @@ def build(args):
         transformer,
         encoder,
         state_dim=args.state_dim,
+        action_dim=getattr(args, 'action_dim', None),
         num_queries=args.num_queries,
         camera_names=args.camera_names,
         use_tactile = args.use_tactile,

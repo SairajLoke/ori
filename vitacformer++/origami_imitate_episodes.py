@@ -49,7 +49,9 @@ from lerobot.policies.factory import make_pre_post_processors
 # ref: https://huggingface.co/docs/lerobot/introduction_processors
 
 from train_eval_utils import (JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats,
-                              log_input_stats, log_final_model_inputs, build_action_dim_weights)
+                              log_input_stats, log_final_model_inputs, build_action_dim_weights,
+                              load_action_weight_spec, constant_action_dims,
+                              build_predicted_action_dims)
 from my_utils.log_features import log_problematic_features
 from my_utils.gradcam import save_gradcam_grid
 from my_utils.ori_logging import (setup_logging, get_logger, log_tensor, log_tensors,
@@ -575,6 +577,7 @@ def main(args):
         'disable_normalization': disable_normalization,
         'max_train_steps': args.get('max_train_steps'),
         'max_val_steps': args.get('max_val_steps'),
+        'save_untrained': args.get('save_untrained', False),
         'gradcam': args.get('gradcam', False),
         'gradcam_n_samples': args.get('gradcam_n_samples', 2),
     }
@@ -696,24 +699,65 @@ def main(args):
         _group_weights = None
         if args.get('loss_group_weights'):
             _group_weights = json.loads(args['loss_group_weights'])
+        _mode = args.get('loss_dim_weight_mode', 'uniform')
+        _spec = None
+        if _mode == 'file':
+            _spec = load_action_weight_spec(args['action_weights_json'])
+            log.info("action weights from %s (generated %s from %s episodes)",
+                     args['action_weights_json'], _spec.get('meta', {}).get('generated', '?'),
+                     _spec.get('meta', {}).get('episodes', '?'))
         _dim_weights, _dropped = build_action_dim_weights(
             state_dim=args['state_dim'],
-            mode=args.get('loss_dim_weight_mode', 'uniform'),
+            mode=_mode,
             group_weights=_group_weights,
             action_stats=(train_dataset.meta.stats.get('action')
                           if args.get('drop_degenerate_action_dims') else None),
+            weight_spec=_spec,
         )
-        _is_uniform = (args.get('loss_dim_weight_mode', 'uniform') == 'uniform' and not _dropped)
+        _adm = args.get('action_dims_mode', 'all')
+        _pred_dims, _not_pred = build_predicted_action_dims(args['state_dim'], _adm, _spec)
+        policy_config['predicted_action_dims'] = None if _adm == 'all' else _pred_dims
+        policy_config['action_dim'] = len(_pred_dims)
+        config['action_dims_mode'] = _adm
+        config['predicted_action_dims'] = policy_config['predicted_action_dims']
+        config['unpredicted_action_dims'] = _not_pred
+        if _adm != 'all':
+            log.info("action_dims_mode=%s: predicting %d of %d dims; %d emitted, not actuated: %s",
+                     _adm, len(_pred_dims), args['state_dim'], len(_not_pred), _not_pred)
+            log.warning("  dropped joints can only be HELD at their observed pose at "
+                        "inference -- ring/pinky will not open or close")
+        _is_uniform = (_mode == 'uniform' and not _dropped)
         policy_config['action_dim_weights'] = None if _is_uniform else _dim_weights
         policy_config['tac_weight'] = args.get('tac_weight', 1.0)
-        config['loss_dim_weight_mode'] = args.get('loss_dim_weight_mode', 'uniform')
+        config['loss_dim_weight_mode'] = _mode
         config['loss_group_weights'] = _group_weights
+        config['action_weights_json'] = args.get('action_weights_json')
         config['action_dim_weights'] = policy_config['action_dim_weights']
+        # Emitted rather than predicted. Kept at config top level (not in
+        # policy_config, which is the ACTPolicy args_override) and applied at
+        # inference AFTER denormalization -- these are raw radians, while a_hat
+        # is in normalized space during training.
+        config['constant_action_dims'] = constant_action_dims(_spec or {})
         config['tac_weight'] = policy_config['tac_weight']
         if _dropped:
             log.info("action dims zeroed in the L1 loss (constant in this dataset): %s", _dropped)
+        if config['constant_action_dims']:
+            log.info("action dims emitted as constants at inference (not predicted): %s",
+                     config['constant_action_dims'])
         log.info("action loss weighting: mode=%s group_weights=%s tac_weight=%s",
                  config['loss_dim_weight_mode'], _group_weights, config['tac_weight'])
+        if policy_config['action_dim_weights'] is not None:
+            # spread x weight together, so a tiny-spread dim carrying a large
+            # weight is visible here rather than silently amplifying noise
+            _st = train_dataset.meta.stats.get('action', {})
+            _q01, _q99 = _st.get('q01'), _st.get('q99')
+            for _g, _idx in JOINT_GROUPS.items():
+                _w = [policy_config['action_dim_weights'][i] for i in _idx]
+                _sp = ([float(_q99[i]) - float(_q01[i]) for i in _idx]
+                       if _q01 is not None and _q99 is not None else None)
+                log.info("  %-11s w=[%s]%s", _g,
+                         " ".join(f"{x:.2f}" for x in _w),
+                         "" if _sp is None else "  spread=[" + " ".join(f"{s:.3f}" for s in _sp) + "]")
 
 
         # NOTE: Do NOT create DistributedSampler manually here.
@@ -1415,17 +1459,26 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                                 if k != 'policy_config'])
         writer.add_text("config/hparams", hparam_str, 0)
 
-    # === saving untrained for debug ===
-    # ckpt_path = os.path.join(ckpt_dir, f'untrained_policy.ckpt')
-    # torch.save({
-    #     'model': policy.state_dict(),
-    #     'optimizer': optimizer.state_dict(),
-    #     'scheduler': scheduler.state_dict(),
-    #     'epoch': -1,
-    #     'global_step': global_step,
-    #     'min_val_loss': min_val_loss,
-    # }, ckpt_path)
-    
+    # === saving untrained, then stopping (--save_untrained) ===
+    # Both config sidecars are already on disk by this point, written above from
+    # this run's real config and dataset stats -- so the checkpoint and its
+    # sidecars are self-consistent by construction, with nothing hand-copied.
+    if config.get('save_untrained'):
+        if accelerator.is_main_process:
+            ckpt_path = os.path.join(ckpt_dir, 'policy_untrained.ckpt')
+            torch.save({
+                'model': accelerator.unwrap_model(policy).state_dict(),
+                'optimizer': optimizer.state_dict(),
+                'scheduler': scheduler.state_dict(),
+                'epoch': -1,
+                'global_step': global_step,
+                'min_val_loss': min_val_loss,
+                'untrained': True,
+            }, ckpt_path)
+            log.info("--save_untrained: wrote %s (random init) -- exiting before training", ckpt_path)
+        writer.close()
+        return None
+
 
     # === SIGTERM signal handler: save checkpoint before job is killed ===
     # This allows graceful resume when S2 scheduler sends SIGTERM (phd stop)
@@ -1817,10 +1870,21 @@ if __name__ == '__main__':
                         help='Disable all feature normalization (identity/pass-through mode)')
 
     # --- loss weighting ---
+    parser.add_argument('--action_dims_mode', type=str, default='all',
+                        choices=['all', 'active'],
+                        help="Which action dims the model predicts. 'all' (default) = 65. "
+                             "'active' drops the dataset-constant dims and ring+pinky (-> 45), "
+                             "giving a lower-dimensional output; the dropped joints are then "
+                             "held at their observed pose at inference, not actuated.")
+    parser.add_argument('--action_weights_json', type=str, default=None,
+                        help="Path to the JSON written by tools/compute_action_weights.py. "
+                             "Required for --loss_dim_weight_mode file.")
     parser.add_argument('--loss_dim_weight_mode', type=str, default='uniform',
-                        choices=['uniform', 'group'],
+                        choices=['uniform', 'group', 'file'],
                         help="Per-dimension action L1 weighting. 'uniform' (default) reproduces "
-                             "the previous behaviour; 'group' applies --loss_group_weights.")
+                             "the previous behaviour; 'group' applies --loss_group_weights; "
+                             "'file' loads --action_weights_json (torque-derived per-finger "
+                             "weights + constant-dim list).")
     parser.add_argument('--loss_group_weights', type=str, default=None,
                         help='JSON dict of joint-group multipliers for --loss_dim_weight_mode group, '
                              'e.g. \'{"left_hand": 2.0, "right_hand": 2.0}\'. Groups not listed keep 1.0. '
@@ -1833,6 +1897,12 @@ if __name__ == '__main__':
     parser.add_argument('--max_train_steps', type=int, default=None,
                         help='DEBUG: stop each epoch after N optimizer steps. Use for smoke tests; '
                              'note the LR schedule is still sized for the full epoch.')
+    parser.add_argument('--save_untrained', action='store_true',
+                        help='Write the randomly-initialised checkpoint plus this run\'s '
+                             'training_configs.json / normalizer_config.json, then exit before '
+                             'the training loop. Produces a config-consistent untrained baseline '
+                             '(e.g. a Grad-CAM control) via the real training path, so the '
+                             'sidecars are the ones this exact config would have trained with.')
     parser.add_argument('--max_val_steps', type=int, default=None,
                         help='DEBUG: cap the number of validation batches.')
     parser.add_argument('--gradcam', action='store_true',

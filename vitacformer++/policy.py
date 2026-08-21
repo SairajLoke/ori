@@ -26,7 +26,18 @@ class ACTPolicy(nn.Module):
         # the weighting is a training hyperparameter (recorded in
         # training_configs.json), and keeping it out of the checkpoint means
         # enabling it does not break strict loading of older checkpoints.
+        # Which contract columns this model predicts. None => all of them.
+        # When a subset, targets are sliced to match and the weight vector is
+        # sliced the same way, so both stay indexed by MODEL output position.
+        pad = args_override.get('predicted_action_dims')
+        self.register_buffer(
+            'predicted_action_dims',
+            None if pad is None else torch.as_tensor(pad, dtype=torch.long),
+            persistent=False,
+        )
         dim_weights = args_override.get('action_dim_weights')
+        if dim_weights is not None and pad is not None:
+            dim_weights = [dim_weights[i] for i in pad]
         self.register_buffer(
             'action_dim_weights',
             None if dim_weights is None else torch.as_tensor(dim_weights, dtype=torch.float32),
@@ -89,6 +100,8 @@ class ACTPolicy(nn.Module):
         if actions is not None: # training time
             actions = actions[:, :self.model.num_queries]
             is_pad = is_pad[:, :self.model.num_queries]
+            if self.predicted_action_dims is not None:
+                actions = actions.index_select(-1, self.predicted_action_dims.to(actions.device))
 
             if device is None:
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')

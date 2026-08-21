@@ -4,6 +4,15 @@ Deferred work with enough detail to pick back up cold. Not urgent, not started.
 See `concerns.md` for open bugs/risks in what's already built; this file is for
 what's intentionally not built yet.
 
+
+1. Predict the residual: a_hat = qpos_current + Δ̂, supervise Δ. Same function class, but the loss now measures only what must be learned.
+
+
+2.Per-dim loss weighting by 1/std(Δ) — you already have the machinery (loss_dim_weight_mode, currently uniform; action_dim_weights: null). Uniform weighting lets 7 near-constant head/torso dims and slow fingers dominate over the arm joints that carry the task.
+
+
+
+
 ---
 
 ## 1. Integrate joint_torque
@@ -160,6 +169,12 @@ item 3. Cheaper labels, fixes a known BC failure mode, and produces a second
 working instance of the predict-then-condition pattern before attempting it a
 third time here.
 
+
+
+
+
+
+
 ---
 
 ## 4. Ablate the tactile delta channels -- they may be pure redundancy
@@ -281,3 +296,120 @@ setting.
 Sequencing: after item 2's simpler version exists and is validated, since
 this is best understood as "item 2, done with a richer conditioning
 representation" rather than independent work.
+
+
+
+## 6. Progess 
+---
+
+## N. Phase-dependent action-loss weighting
+
+`action_weights.json` weights joints by torque, constant over the episode. The
+data says the right weight is not constant in time.
+
+Measured share of each finger's motion, mean over all 14 episodes:
+
+| finger | first 10% | mid 80% | last 10% |
+|---|---|---|---|
+| ring / pinky | 25-32% | 40-52% | 22-28% |
+| thumb / index | 6-11% | 71-81% | 13-17% |
+
+Ring and pinky put ~57% of their motion into 20% of the episode (grasp open at
+pickup, release at the end) and have the LARGEST range of any finger
+(1.0-1.17 rad vs thumb 0.72). Thumb/index have smaller range but 2-3x the total
+path -- many small corrections. Coarse actuation vs fine manipulation.
+
+So ring/pinky deserve a high weight during the first and last ~10% and a low one
+through the middle, rather than the flat 0.20 they get today.
+
+Blocked on knowing the phase at inference, which is the stage/progress head
+(see the progress-conditioning work). Same idea as MS-Bot's stage-gated modality
+priority (arXiv 2408.01366), applied to joints instead of sensors. Once a
+progress signal exists, `build_action_dim_weights` grows a per-phase table and
+the loss indexes it by the frame's progress value.
+
+Do NOT implement before the progress head: without it there is no phase signal
+at deployment, and a training-time-only schedule would create a train/deploy
+mismatch on the loss the model was shaped by.
+
+---
+
+## N+1. Low-rank hand output (PCA) -- `--action_dims_mode lowrank`
+
+Better version of `--action_dims_mode active`. `active` shrinks the output
+65 -> 45 by dropping ring+pinky, which also removes the ability to ACTUATE them:
+at inference those 18 columns can only be held at the observed pose, so the
+fingers never open or close (they traverse 0.85-1.11 rad in the data). That is a
+functional change, not just a loss-shaping one.
+
+PCA gets the same dimensionality reduction without losing actuation.
+
+Measured on 20151 frames (episodes 0-2), action columns:
+
+| group | dims | PCs for 95% var | PCs for 99% |
+|---|---|---|---|
+| left_hand | 22 | **6** | 11 |
+| right_hand | 22 | **6** | 11 |
+| left_arm | 7 | 4 | 5 |
+| right_arm | 7 | 4 | 6 |
+
+So the 44 hand DOF carry ~12 components of real variance. The model was never
+learning 44 independent signals; dropping 18 columns removes actuation, not
+redundancy -- which is why this is the better trade.
+
+Design:
+
+1. Fit PCA per hand on the training split only (leakage: fitting on all episodes
+   then evaluating on a held-out one would let basis vectors see val data).
+   Store components + mean in `action_weights.json` alongside the weights, or a
+   sibling `hand_basis.json`, with the episode list it was fitted on.
+2. `action_dim` = 7 + K + 7 + K + 7 with K ~= 6-8, i.e. 34-38 outputs vs 65.
+   The `action_dim` plumbing added for `active` already carries this; only the
+   expansion step is new.
+3. Expand at the output boundary: `hand_22 = mean + components.T @ latent_K`,
+   applied in NORMALIZED space (the basis is fitted on normalized actions),
+   before the existing denormalize step in vitac_policy_server.py.
+4. Loss: keep it on the reconstructed 22 dims, not on the latent. Weighting the
+   latent directly would make the torque-derived per-finger weights meaningless,
+   since each component mixes all fingers.
+
+### Fixed PCA basis vs learned upsampler
+
+A learned decoder (predict K, expand with a trained layer) is NOT more robust
+across datasets, which was the original motivation for considering it. Its
+weights are fitted to the same episodes the PCA basis would be fitted to; both
+need refitting on a dataset with different hand kinematics. PCA is in fact the
+more inspectable of the two -- the explained-variance curve shows exactly what
+was discarded.
+
+The real argument for learned is different and stronger: **PCA maximises
+variance explained, which is not task relevance.** Measured here, the thumb has
+the SMALLEST positional variation of any finger (mid-episode std 0.021-0.025 rad)
+and the HIGHEST torque (0.49 vs 0.04 for ring). A variance-ordered basis will
+therefore under-weight precisely the joint that does the most work. A decoder
+trained through the action loss will not.
+
+Note the equivalence: `Linear(hidden, K)` then `Linear(K, 22)` composes to
+`Linear(hidden, 22)` constrained to rank K -- a low-rank factorisation of the
+output layer, i.e. a bottleneck regulariser. The benefit is regularisation
+(forcing coordinated finger motion), not parameter savings; the head is
+negligible against 94M params either way.
+
+Recommended: initialise the learned decoder FROM the PCA basis and let it adapt.
+Starts on the demonstrated hand manifold, refines toward task relevance, and if
+training barely moves it from the PCA solution then the variance and relevance
+subspaces agree -- useful information either way.
+
+If cross-dataset robustness is the actual goal, neither delivers it. The
+dataset-independent option is a physically grounded parameterisation (grasp
+aperture, per-finger curl, spread) that encodes kinematics rather than
+correlations. More upfront domain work; transfers by construction.
+
+Open questions:
+- K per hand: ablate 4 / 6 / 8. 6 covers 95%, 11 covers 99%.
+- Linear vs MLP upsampler. MLP is more expressive but gives up any predictable
+  relationship between the latent and the pose manifold.
+- Interaction with `--action_dims_mode active`: mutually exclusive, not composable.
+
+Do this before `active` if the goal is "lower-dimensional output so the model has
+less to learn". Do `active` only to test whether ring/pinky matter at all.

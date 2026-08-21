@@ -551,13 +551,17 @@ def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, 
         log.info("  MAX_EPISODES=0 -> loading all episodes")
 
     #only loads base vitac particular keys
-    log.info("  creating LeRobotDataset (return_uint8=True, video_backend=torchcodec) ...")
+    # torchcodec is the fast path and stays the default. Overridable because the
+    # wheel refuses to load against some system ffmpeg versions, which otherwise
+    # makes the dataset unconstructable on that machine (pyav still works).
+    _backend = os.environ.get("ORI_VIDEO_BACKEND", "torchcodec")
+    log.info("  creating LeRobotDataset (return_uint8=True, video_backend=%s) ...", _backend)
     _t_ds_start = time.time()
     ds = LeRobotDataset(
         repo_id=None, root=data_root,
         image_transforms= torchvision_transforms if doImageTransforms else None  ,
         delta_timestamps=delta_timestamps,
-        video_backend="torchcodec",
+        video_backend=_backend,
         tolerance_s=TOLERANCE,
         episodes=_episodes,
         return_uint8=True,  # return raw uint8 frames — /255 done batched in convert_batch
@@ -568,8 +572,8 @@ def get_origami_full_dataset(dataset_root, split: SPLIT_TYPE, delta_timestamps, 
 
     # Log the actual video backend being used (confirms torchcodec loaded, not pyav fallback)
     _actual_backend = getattr(ds, "_video_backend", "unknown")
-    log.info("  video_backend requested=torchcodec  actual=%s", _actual_backend)
-    if _actual_backend not in ("torchcodec", "unknown"):
+    log.info("  video_backend requested=%s  actual=%s", _backend, _actual_backend)
+    if _actual_backend not in (_backend, "unknown"):
         log.warning("  video backend fell back to %r -- decode will be much slower", _actual_backend)
 
 

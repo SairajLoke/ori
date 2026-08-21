@@ -1,0 +1,26 @@
+{
+  "fingers": {
+    "thumb": 2.4101,
+    "index": 1.316,
+    "middle": 0.8721,
+    "ring": 0.2017,
+    "pinky": 0.2001
+  },
+  "groups": {
+    "left_arm": 1.0,
+    "right_arm": 1.0,
+    "motor": 1.0
+  },
+  "constant_dims": {
+    "58": 0.562683,
+    "59": -1.106864
+  },
+  "meta": {
+    "source": "/media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0_shortgop15_224",
+    "episodes": 14,
+    "frames": 91338,
+    "generated": "2026-08-21T10:59:57",
+    "method": "finger w = mean|torque|/(1+CV), symmetrised, mean-1 over fingers; arms uniform (torque there is gravity-dominated)",
+    "constant_spread_threshold": 0.001
+  }
+}

@@ -51,7 +51,7 @@ from lerobot.policies.factory import make_pre_post_processors
 from train_eval_utils import (JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats,
                               log_input_stats, log_final_model_inputs, build_action_dim_weights,
                               load_action_weight_spec, constant_action_dims,
-                              build_predicted_action_dims)
+                              build_predicted_action_dims, build_action_step_weights)
 from my_utils.log_features import log_problematic_features
 from my_utils.gradcam import save_gradcam_grid
 from my_utils.ori_logging import (setup_logging, get_logger, log_tensor, log_tensors,
@@ -738,6 +738,27 @@ def main(args):
         # inference AFTER denormalization -- these are raw radians, while a_hat
         # is in normalized space during training.
         config['constant_action_dims'] = constant_action_dims(_spec or {})
+        _tw_mode = args.get('temporal_weight_mode', 'uniform')
+        _step_w = build_action_step_weights(
+            policy_config['num_queries'], _tw_mode,
+            action_horizon=args.get('action_horizon_for_weights') or CHUNK_SIZE,
+            min_weight=args.get('temporal_weight_min', 0.25))
+        policy_config['action_step_weights'] = _step_w
+        config['temporal_weight_mode'] = _tw_mode
+        config['action_step_weights'] = _step_w
+        if _step_w is not None:
+            import numpy as _np
+            _w = _np.asarray(_step_w)
+            log.info("temporal weighting: mode=%s min=%.2f | step0=%.2f step%d=%.2f step%d=%.2f",
+                     _tw_mode, args.get('temporal_weight_min', 0.25), _w[0],
+                     len(_w)//4, _w[len(_w)//4], len(_w)-1, _w[-1])
+        config['predict_deltas'] = bool(args.get('predict_deltas'))
+        if config['predict_deltas']:
+            if not (_spec or {}).get('delta_stats'):
+                raise ValueError("--predict_deltas needs delta_stats in --action_weights_json "
+                                 "(regenerate with tools/compute_action_weights.py)")
+            config['delta_stats'] = _spec['delta_stats']
+            log.info("predict_deltas: head outputs residuals vs the current pose")
         config['tac_weight'] = policy_config['tac_weight']
         if _dropped:
             log.info("action dims zeroed in the L1 loss (constant in this dataset): %s", _dropped)
@@ -1040,7 +1061,8 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
 @torch.no_grad()
 def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, epoch,
                      max_steps=None, gradcam=False, gradcam_dir=None, gradcam_n_samples=2,
-                     camera_names=None):
+                     camera_names=None, predict_deltas=False,
+                     predicted_action_dims=None, constant_action_dims=None):
     """Run the held-out episodes and return a dict of scalar metrics.
 
     `policy` must be the UNWRAPPED module (accelerator.unwrap_model), and this
@@ -1081,6 +1103,7 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
         if max_steps is not None and batch_idx >= max_steps:
             break
         data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
+                                         predict_deltas=predict_deltas,
                              epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
         data.pop("_timing", None)
 
@@ -1101,14 +1124,46 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
         actions = data["action"][:, :policy.model.num_queries].to(device)
         is_pad = data["action_mask"][:, :policy.model.num_queries].to(device)
 
+        # A subset-predicting model emits fewer columns than the contract. Rebuild
+        # the full 65 exactly as vitac_policy_server.py does -- scatter, then fill
+        # the rest -- so val_l1 measures what the robot would actually execute and
+        # stays comparable across action_dims_mode settings.
+        _cur_phys = None
+        if predicted_action_dims is not None:
+            _lowdim = data["lowdim"][:, -1, :].to(device).float()      # normalized, offset 0
+            _cur_phys = (normalizer.denormalize("observation.state", _lowdim)
+                         if normalizer is not None else _lowdim)
+            full = a_hat.new_zeros(a_hat.shape[:-1] + (actions.shape[-1],))
+            full[..., predicted_action_dims] = a_hat
+            a_hat = full
+
         # Back to physical units before measuring per-joint error. The loss
         # terms above stay in normalized space (that is what the model is
         # trained on); only the reported metric is converted.
+        _akey = "action_delta" if predict_deltas else "action"
         if normalizer is not None:
-            a_hat_phys = normalizer.denormalize("action", a_hat.float())
-            actions_phys = normalizer.denormalize("action", actions.float())
+            a_hat_phys = normalizer.denormalize(_akey, a_hat.float())
+            actions_phys = normalizer.denormalize(_akey, actions.float())
         else:
             a_hat_phys, actions_phys = a_hat.float(), actions.float()
+        if predict_deltas:
+            # both sides are residuals against the same base pose, so the error is
+            # unchanged by adding it back -- but do it so the metric is in the same
+            # absolute units as the non-delta runs
+            _base = (_cur_phys if _cur_phys is not None else
+                     (normalizer.denormalize("observation.state",
+                                             data["lowdim"][:, -1, :].to(device).float())
+                      if normalizer is not None else data["lowdim"][:, -1, :].to(device).float()))
+            a_hat_phys = a_hat_phys + _base.unsqueeze(1)
+            actions_phys = actions_phys + _base.unsqueeze(1)
+        if predicted_action_dims is not None:
+            _held = [i for i in range(actions.shape[-1])
+                     if i not in set(predicted_action_dims)
+                     and i not in (constant_action_dims or {})]
+            for _d, _v in (constant_action_dims or {}).items():
+                a_hat_phys[..., int(_d)] = float(_v)
+            if _held:
+                a_hat_phys[..., _held] = _cur_phys[:, None, _held]
 
         valid = (~is_pad).unsqueeze(-1).to(a_hat_phys.dtype)       # [B, T, 1]
         abs_err = (a_hat_phys - actions_phys).abs() * valid        # [B, T, D], radians
@@ -1211,6 +1266,23 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                 )
     config['feature_modes'] = feature_modes
     config['norm_disable_keys'] = list(NORM_DISABLE_KEYS)
+    if config.get('predict_deltas'):
+        # Deltas need their OWN scale: action and observation.state carry
+        # separate quantile stats, so reusing action's would leave the residual
+        # a tiny fraction of [-1,1]. Injected into meta.stats (not just the
+        # normalizer) so normalizer_config.json records it and inference can
+        # rebuild the identical transform.
+        import numpy as _np
+        _ds = config['delta_stats']
+        train_dataset.meta.stats['action_delta'] = {
+            k: _np.asarray(_ds[k], dtype=_np.float32)
+            for k in ('q01', 'q99', 'mean', 'std', 'min', 'max') if k in _ds}
+        feature_modes['action_delta'] = None if disable_normalization else 'quantile'
+        norm_log.info("predict_deltas: action_delta stats injected "
+                      "(pooled q99-q01 mean %.4f rad over offsets %s)",
+                      float(_np.mean(_np.asarray(_ds['q99']) - _np.asarray(_ds['q01']))),
+                      _ds.get('offsets'))
+
     normalizer = OriNormalizer(
         stats=train_dataset.meta.stats,
         feature_modes=feature_modes,
@@ -1545,7 +1617,10 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                     gradcam=config.get('gradcam', False),
                     gradcam_dir=os.path.join(ckpt_dir, 'gradcam', f'epoch_{epoch}'),
                     gradcam_n_samples=config.get('gradcam_n_samples', 2),
-                    camera_names=config.get('camera_names'))
+                    camera_names=config.get('camera_names'),
+                    predict_deltas=config.get('predict_deltas', False),
+                    predicted_action_dims=config.get('predicted_action_dims'),
+                    constant_action_dims=config.get('constant_action_dims'))
                 validation_history.append((epoch, val_metrics))
 
                 if val_metrics:
@@ -1595,7 +1670,8 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
 
                 if IS_ORIGAMI_TASK:
                     # ── convert_batch (timing attached as data["_timing"]) ──
-                    data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS, 
+                    data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
+                                         predict_deltas=config.get('predict_deltas', False),
                                          epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
                     convert_timing = data.pop("_timing", {})
                     _batch_timings['convert_norm'] = convert_timing.get('norm', 0)
@@ -1870,6 +1946,29 @@ if __name__ == '__main__':
                         help='Disable all feature normalization (identity/pass-through mode)')
 
     # --- loss weighting ---
+    parser.add_argument('--temporal_weight_mode', type=str, default='uniform',
+                        choices=['uniform', 'linear', 'horizon'],
+                        help="Per-timestep action-loss weighting. Only action_horizon of "
+                             "num_queries rows are ever returned (25 of 100), a caller may "
+                             "consume only a prefix of those, and open-loop error roughly "
+                             "doubles by depth 50 -- so late rows are worth less. 'horizon' "
+                             "keeps the returned prefix at full weight and decays only the "
+                             "rows nobody sees; 'linear' decays from step 0.")
+    parser.add_argument('--temporal_weight_min', type=float, default=0.25,
+                        help="Weight at the final chunk step (before mean-1 rescale). "
+                             "Discounts the tail rather than removing it -- long-horizon "
+                             "prediction may still be a useful auxiliary task.")
+    parser.add_argument('--action_horizon_for_weights', type=int, default=25,
+                        help="Rows actually returned to the organizer, for "
+                             "--temporal_weight_mode horizon. Should match the deployed "
+                             "ORIGAMI_ACTION_HORIZON.")
+    parser.add_argument('--predict_deltas', action='store_true',
+                        help="Predict action - current_pose instead of the absolute action, "
+                             "normalized by delta_stats from --action_weights_json. Removes the "
+                             "'copy qpos' term from the loss; resolution gain is largest on the "
+                             "early chunk steps (~5x at k=0, ~2x at k=24, ~1x by k=99), which are "
+                             "the ones a receding-horizon caller actually executes. "
+                             "Composes with --action_dims_mode and the loss weighting.")
     parser.add_argument('--action_dims_mode', type=str, default='all',
                         choices=['all', 'active'],
                         help="Which action dims the model predicts. 'all' (default) = 65. "

@@ -26,7 +26,24 @@ class ACTPolicy(nn.Module):
         # the weighting is a training hyperparameter (recorded in
         # training_configs.json), and keeping it out of the checkpoint means
         # enabling it does not break strict loading of older checkpoints.
+        # Which contract columns this model predicts. None => all of them.
+        # When a subset, targets are sliced to match and the weight vector is
+        # sliced the same way, so both stay indexed by MODEL output position.
+        pad = args_override.get('predicted_action_dims')
+        self.register_buffer(
+            'predicted_action_dims',
+            None if pad is None else torch.as_tensor(pad, dtype=torch.long),
+            persistent=False,
+        )
+        step_w = args_override.get('action_step_weights')
+        self.register_buffer(
+            'action_step_weights',
+            None if step_w is None else torch.as_tensor(step_w, dtype=torch.float32),
+            persistent=False,
+        )
         dim_weights = args_override.get('action_dim_weights')
+        if dim_weights is not None and pad is not None:
+            dim_weights = [dim_weights[i] for i in pad]
         self.register_buffer(
             'action_dim_weights',
             None if dim_weights is None else torch.as_tensor(dim_weights, dtype=torch.float32),
@@ -51,7 +68,7 @@ class ACTPolicy(nn.Module):
 
 
     @staticmethod
-    def _masked_l1(pred, target, is_pad, dim_weights=None):
+    def _masked_l1(pred, target, is_pad, dim_weights=None, step_weights=None):
         """Mean L1 over the UNPADDED entries only, optionally per-dim weighted.
 
         `is_pad` is [B, T] (True = fabricated/out-of-episode). The naive
@@ -75,11 +92,30 @@ class ACTPolicy(nn.Module):
             per_step = (err * w).sum(-1)                          # [B, T]
             width = float(w.sum())
 
+        # Per-timestep weighting. Late chunk steps are worth less: only
+        # action_horizon of num_queries rows are ever returned, a receding-horizon
+        # caller may consume just a prefix of those, and open-loop error roughly
+        # doubles by depth 50. Folded into the denominator the same way
+        # dim_weights is, so the L1 term keeps its scale against kl_weight.
+        if step_weights is not None:
+            sw = step_weights.to(dtype=per_step.dtype, device=per_step.device)  # [T]
+            sw = sw[:per_step.shape[1]]
+            per_step = per_step * sw
+            step_scale = sw
+        else:
+            step_scale = None
+
         if is_pad is None:
-            return per_step.sum() / max(per_step.numel() * width, 1.0)
+            n = per_step.numel() * width
+            if step_scale is not None:
+                n = per_step.shape[0] * float(step_scale.sum()) * width
+            return per_step.sum() / max(n, 1.0)
 
         valid = (~is_pad).to(per_step.dtype)                      # [B, T]
-        denom = (valid.sum() * width).clamp(min=1.0)
+        if step_scale is None:
+            denom = (valid.sum() * width).clamp(min=1.0)
+        else:
+            denom = ((valid * step_scale).sum() * width).clamp(min=1.0)
         return (per_step * valid).sum() / denom
 
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None,
@@ -89,6 +125,8 @@ class ACTPolicy(nn.Module):
         if actions is not None: # training time
             actions = actions[:, :self.model.num_queries]
             is_pad = is_pad[:, :self.model.num_queries]
+            if self.predicted_action_dims is not None:
+                actions = actions.index_select(-1, self.predicted_action_dims.to(actions.device))
 
             if device is None:
                 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -104,7 +142,8 @@ class ACTPolicy(nn.Module):
             a_hat, is_pad_hat, (mu, logvar), tac_hat = self.model(qpos, image, env_state, tactile, actions, is_pad, tactile_next, epoch=epoch)
             total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
             loss_dict = dict()
-            loss_dict['l1'] = self._masked_l1(a_hat, actions, is_pad, self.action_dim_weights)
+            loss_dict['l1'] = self._masked_l1(a_hat, actions, is_pad, self.action_dim_weights,
+                                              self.action_step_weights)
             loss_dict['kl'] = total_kld[0]
             loss_dict['loss'] = loss_dict['l1'] + loss_dict['kl'] * self.kl_weight
 

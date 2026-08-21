@@ -363,6 +363,11 @@ class TeamPolicy:
         # to be filled: recorded constants where we have them, otherwise the
         # joint's current measured pose (hold it where it is). Order matters --
         # robot_io_spec.md fixes the column order and forbids reordering.
+        # predict_deltas: the head emits a residual against the current pose,
+        # normalized with action_delta's own stats. Reconstruct absolute here.
+        self.predict_deltas = bool(train_cfg.get("predict_deltas"))
+        if self.predict_deltas:
+            logging.info("predict_deltas: a_hat = current_pose + denorm(delta)")
         self.predicted_action_dims = train_cfg.get("predicted_action_dims")
         if self.predicted_action_dims is not None:
             self.predicted_action_dims = [int(i) for i in self.predicted_action_dims]
@@ -576,7 +581,12 @@ class TeamPolicy:
             full[..., self.predicted_action_dims] = a_hat
             a_hat = full
         if self.normalizer is not None:
-            a_hat = self.normalizer.denormalize("action", a_hat.float())
+            a_hat = self.normalizer.denormalize(
+                "action_delta" if self.predict_deltas else "action", a_hat.float())
+        if self.predict_deltas:
+            # `state` is this call's authoritative measured pose, raw radians --
+            # the same reference convert_batch subtracted at training time
+            a_hat = a_hat + torch.as_tensor(state, dtype=a_hat.dtype, device=a_hat.device)
         # after denormalization: the recorded constants are raw radians
         for _d, _v in self.constant_action_dims.items():
             a_hat[..., _d] = _v

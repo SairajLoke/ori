@@ -67,6 +67,41 @@ def constant_action_dims(spec):
     return {int(k): float(v) for k, v in (spec.get("constant_dims") or {}).items()}
 
 
+def build_action_step_weights(num_queries, mode="uniform", action_horizon=None,
+                              min_weight=0.25):
+    """[num_queries] weight over chunk timesteps, mean 1 over the whole chunk.
+
+    Late steps are worth less for three independent reasons: only
+    action_horizon of num_queries rows are ever returned to the organizer
+    (25 of 100 today, so 75% of the action loss is spent on rows that are
+    discarded), a receding-horizon caller may consume only a prefix of even
+    those, and measured open-loop error roughly doubles by depth 50.
+
+      "uniform"  every step 1.0 -- previous behaviour, the default.
+      "linear"   1.0 at step 0 decaying linearly to min_weight at the last step.
+      "horizon"  1.0 through action_horizon, then decaying linearly to
+                 min_weight -- keeps the returned prefix at full weight and only
+                 discounts the rows nobody sees.
+
+    Long-horizon prediction may still be a useful auxiliary task, so min_weight
+    discounts the tail rather than removing it.
+    """
+    if mode == "uniform":
+        return None
+    n = int(num_queries)
+    if mode == "linear":
+        w = [1.0 + (min_weight - 1.0) * (i / max(n - 1, 1)) for i in range(n)]
+    elif mode == "horizon":
+        h = int(action_horizon or n)
+        w = [1.0 if i < h else
+             1.0 + (min_weight - 1.0) * ((i - h + 1) / max(n - h, 1)) for i in range(n)]
+    else:
+        raise ValueError(f"Unknown temporal_weight_mode {mode!r} "
+                         f"(expected 'uniform', 'linear' or 'horizon')")
+    scale = n / sum(w)
+    return [x * scale for x in w]
+
+
 def build_predicted_action_dims(state_dim, mode, weight_spec=None):
     """Which contract columns the model predicts.
 

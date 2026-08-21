@@ -99,7 +99,8 @@ def log_before_after(name, data_raw, data_norm):
     print(f"    Range: [{data_norm.min():.4f}, {data_norm.max():.4f}], μ={data_norm.mean():.4f}, σ={data_norm.std():.4f}")
 
 
-def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, normalizer=None):
+def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, normalizer=None,
+                  predict_deltas=False):
 
     """
     Convert a LeRobot batch into the format expected by the old ACT code.
@@ -177,9 +178,19 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
                       "row0 gaps(frames)=%s", _pool_shape, tuple(lowdim.shape),
                       _state_gaps[0].tolist())
 
-    # Action
+    # Action. With predict_deltas the target is the residual against the CURRENT
+    # pose -- observation.state at offset 0, which is the LAST entry of the
+    # ascending past window (_state_past_offsets ends at -0.0). Computed in raw
+    # radians, then normalized with action_delta's own stats: action and
+    # observation.state have separate quantile stats, so the subtraction is only
+    # meaningful before normalization.
     action_raw = batch["action"]
-    action = normalizer.normalize("action", action_raw) if normalizer else action_raw
+    if predict_deltas:
+        _cur = batch["observation.state"][:, -1:, :]                 # [B,1,65] raw
+        action_raw = action_raw - _cur
+        action = normalizer.normalize("action_delta", action_raw) if normalizer else action_raw
+    else:
+        action = normalizer.normalize("action", action_raw) if normalizer else action_raw
     # NOTE: action dims 58/59 used to be copied back raw here to dodge their
     # tiny q99-q01 (1.3e-5 / 2.9e-5). observation.state[58]/[59] got no such
     # treatment, so the same physical quantity arrived normalized on the input

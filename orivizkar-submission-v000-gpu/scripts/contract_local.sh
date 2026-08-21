@@ -129,6 +129,16 @@ fi
 # ---------------------------------------------------------------------------
 if [ "$DO_BUILD" = "1" ]; then
     sec "Build (layer cache reused; one tag, no copies)"
+    # The image ships a COPY of the model source (Dockerfile: COPY vitacformer
+    # /app/vitacformer). If it has drifted from vitacformer++ the container runs
+    # different code than you trained with -- which surfaces as a load_state_dict
+    # shape mismatch at best, and a silently different deployed model at worst.
+    if ! "${SCRIPT_DIR}/sync_vendor.sh" --check >/dev/null 2>&1; then
+        warn "vendored model source is stale -- syncing from vitacformer++"
+        "${SCRIPT_DIR}/sync_vendor.sh" || die "vendor sync failed"
+    else
+        ok "vendored model source matches vitacformer++"
+    fi
     # The image is ~14GB and every rebuild adds build-cache layers, which is a
     # realistic way to run the disk out. Warn, never prune behind your back.
     if [ "$PRUNE_CACHE" = "1" ]; then

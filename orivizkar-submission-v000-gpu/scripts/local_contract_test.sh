@@ -331,6 +331,8 @@ docker run -d --name "$POLICY_NAME" \
     --cpus "$CPUS" \
     -e ORIGAMI_ZENOH_ENDPOINT="tcp/${ROUTER_NAME}:${ROUTER_PORT}" \
     -e ORIGAMI_SESSION_ID="$SESSION" \
+    ${VITAC_OPTIMIZATION:+-e VITAC_OPTIMIZATION="$VITAC_OPTIMIZATION"} \
+    ${VITAC_SMOOTHING:+-e VITAC_SMOOTHING="$VITAC_SMOOTHING"} \
     "$IMAGE" >/dev/null
 ok "policy container started"
 

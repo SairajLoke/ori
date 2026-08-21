@@ -1,0 +1,43 @@
+{
+ "ckpt": "policy_epoch_70_loss_0.027.ckpt",
+ "label": "jitter",
+ "episode": 0,
+ "horizon": 25,
+ "frames": 200,
+ "levels": [
+  0.25,
+  0.5,
+  1.0
+ ],
+ "clean_mse": 0.005027768589206972,
+ "mse": {
+  "clean": 0.005027768589206972,
+  "cameras_all|noise0.25": 0.005100626364001073,
+  "cameras_all|noise0.5": 0.005261695496737957,
+  "cameras_all|noise1.0": 0.008773727306397631,
+  "cameras_all|replace": 0.012557361994986423,
+  "proprio|noise0.25": 0.005361154649872333,
+  "proprio|noise0.5": 0.0068871221074368804,
+  "proprio|noise1.0": 0.01265291658230126,
+  "proprio|replace": 0.022828256180509925,
+  "tactile|noise0.25": 0.005068510606070049,
+  "tactile|noise0.5": 0.005125933615490794,
+  "tactile|noise1.0": 0.005557153962436132,
+  "tactile|replace": 0.005293645628844388
+ },
+ "delta": {
+  "clean": 0.0,
+  "cameras_all|noise0.25": 0.723130889981985,
+  "cameras_all|noise0.5": 1.1869472149014473,
+  "cameras_all|noise1.0": 1.932418390661478,
+  "cameras_all|replace": 2.6376471108198167,
+  "proprio|noise0.25": 0.9596914809942245,
+  "proprio|noise0.5": 1.9526247972249984,
+  "proprio|noise1.0": 3.5043354904651642,
+  "proprio|replace": 5.262260069847107,
+  "tactile|noise0.25": 0.3509865723177791,
+  "tactile|noise0.5": 0.6729422987625003,
+  "tactile|noise1.0": 1.188604348525405,
+  "tactile|replace": 0.8945811069756746
+ }
+}

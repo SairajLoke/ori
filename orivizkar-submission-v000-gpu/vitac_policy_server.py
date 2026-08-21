@@ -56,6 +56,7 @@ if torch.cuda.is_available():
 # `from train_utils import _stats`, both resolved relative to VITACFORMER_ROOT.
 from policy import ACTPolicy  # noqa: E402
 from my_utils.normalizer import OriNormalizer  # noqa: E402
+from smoothing import MODES as SMOOTHING_MODES, smooth_chunk  # noqa: E402
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -351,6 +352,24 @@ class TeamPolicy:
         self.mask_fingers = train_cfg.get("mask_fingers", False)
         self.hand_mask = train_cfg.get("hand_mask", [1] * 5 + [1] * 4 + [1] * 4 + [0] * 4 + [0] * 5)
         self.train_image_hw = tuple(train_cfg.get("image_hw", (224, 224)))
+        # Dims the dataset holds constant: trained with zero loss weight, so the
+        # model never learned them and its output there is unconstrained. The
+        # reply is still a fixed 65 columns and the organizer checks jumps and
+        # velocity, so emit the recorded constant instead of whatever drifted out.
+        self.constant_action_dims = {int(k): float(v) for k, v in
+                                     (train_cfg.get("constant_action_dims") or {}).items()}
+        # When the model predicts a subset of the 65 contract columns, its output
+        # position i maps to column predicted_action_dims[i]. Everything else has
+        # to be filled: recorded constants where we have them, otherwise the
+        # joint's current measured pose (hold it where it is). Order matters --
+        # robot_io_spec.md fixes the column order and forbids reordering.
+        self.predicted_action_dims = train_cfg.get("predicted_action_dims")
+        if self.predicted_action_dims is not None:
+            self.predicted_action_dims = [int(i) for i in self.predicted_action_dims]
+            held = sorted(set(range(ACTION_DIM)) - set(self.predicted_action_dims)
+                          - set(self.constant_action_dims))
+            logging.info("model predicts %d/%d action dims; %d held at observed pose: %s",
+                         len(self.predicted_action_dims), ACTION_DIM, len(held), held)
 
         # camera_names in policy_config is dataset-format ("observation.images.X");
         # CAMERA_ORDER is the public protocol's dict keys ("observation/image/X").
@@ -377,11 +396,30 @@ class TeamPolicy:
 
         optimizations = ['compile', 'tflite', 'none']
         OPTIMIZATION_IDX = 0
+        # Env override: torch.compile is unusable on a CPU-only box (very slow,
+        # and the inductor cache can exhaust RAM), so allow disabling it there.
+        optimization = os.environ.get("VITAC_OPTIMIZATION") or optimizations[OPTIMIZATION_IDX]
+        if optimization not in optimizations:
+            raise ValueError(f"VITAC_OPTIMIZATION must be one of {optimizations}, got {optimization!r}")
+
+        # Chunk-seam smoothing. robot_io_spec.md §6 lists history and temporal
+        # ensembling as participant-internal, so any of these is contract-legal:
+        # the reply stays finite float32[T,65] absolute radians and every buffer
+        # below is cleared in reset(). See SMOOTHING_MODES for what each does.
+        SMOOTHING_IDX = 6  # 'auto' -- index into smoothing.MODES; VITAC_SMOOTHING overrides
+        self.smoothing = os.environ.get("VITAC_SMOOTHING") or SMOOTHING_MODES[SMOOTHING_IDX]
+        if self.smoothing not in SMOOTHING_MODES:
+            raise ValueError(f"VITAC_SMOOTHING must be one of {SMOOTHING_MODES}, got {self.smoothing!r}")
+        self.blend_steps = int(os.environ.get("VITAC_BLEND_STEPS", "4"))
+        self.ensemble_decay = float(os.environ.get("VITAC_ENSEMBLE_DECAY", "0.35"))
+        self.max_step_rad = float(os.environ.get("VITAC_MAX_STEP_RAD", "0.10"))
+        logging.info("smoothing=%s blend_steps=%d max_step_rad=%.3f",
+                     self.smoothing, self.blend_steps, self.max_step_rad)
 
         logging.info("using device: %s", self.device)
 
         self.policy = self._load_policy(policy_config=policy_config,
-                                        optimization_type=optimizations[OPTIMIZATION_IDX])
+                                        optimization_type=optimization)
 
 
         # Episode-scoped rolling history. The public protocol only ever sends the
@@ -397,6 +435,7 @@ class TeamPolicy:
         self._tactile_history: collections.deque[np.ndarray] = collections.deque(
             maxlen=self.TACTILE_TEMPORAL_HORIZON + 1
         )
+        self._prev_chunk: np.ndarray | None = None  # last reply, for 'ensemble'
 
         logging.info("Done Initializing the TeamPolicy ++++++++++")
 
@@ -411,7 +450,8 @@ class TeamPolicy:
         logging.info(" TeamPolicy Reset called ++++++++")
         self._state_history.clear()
         self._tactile_history.clear()
-        
+        self._prev_chunk = None
+
     def _preprocess_image(self, image: np.ndarray) -> torch.Tensor:
         #permute | to tensor | resize | [0,1] | ImageNet norm (if the checkpoint trained with it)
         tensor = torch.from_numpy(image.astype(np.float32)).permute(2, 0, 1).unsqueeze(0)  # 1,C,H,W
@@ -528,8 +568,25 @@ class TeamPolicy:
             tactile_next=tactile_next_tensor,
         )  # [1, 100, 65] -- normalized model-space units if self.normalizer is set,
            # denormalized to absolute joint-position radians below.
+        # Scatter a subset-predicting model back into the 65 contract columns
+        # BEFORE denormalizing, so each column meets its own per-dim stats.
+        # Unpredicted columns are filled after denormalization, in raw radians.
+        if self.predicted_action_dims is not None:
+            full = a_hat.new_zeros(a_hat.shape[:-1] + (ACTION_DIM,))
+            full[..., self.predicted_action_dims] = a_hat
+            a_hat = full
         if self.normalizer is not None:
             a_hat = self.normalizer.denormalize("action", a_hat.float())
+        # after denormalization: the recorded constants are raw radians
+        for _d, _v in self.constant_action_dims.items():
+            a_hat[..., _d] = _v
+        if self.predicted_action_dims is not None:
+            _held = [i for i in range(ACTION_DIM)
+                     if i not in self.predicted_action_dims and i not in self.constant_action_dims]
+            if _held:
+                # hold at the measured pose; `state` is this call's authoritative reading
+                _cur = torch.as_tensor(state, dtype=a_hat.dtype, device=a_hat.device)
+                a_hat[..., _held] = _cur[_held]
         logging.debug(
             "+++++= a_hat min=%s max=%s shape=%s dtype=%s",
             torch.min(a_hat),
@@ -538,8 +595,15 @@ class TeamPolicy:
             a_hat.dtype,
         )
 
-        actions = a_hat[0, : self.action_horizon].detach().to("cpu").numpy()
-        return np.ascontiguousarray(actions.astype(np.float32))
+        actions = a_hat[0, : self.action_horizon].detach().to("cpu").numpy().astype(np.float32)
+        if self.smoothing != 'none':
+            actions = smooth_chunk(
+                actions, state, self._prev_chunk, self.smoothing,
+                blend_steps=self.blend_steps, ensemble_decay=self.ensemble_decay,
+                max_step_rad=self.max_step_rad,
+            ).astype(np.float32)
+        self._prev_chunk = actions
+        return np.ascontiguousarray(actions)
 
 
 class OrigamiZenohServer:

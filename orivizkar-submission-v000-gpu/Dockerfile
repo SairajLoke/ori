@@ -52,32 +52,40 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Copy source code and entrypoint
 COPY vitacformer /app/vitacformer
 COPY vitac_policy_server.py /app/vitac_policy_server.py
+COPY smoothing.py /app/smoothing.py
 COPY entrypoint.sh /app/entrypoint.sh
 
-# Copy the checkpoint set: the .ckpt file (renamed to a fixed path so this
-# Dockerfile doesn't need editing per training run) plus the two sidecars
-# origami_imitate_episodes.py writes next to it during training --
-# training_configs.json (architecture: hidden_dim, backbone, camera order,
-# mask_fingers, ...) and normalizer_config.json (normalization stats).
-# vitac_policy_server.py rebuilds the entire deployed model from those, not
-# hardcoded constants -- place all three under checkpoints/ locally before
-# building this image, or the container fails fast at startup.
+# Copy the checkpoint set. A training run is one self-contained directory --
+# exactly what origami_imitate_episodes.py writes, e.g.
+#   checkpoints/aug20_resnet18_224_jitter_obsfps5_20260820_065144_ori_tactile/
+#       policy_epoch_70_loss_0.027.ckpt      (possibly several epochs)
+#       training_configs.json                 (architecture: hidden_dim, backbone,
+#                                              camera order, mask_fingers, ...)
+#       normalizer_config.json                (normalization stats)
+#       info_<run>.log
+# vitac_policy_server.py rebuilds the entire deployed model from those two JSON
+# sidecars rather than hardcoded constants, so all three files must come from the
+# SAME run directory -- mixing a checkpoint with another run's config silently
+# deploys a mismatched architecture or wrong units.
+#
+# Two build args: CKPT_DIR selects the run directory, CKPT_FILE selects which
+# epoch inside it (the only thing that varies within a run). Both are copied to
+# fixed paths so nothing downstream needs editing per run:
+#   docker build --build-arg CKPT_DIR=<run-dir> --build-arg CKPT_FILE=<file>.ckpt .
+# scripts/contract_local.sh auto-detects both from checkpoints/.
+#
 # Backbone weights (assets/backbones/*.pth, vendored under vitacformer/) are
 # resolved automatically from whichever backbone training_configs.json names.
-# CKPT_FILE is the checkpoint's filename inside checkpoints/. It is a build arg
-# rather than a hardcoded name so deploying a different training run does not
-# require editing this file:
-#   docker build --build-arg CKPT_FILE=policy_epoch_50_loss_0.03.ckpt .
-# scripts/local_contract_test.sh auto-detects it from checkpoints/.
-ARG CKPT_FILE=policy_best.ckpt
-COPY checkpoints/${CKPT_FILE}           /app/checkpoints/policy_best.ckpt
-COPY checkpoints/training_configs.json  /app/checkpoints/training_configs.json
-COPY checkpoints/normalizer_config.json /app/checkpoints/normalizer_config.json
+ARG CKPT_DIR
+ARG CKPT_FILE
+COPY checkpoints/${CKPT_DIR}/${CKPT_FILE}              /app/checkpoints/policy_best.ckpt
+COPY checkpoints/${CKPT_DIR}/training_configs.json     /app/checkpoints/training_configs.json
+COPY checkpoints/${CKPT_DIR}/normalizer_config.json    /app/checkpoints/normalizer_config.json
 
 # Set environment variables
 ENV VITAC_CKPT_PATH=/app/checkpoints/policy_best.ckpt \
     ORIGAMI_ACTION_HORIZON=25 \
-    PYTHONPATH=/app/vitacformer:/app/vitacformer/detr
+    PYTHONPATH=/app:/app/vitacformer:/app/vitacformer/detr
 
 # Pre-create writable cache directories and set permissions for UID 65532
 RUN mkdir -p /tmp/origami-home /tmp/origami-cache/triton /tmp/origami-cache/torch/hub/checkpoints /tmp/origami-ipython /tmp/origami-cache/torchinductor \

@@ -100,7 +100,7 @@ def log_before_after(name, data_raw, data_norm):
 
 
 def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, normalizer=None,
-                  predict_deltas=False):
+                  predict_deltas=False, camera_names=None, image_crop=None):
 
     """
     Convert a LeRobot batch into the format expected by the old ACT code.
@@ -113,6 +113,8 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
 
     timing = {}
     _t0 = time.time()
+    if camera_names is None:
+        from configs import CAMERA_NAMES as camera_names
 
     # `_verbose` gates the *structural* (DEBUG) logging. Tensor statistics are
     # additionally gated on the TRACE level, since they force CUDA syncs.
@@ -209,42 +211,23 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         log_tensor(log, TRACE, "  raw/joint_torque (unused by the model)",
                    batch["observation.state.joint_torque"])
 
-    # Images - convert uint8→float32 first (required for model input, logging)
-    # return_uint8=True means images arrive as uint8 [0,255] - must convert to float32 [0,1]
-    imgHeadLeft_raw = batch["observation.images.head_left"]
-    if imgHeadLeft_raw.dtype == torch.uint8:
-        imgHeadLeft_raw = imgHeadLeft_raw.float() / 255.0
-    imgHeadLeft = normalizer.normalize("observation.images.head_left", imgHeadLeft_raw) if normalizer else imgHeadLeft_raw
-    if _verbose:
-        log_before_after("observation.images.head_left", imgHeadLeft_raw, imgHeadLeft)
-
-    imgHeadRight_raw = batch["observation.images.head_right"]
-    if imgHeadRight_raw.dtype == torch.uint8:
-        imgHeadRight_raw = imgHeadRight_raw.float() / 255.0
-    imgHeadRight = normalizer.normalize("observation.images.head_right", imgHeadRight_raw) if normalizer else imgHeadRight_raw
-    
-    imgWristRight_raw = batch["observation.images.wrist_right"]
-    if imgWristRight_raw.dtype == torch.uint8:
-        imgWristRight_raw = imgWristRight_raw.float() / 255.0
-    imgWristRight = normalizer.normalize("observation.images.wrist_right", imgWristRight_raw) if normalizer else imgWristRight_raw
-    
-    imgWristLeft_raw = batch["observation.images.wrist_left"]
-    if imgWristLeft_raw.dtype == torch.uint8:
-        imgWristLeft_raw = imgWristLeft_raw.float() / 255.0
-    imgWristLeft = normalizer.normalize("observation.images.wrist_left", imgWristLeft_raw) if normalizer else imgWristLeft_raw
+    # Images. The camera list is driven by camera_names (which the training run
+    # records in policy_config) rather than four hardcoded locals, so --cameras
+    # can select a subset without this function knowing which.
+    cams = []
+    for _cam in camera_names:
+        _raw = batch[_cam]
+        if _raw.dtype == torch.uint8:
+            _raw = _raw.float() / 255.0
+        _img = normalizer.normalize(_cam, _raw) if normalizer else _raw
+        if _verbose:
+            log_before_after(_cam, _raw, _img)
+        cams.append(_img)
 
     timing['norm'] = time.time() - _t_norm_start
 
     # ── Timing: image resize ──
     _t_resize_start = time.time()
-
-    # combine - ----------------------
-    cams = [
-        imgHeadLeft,
-        imgHeadRight,
-        imgWristRight,
-        imgWristLeft
-    ]
 
     resized = []
     for img in cams:
@@ -259,6 +242,12 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         # space, matching the upstream ImageProcess ordering.
         if USE_IMAGENET_NORM:
             img = _apply_imagenet_norm(img)
+        if image_crop:
+            # explicit centre CROP, not a resize -- the point is to drop border
+            # pixels (and the tokens they produce), which a resize would keep.
+            _h, _w = img.shape[-2:]
+            _t, _l = (_h - image_crop) // 2, (_w - image_crop) // 2
+            img = img[..., _t:_t + image_crop, _l:_l + image_crop]
         resized.append(img)
     image = torch.stack(resized, dim=1)
     assert action.shape[0] == image.shape[0] and action.shape[1] == len(delta_timestamps["action"])

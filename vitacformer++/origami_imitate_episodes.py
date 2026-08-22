@@ -700,19 +700,28 @@ def main(args):
         if args.get('loss_group_weights'):
             _group_weights = json.loads(args['loss_group_weights'])
         _mode = args.get('loss_dim_weight_mode', 'uniform')
+        # The JSON holds four INDEPENDENT sections -- finger/group weights,
+        # constant_dims, delta_stats -- each consumed by a different flag. Load it
+        # whenever it is given, so --predict_deltas and --action_dims_mode can be
+        # tested WITHOUT also switching the loss weighting on. Providing the file
+        # alone changes nothing.
         _spec = None
-        if _mode == 'file':
+        if args.get('action_weights_json'):
             _spec = load_action_weight_spec(args['action_weights_json'])
-            log.info("action weights from %s (generated %s from %s episodes)",
+            log.info("action weights spec loaded from %s (generated %s from %s episodes)",
                      args['action_weights_json'], _spec.get('meta', {}).get('generated', '?'),
                      _spec.get('meta', {}).get('episodes', '?'))
+        if _mode == 'file' and _spec is None:
+            raise ValueError("--loss_dim_weight_mode file needs --action_weights_json")
         _dim_weights, _dropped = build_action_dim_weights(
             state_dim=args['state_dim'],
             mode=_mode,
             group_weights=_group_weights,
             action_stats=(train_dataset.meta.stats.get('action')
                           if args.get('drop_degenerate_action_dims') else None),
-            weight_spec=_spec,
+            weight_spec=(_spec if args.get('use_constant_dims') else
+                         ({'fingers': _spec['fingers'], 'groups': _spec['groups']}
+                          if _spec else None)),
         )
         _adm = args.get('action_dims_mode', 'all')
         _pred_dims, _not_pred = build_predicted_action_dims(args['state_dim'], _adm, _spec)
@@ -737,7 +746,36 @@ def main(args):
         # policy_config, which is the ACTPolicy args_override) and applied at
         # inference AFTER denormalization -- these are raw radians, while a_hat
         # is in normalized space during training.
-        config['constant_action_dims'] = constant_action_dims(_spec or {})
+        config['constant_action_dims'] = (constant_action_dims(_spec or {})
+                                          if args.get('use_constant_dims') else {})
+        _cam_sel = args.get('cameras')
+        if _cam_sel:
+            _want = [c.strip() for c in _cam_sel.split(',') if c.strip()]
+            _all = list(policy_config['camera_names'])
+            _short = {c.rsplit('.', 1)[-1]: c for c in _all}
+            _unknown = [c for c in _want if c not in _short]
+            if _unknown:
+                raise ValueError(f"--cameras: unknown {_unknown}; available {sorted(_short)}")
+            policy_config['camera_names'] = [_short[c] for c in _want]
+            log.info("cameras: %d of %d -> %s", len(_want), len(_all),
+                     [c.rsplit('.', 1)[-1] for c in policy_config['camera_names']])
+        policy_config['explicit_flash_attn'] = bool(args.get('explicit_flash_attn'))
+        config['explicit_flash_attn'] = policy_config['explicit_flash_attn']
+        if policy_config['explicit_flash_attn']:
+            log.info("explicit_flash_attn: need_weights=False -> fused SDPA path reachable")
+        policy_config['tactile_mode'] = args.get('tactile_mode', 'predict')
+        if policy_config['tactile_mode'] == 'none':
+            policy_config['use_tactile'] = False
+        config['tactile_mode'] = policy_config['tactile_mode']
+        config['image_crop'] = args.get('image_crop')
+        config['camera_names'] = policy_config['camera_names']
+        if config['image_crop']:
+            log.info("image_crop: centre-cropping to %dx%d after the %s resize (~%d tokens/cam)",
+                     config['image_crop'], config['image_crop'], IMAGE_HW,
+                     (config['image_crop'] // 32) ** 2)
+        if policy_config['tactile_mode'] != 'predict':
+            log.info("tactile_mode=%s: transformer runs ONCE per forward (no aux tactile head)",
+                     policy_config['tactile_mode'])
         _tw_mode = args.get('temporal_weight_mode', 'uniform')
         _step_w = build_action_step_weights(
             policy_config['num_queries'], _tw_mode,
@@ -1062,7 +1100,8 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
 def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, epoch,
                      max_steps=None, gradcam=False, gradcam_dir=None, gradcam_n_samples=2,
                      camera_names=None, predict_deltas=False,
-                     predicted_action_dims=None, constant_action_dims=None):
+                     predicted_action_dims=None, constant_action_dims=None,
+                     image_crop=None):
     """Run the held-out episodes and return a dict of scalar metrics.
 
     `policy` must be the UNWRAPPED module (accelerator.unwrap_model), and this
@@ -1104,6 +1143,7 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
             break
         data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
                                          predict_deltas=predict_deltas,
+                                         camera_names=camera_names, image_crop=image_crop,
                              epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
         data.pop("_timing", None)
 
@@ -1230,6 +1270,13 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
     # accelerator =  Accelerator(find_unused_parameters=True,
     #                            gradient_accumulation_steps=1,
     #                            )
+    # The inference server enables these; training never did, so the two paths
+    # could pick different attention kernels for the same model.
+    if torch.cuda.is_available():
+        torch.backends.cuda.enable_flash_sdp(True)
+        torch.backends.cuda.enable_mem_efficient_sdp(True)
+        torch.backends.cuda.enable_math_sdp(True)
+
     ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
 
     # Pass it to Accelerator
@@ -1620,7 +1667,8 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                     camera_names=config.get('camera_names'),
                     predict_deltas=config.get('predict_deltas', False),
                     predicted_action_dims=config.get('predicted_action_dims'),
-                    constant_action_dims=config.get('constant_action_dims'))
+                    constant_action_dims=config.get('constant_action_dims'),
+                    image_crop=config.get('image_crop'))
                 validation_history.append((epoch, val_metrics))
 
                 if val_metrics:
@@ -1672,6 +1720,8 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                     # ── convert_batch (timing attached as data["_timing"]) ──
                     data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
                                          predict_deltas=config.get('predict_deltas', False),
+                                         camera_names=config.get('camera_names'),
+                                         image_crop=config.get('image_crop'),
                                          epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
                     convert_timing = data.pop("_timing", {})
                     _batch_timings['convert_norm'] = convert_timing.get('norm', 0)
@@ -1946,6 +1996,40 @@ if __name__ == '__main__':
                         help='Disable all feature normalization (identity/pass-through mode)')
 
     # --- loss weighting ---
+    parser.add_argument('--use_constant_dims', action='store_true',
+                        help="Zero the loss weight of dims the dataset holds constant and emit "
+                             "the recorded value at inference (58/59 auto-detected; 64/neck_j2 "
+                             "forced). Separate flag so it can be A/B'd on its own rather than "
+                             "riding along with --loss_dim_weight_mode file.")
+    parser.add_argument('--explicit_flash_attn', action='store_true',
+                        help="Pass need_weights=False to every nn.MultiheadAttention so it can "
+                             "dispatch to fused SDPA (flash / mem-efficient). Every call site "
+                             "already discards the weights with [0], so they were computed and "
+                             "thrown away. Saves the materialised [T,T] attention matrices "
+                             "(memory, so a larger batch fits); the speedup is modest here "
+                             "because attention is only ~5%% of a layer -- FFN is ~72%%. "
+                             "Named 'explicit' because WITHOUT it the fused path is "
+                             "unreachable, not merely unlikely: returning attention weights is "
+                             "incompatible with flash/mem-efficient kernels, so need_weights=True "
+                             "always forces the unfused path. "
+                             "Off by default: fused vs unfused accumulation is not bit-identical.")
+    parser.add_argument('--tactile_mode', type=str, default='predict',
+                        choices=['predict', 'input', 'none'],
+                        help="'predict' (default) = today: an aux head predicts future tactile, "
+                             "which is the ONLY reason the transformer runs twice per forward. "
+                             "'input' keeps tactile as a plain observation token and runs one "
+                             "pass (~25-40%% less forward compute; zeroing the aux head moved "
+                             "action MSE -2.4%%). 'none' drops tactile entirely (worth 3-5%%).")
+    parser.add_argument('--cameras', type=str, default=None,
+                        help='Comma-separated subset of camera short names to feed the model, '
+                             'e.g. "head_left,wrist_left,wrist_right". Default: all of '
+                             'configs.CAMERA_NAMES. Each head camera ablates at -1.4%%/-1.9%%, '
+                             'so dropping one is close to free and saves ~8%% of the forward.')
+    parser.add_argument('--image_crop', type=int, default=None,
+                        help='Centre-CROP images to NxN after the resize to IMAGE_HW (pixels are '
+                             'dropped, not rescaled). ResNet18 downsamples by 32, so 224->7x7=49 '
+                             'tokens/cam and 192->6x6=36, cutting attention cost ~45%%. 192 is '
+                             'preferable to 180: same 6x6 map, keeps more of the frame.')
     parser.add_argument('--temporal_weight_mode', type=str, default='uniform',
                         choices=['uniform', 'linear', 'horizon'],
                         help="Per-timestep action-loss weighting. Only action_horizon of "

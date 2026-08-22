@@ -13,7 +13,8 @@
   },
   "constant_dims": {
     "58": 0.562683,
-    "59": -1.106864
+    "59": -1.106864,
+    "64": -0.8727
   },
   "delta_stats": {
     "q01": [
@@ -432,8 +433,11 @@
     "source": "/media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0_shortgop15_224",
     "episodes": 14,
     "frames": 91338,
-    "generated": "2026-08-21T12:56:44",
+    "generated": "2026-08-21T21:48:50",
     "method": "finger w = mean|torque|/(1+CV), symmetrised, mean-1 over fingers; arms uniform (torque there is gravity-dominated)",
-    "constant_spread_threshold": 0.001
+    "constant_spread_threshold": 0.001,
+    "forced_constant_dims": {
+      "64": -0.8727
+    }
   }
 }

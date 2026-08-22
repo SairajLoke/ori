@@ -46,6 +46,13 @@ def main():
     p.add_argument("--motor_weight", type=float, default=1.0)
     p.add_argument("--delta_offsets", type=int, nargs="+", default=[0, 12, 24, 49, 99],
                     help="horizon offsets k sampled when pooling delta stats")
+    p.add_argument("--force_constant", type=str, nargs="*", default=["64=-0.8727"],
+                    help="DIM=VALUE entries to add to constant_dims beyond the auto-detected "
+                         "ones. Default pins neck_joint_2 (dim 64) to its plateau: measured "
+                         "over all 14 episodes it drops to EXACTLY -0.8727 (std 0.0000) and "
+                         "holds with bit-exact zero motion for ~98%% of the episode, moving "
+                         "only at the very start and in the final ~2%%. Auto-detection misses "
+                         "it because its full range is 0.27 rad. Pass with no values to disable.")
     p.add_argument("--delta_min_spread", type=float, default=0.05,
                     help="floor on each dim's delta q99-q01 (radians). Quantile "
                          "normalisation maps a dim's own spread to [-1,1], so without a "
@@ -88,6 +95,13 @@ def main():
     spread = A.max(0) - A.min(0)
     constant = {int(i): round(float(A[:, i].mean()), 6)
                 for i in np.where(spread < CONSTANT_SPREAD)[0]}
+    forced = {}
+    for spec in (args.force_constant or []):
+        d, _, v = spec.partition("=")
+        if not v:
+            raise ValueError(f"--force_constant expects DIM=VALUE, got {spec!r}")
+        forced[int(d)] = float(v)
+    constant.update(forced)
 
     # delta stats, for --predict_deltas. The delta must be normalized by its OWN
     # spread: action and observation.state carry separate quantile stats, so a
@@ -134,11 +148,13 @@ def main():
             "method": "finger w = mean|torque|/(1+CV), symmetrised, mean-1 over fingers; "
                       "arms uniform (torque there is gravity-dominated)",
             "constant_spread_threshold": CONSTANT_SPREAD,
+            "forced_constant_dims": {str(k): v for k, v in forced.items()},
         },
     }
     args.out.write_text(json.dumps(out, indent=2))
     print(f"[weights] fingers: {fingers}")
-    print(f"[weights] constant dims: {constant}")
+    print(f"[weights] constant dims: {constant}"
+          + (f"  (forced: {forced})" if forced else ""))
     print(f"[weights] delta spread floored on {_floored}/65 dims at {args.delta_min_spread} rad")
     print(f"[weights] delta spread (q99-q01) mean={float(np.mean(dq99-dq01)):.4f} rad "
           f"vs absolute {float(np.mean(np.percentile(A,99,0)-np.percentile(A,1,0))):.4f} rad")

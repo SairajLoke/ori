@@ -259,11 +259,12 @@ class Backbone(BackboneBase):
                 weights=None, norm_layer=FrozenBatchNorm2d)
             _load_local_backbone_weights(backbone, weights_path)
         else:
+            log.info("Bacbone randomly initialised")
             if _distributed and not is_main_process():
                 torch.distributed.barrier()
             backbone = getattr(torchvision.models, name)(
                 replace_stride_with_dilation=[False, False, dilation],
-                weights="DEFAULT", norm_layer=FrozenBatchNorm2d)
+                weights=None, norm_layer=FrozenBatchNorm2d)
             if _distributed and is_main_process():
                 torch.distributed.barrier()
         num_channels = 512 if name in ('resnet18', 'resnet34') else 2048

@@ -6,6 +6,9 @@ oldorigami-inference-kit-participant/
 
 *.venv*
 
+*.pt
+*.ckpt
+
 ign*/
 # Byte-compiled / optimized / DLL files
 __pycache__/

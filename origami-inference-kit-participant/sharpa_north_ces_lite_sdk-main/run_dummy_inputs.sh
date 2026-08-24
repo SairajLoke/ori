@@ -13,7 +13,7 @@ source $srcpath
 #   --obs-type synthetic 
 
 # dataset only 
-expected_horizon=25
+expected_horizon=100
 datasetroot="/media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0"
 
 uv run --no-sync python $filepath \
@@ -24,7 +24,7 @@ uv run --no-sync python $filepath \
   --obs-type dataset \
   --dataset-root $datasetroot \
   --episode-index 0 \
-  --dataset-requests 3 \
+  --dataset-requests 50 \
   --frame-stride $expected_horizon \
   --out-dir dataset_checks
 

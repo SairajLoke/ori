@@ -80,7 +80,10 @@ def read_full_video(path: pathlib.Path, start_seconds: float = 0.0, seconds: flo
         if not ok:
             break
         frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        if len(frames) % 500 == 0:
+            print(f"    read {len(frames)}{f'/{n}' if n else ''} frames", flush=True)
     cap.release()
+    print(f"    read {len(frames)} frames total", flush=True)
     return np.stack(frames)
 
 

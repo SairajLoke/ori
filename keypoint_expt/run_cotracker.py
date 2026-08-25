@@ -84,7 +84,7 @@ def read_full_video(path: pathlib.Path, start_seconds: float = 0.0, seconds: flo
     return np.stack(frames)
 
 
-def track_online(model, frames: np.ndarray, grid_size: int) -> tuple[np.ndarray, np.ndarray]:
+def track_online(model, frames: np.ndarray, grid_size: int, device: str) -> tuple[np.ndarray, np.ndarray]:
     """Sliding-window streaming pass -- bounds active compute to model.step*2
     frames regardless of total video length (facebookresearch/co-tracker
     online_demo.py's own pattern). Raw uint8 frames still accumulate in
@@ -94,13 +94,13 @@ def track_online(model, frames: np.ndarray, grid_size: int) -> tuple[np.ndarray,
     pred_tracks = pred_visibility = None
     for i, frame in enumerate(frames):
         if i % model.step == 0 and i != 0:
-            chunk = torch.tensor(np.stack(window_frames[-model.step * 2:])).float().permute(0, 3, 1, 2)[None]
+            chunk = torch.tensor(np.stack(window_frames[-model.step * 2:]), device=device).float().permute(0, 3, 1, 2)[None]
             with torch.no_grad():
                 pred_tracks, pred_visibility = model(chunk, is_first_step=is_first_step, grid_size=grid_size)
             is_first_step = False
             print(f"    step {i}/{len(frames)}", flush=True)
         window_frames.append(frame)
-    chunk = torch.tensor(np.stack(window_frames[-(i % model.step) - model.step - 1:])).float().permute(0, 3, 1, 2)[None]
+    chunk = torch.tensor(np.stack(window_frames[-(i % model.step) - model.step - 1:]), device=device).float().permute(0, 3, 1, 2)[None]
     with torch.no_grad():
         pred_tracks, pred_visibility = model(chunk, is_first_step=is_first_step, grid_size=grid_size)
     return pred_tracks[0].cpu().numpy(), pred_visibility[0].cpu().numpy()
@@ -120,7 +120,8 @@ def main() -> int:
     args = p.parse_args()
 
     OUT_DIR.mkdir(exist_ok=True)
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"device: {device}" + (f" ({torch.cuda.get_device_name(0)})" if device == "cuda" else ""))
 
     if args.video is not None:
         args.online = True
@@ -132,8 +133,8 @@ def main() -> int:
         print(f"reading {args.video} from t={args.start_seconds}s"
               + (f" for {clip_seconds}s" if clip_seconds else " (full file)") + " ...")
         frames = read_full_video(args.video, start_seconds=args.start_seconds, seconds=clip_seconds)
-        print(f"tracking {args.grid_size**2} grid points over {frames.shape[0]} frames, streaming window={model.step*2} (CPU)...")
-        tracks, visible = track_online(model, frames, args.grid_size)
+        print(f"tracking {args.grid_size**2} grid points over {frames.shape[0]} frames, streaming window={model.step*2} ({device})...")
+        tracks, visible = track_online(model, frames, args.grid_size, device)
         pct_visible = visible.mean() * 100
         out_path = OUT_DIR / f"{name}_overlay.mp4"
         overlay_and_save(frames, tracks, visible, out_path)
@@ -152,7 +153,7 @@ def main() -> int:
         frames = read_clip(cam, row, args.seconds)
         video = torch.from_numpy(frames).permute(0, 3, 1, 2)[None].float().to(device)  # [1,T,3,H,W]
 
-        print(f"[{cam}] tracking {args.grid_size**2} grid points over {frames.shape[0]} frames (CPU, may take a while)...")
+        print(f"[{cam}] tracking {args.grid_size**2} grid points over {frames.shape[0]} frames ({device})...")
         with torch.no_grad():
             pred_tracks, pred_visibility = model(video, grid_size=args.grid_size)
         tracks = pred_tracks[0].cpu().numpy()       # [T,N,2]

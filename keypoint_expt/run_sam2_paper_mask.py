@@ -37,8 +37,13 @@ import torch
 FPS = 30
 OUT_DIR = pathlib.Path(__file__).parent / "results"
 
-SAM2_CHECKPOINT = "sam2/checkpoints/sam2.1_hiera_large.pt"
-SAM2_CONFIG = "configs/sam2.1/sam2.1_hiera_l.yaml"
+# checkpoint filename / config filename per size, keyed the same way so --model_size picks both
+SAM2_VARIANTS = {
+    "tiny": ("sam2.1_hiera_tiny.pt", "configs/sam2.1/sam2.1_hiera_t.yaml"),
+    "small": ("sam2.1_hiera_small.pt", "configs/sam2.1/sam2.1_hiera_s.yaml"),
+    "base_plus": ("sam2.1_hiera_base_plus.pt", "configs/sam2.1/sam2.1_hiera_b+.yaml"),
+    "large": ("sam2.1_hiera_large.pt", "configs/sam2.1/sam2.1_hiera_l.yaml"),
+}
 
 
 def read_clip(path: pathlib.Path, start_seconds: float, seconds: float | None) -> np.ndarray:
@@ -82,6 +87,9 @@ def main() -> int:
     p.add_argument("--out_name", default=None)
     p.add_argument("--dump_first_frame", action="store_true",
                     help="save results/<out_name>_frame0.png and exit -- use this first to pick --point")
+    p.add_argument("--sam2_root", type=pathlib.Path, default=pathlib.Path("/content/sam2"),
+                    help="dir the sam2 repo was cloned into (contains checkpoints/ and sam2/configs/)")
+    p.add_argument("--model_size", choices=list(SAM2_VARIANTS), default="large")
     args = p.parse_args()
 
     OUT_DIR.mkdir(exist_ok=True)
@@ -97,11 +105,16 @@ def main() -> int:
     if args.point is None:
         raise SystemExit("--point X Y is required (or run --dump_first_frame first to pick one)")
 
+    import sys
+    sys.path.insert(0, str(args.sam2_root))
     from sam2.build_sam import build_sam2_video_predictor  # local import: only needed past this point
 
+    ckpt_name, config = SAM2_VARIANTS[args.model_size]
+    checkpoint = args.sam2_root / "checkpoints" / ckpt_name
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"device: {device}" + (f" ({torch.cuda.get_device_name(0)})" if device == "cuda" else ""))
-    predictor = build_sam2_video_predictor(SAM2_CONFIG, SAM2_CHECKPOINT, device=device)
+    print(f"model: {args.model_size} -- {checkpoint}")
+    predictor = build_sam2_video_predictor(config, str(checkpoint), device=device)
 
     # init_state only accepts an mp4 path or a directory of "<N>.jpg" frames (verified against
     # sam2/utils/misc.py:load_video_frames -- a raw frame array is NOT supported and raises
@@ -111,6 +124,14 @@ def main() -> int:
     for i, frame in enumerate(frames):
         cv2.imwrite(f"{jpg_dir}/{i:05d}.jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
     print(f"    wrote {len(frames)} JPEG frames -> {jpg_dir}")
+
+    # init_state loads the WHOLE clip as one upfront [T,3,1024,1024] float32 tensor
+    # (sam2/utils/misc.py:load_video_frames_from_jpg_images) -- not chunked, unlike
+    # CoTracker's online mode. Independent of --model_size (that's network weights only).
+    est_gb = len(frames) * 3 * 1024 * 1024 * 4 / 2**30
+    print(f"    est. frame-tensor memory: {est_gb:.1f} GB (T={len(frames)} @ 1024x1024 float32)")
+    if est_gb > 4:
+        print(f"    WARNING: likely to OOM on this box -- try a shorter --seconds", flush=True)
 
     with torch.inference_mode(), torch.autocast(device, dtype=torch.bfloat16 if device == "cuda" else torch.float32):
         state = predictor.init_state(video_path=jpg_dir)

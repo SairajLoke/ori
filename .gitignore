@@ -8,6 +8,9 @@ oldorigami-inference-kit-participant/
 *.ipynb
 vitacformer++/*.ipynb
 
+*.mp4
+*.npz
+
 aug22_submission_v1/checkpoints/
 
 aug22_submission_v1/vitacformer/assets/backbones

@@ -6,6 +6,7 @@ oldorigami-inference-kit-participant/
 
 *.venv*
 *.ipynb
+vitacformer++/*.ipynb
 
 aug22_submission_v1/checkpoints/
 

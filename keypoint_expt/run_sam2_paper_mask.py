@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import pathlib
+import tempfile
 
 import cv2
 import numpy as np
@@ -102,8 +103,17 @@ def main() -> int:
     print(f"device: {device}" + (f" ({torch.cuda.get_device_name(0)})" if device == "cuda" else ""))
     predictor = build_sam2_video_predictor(SAM2_CONFIG, SAM2_CHECKPOINT, device=device)
 
+    # init_state only accepts an mp4 path or a directory of "<N>.jpg" frames (verified against
+    # sam2/utils/misc.py:load_video_frames -- a raw frame array is NOT supported and raises
+    # NotImplementedError). Dump our already-sliced clip there instead of pointing at the raw
+    # video file, so --start_seconds/--seconds still apply.
+    jpg_dir = tempfile.mkdtemp(prefix="sam2_frames_")
+    for i, frame in enumerate(frames):
+        cv2.imwrite(f"{jpg_dir}/{i:05d}.jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+    print(f"    wrote {len(frames)} JPEG frames -> {jpg_dir}")
+
     with torch.inference_mode(), torch.autocast(device, dtype=torch.bfloat16 if device == "cuda" else torch.float32):
-        state = predictor.init_state(video_path=frames)  # accepts an array of frames directly
+        state = predictor.init_state(video_path=jpg_dir)
         predictor.add_new_points_or_box(
             state, frame_idx=0, obj_id=1,
             points=np.array([args.point], dtype=np.float32),

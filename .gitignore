@@ -5,6 +5,11 @@ Robotic_Origami_Challenge/
 oldorigami-inference-kit-participant/
 
 *.venv*
+*.ipynb
+
+aug22_submission_v1/checkpoints/
+
+aug22_submission_v1/vitacformer/assets/backbones
 
 ign*/
 # Byte-compiled / optimized / DLL files

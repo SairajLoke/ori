@@ -1,0 +1,25 @@
+# CPU-only environment for local smoke tests (no GPU on the dev box).
+# Versions pinned to the server combo recorded in aug12_req.txt so behaviour
+# matches what actually runs on the cluster.
+#   uv venv --python 3.12 .venv
+#   uv pip install --python .venv/bin/python \
+#       --index-strategy unsafe-best-match \
+#       --extra-index-url https://download.pytorch.org/whl/cpu \
+#       -r req_smoke_cpu.txt
+torch==2.7.1
+torchvision==0.22.1
+torchcodec==0.5
+av
+lerobot[dataset]==0.6.0
+accelerate
+transformers
+tensorboard
+opencv-python
+matplotlib
+tqdm
+einops
+h5py
+ipython
+transforms3d
+zarr
+pyzmq

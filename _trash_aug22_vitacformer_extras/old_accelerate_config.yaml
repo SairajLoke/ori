@@ -1,0 +1,6 @@
+compute_environment: LOCAL_MACHINE
+distributed_type: MULTI_GPU
+num_processes: 4
+mixed_precision: 'fp16'
+gradient_accumulation_steps: 1
+use_cpu: false

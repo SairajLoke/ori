@@ -1,0 +1,136 @@
+(.venv_vitac312_jul6) [sairaj.loke@login07 ori]$ lerobot-doctor /home/sr5/sairaj.loke/other/new_data/season_POC22061_2026_07_10_19_07_06_train/lerobot3.0
+╭───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ lerobot-doctor v0.2.0 -- Dataset Quality Report                                                                               │
+│ Dataset: /home/sr5/sairaj.loke/other/new_data/season_POC22061_2026_07_10_19_07_06_train/lerobot3.0 (v3.0)                     │
+│ Episodes: 11 | Frames: 64,952 | FPS: 30                                                                                       │
+╰───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+[PASS] Metadata & Format Compliance
+
+[PASS] Temporal Consistency
+
+[WARN] Action Quality
+  - action[59]: 97.6% of values at maximum (-1.1069)
+  - action[64]: 96.2% of values at minimum (-0.8727)
+  - action: Episode 0 has 3 sudden large action jumps (>8 std mean across dims)
+  - action: Episode 1 has 1 sudden large action jumps (>8 std mean across dims)
+  - action: Episode 2 has 1 sudden large action jumps (>8 std mean across dims)
+  - action: Episode 3 has 1 sudden large action jumps (>8 std mean across dims)
+  - action: Episode 4 has 2 sudden large action jumps (>8 std mean across dims)
+  - action: ...and 6 more episodes with large action jumps
+
+[PASS] Video Integrity
+
+[WARN] Data Distribution
+  - observation.state[50]: 2 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[20]: 4 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[21]: 68 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[22]: 11 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[23]: 3 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[25]: 17 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[26]: 126 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[27]: 25 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[28]: 7 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[49]: 47 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[50]: 16 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[51]: 2 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[54]: 59 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[56]: 113 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[57]: 76 extreme outlier(s) (>10 std from mean)
+  - observation.state.joint_torque[58]: zero variance (constant value 0.0000)
+  - observation.state.joint_torque[59]: zero variance (constant value 0.0000)
+  - observation.state.joint_torque[60]: zero variance (constant value 0.0000)
+  - observation.state.joint_torque[61]: zero variance (constant value 0.0000)
+  - observation.state.joint_torque[62]: zero variance (constant value 0.0000)
+  - observation.state.joint_torque[63]: zero variance (constant value 0.0000)
+  - observation.state.joint_torque[64]: zero variance (constant value 0.0000)
+  - observation.state.tcp[0]: zero variance (constant value 0.0000)
+  - observation.state.tcp[1]: zero variance (constant value 0.0000)
+  - observation.state.tcp[2]: zero variance (constant value 0.0000)
+  - observation.state.tcp[3]: zero variance (constant value 0.0000)
+  - observation.state.tcp[4]: zero variance (constant value 0.0000)
+  - observation.state.tcp[5]: zero variance (constant value 0.0000)
+  - observation.state.tcp[6]: zero variance (constant value 0.0000)
+  - observation.state.tcp[7]: zero variance (constant value 0.0000)
+  - observation.state.tcp[8]: zero variance (constant value 0.0000)
+  - observation.state.tcp[9]: zero variance (constant value 0.0000)
+  - observation.state.tcp[10]: zero variance (constant value 0.0000)
+  - observation.state.tcp[11]: zero variance (constant value 0.0000)
+  - observation.state.tcp[12]: zero variance (constant value 0.0000)
+  - observation.state.tcp[13]: zero variance (constant value 0.0000)
+  - observation.state.tcp[14]: zero variance (constant value 0.0000)
+  - observation.state.tcp[15]: zero variance (constant value 0.0000)
+  - observation.state.tcp[16]: zero variance (constant value 0.0000)
+  - observation.state.tcp[17]: zero variance (constant value 0.0000)
+  - observation.state.tcp[18]: zero variance (constant value 0.0000)
+  - observation.state.tcp[19]: zero variance (constant value 0.0000)
+  - observation.state.tcp[20]: zero variance (constant value 0.0000)
+  - observation.state.tcp[21]: zero variance (constant value 0.0000)
+  - observation.state.tcp[22]: zero variance (constant value 0.0000)
+  - observation.state.tcp[23]: zero variance (constant value 0.0000)
+  - action[13]: 3 extreme outlier(s) (>10 std from mean)
+  - action[46]: 1 extreme outlier(s) (>10 std from mean)
+  - action[50]: 6 extreme outlier(s) (>10 std from mean)
+  - action[55]: 19 extreme outlier(s) (>10 std from mean)
+  - action[58]: 124 extreme outlier(s) (>10 std from mean)
+  - action[59]: 64 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[12]: 45 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[17]: 44 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[18]: 2 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[19]: 1 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[22]: 1 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[23]: 2 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[24]: 1 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[31]: 1 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[32]: 27 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[42]: 106 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[43]: 8 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[47]: 113 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[48]: 8 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[49]: 3 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[53]: 8 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[54]: 4 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[57]: 47 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[58]: 3 extreme outlier(s) (>10 std from mean)
+  - observation.tactile[59]: 4 extreme outlier(s) (>10 std from mean)
+
+[PASS] Episode Health
+
+[PASS] Feature Consistency
+
+[WARN] Training Readiness
+  - action: 65 dimensions is unusually large -- verify this is correct
+
+[WARN] Anomaly Detection
+  - observation.state[58]: stuck/static in 11/11 episodes (>80% unchanged each) -- possible stuck actuator or unused DOF
+  - observation.state[59]: stuck/static in 11/11 episodes (>80% unchanged each) -- possible stuck actuator or unused DOF
+  - observation.state[64]: stuck/static in 11/11 episodes (>80% unchanged each) -- possible stuck actuator or unused DOF
+  - observation.state.joint_torque[57]: stuck/static in 11/11 episodes (>80% unchanged each) -- possible stuck actuator or unused
+DOF
+  - action[58]: stuck/static in 11/11 episodes (>80% unchanged each) -- possible stuck actuator or unused DOF
+  - observation.state.joint_torque: 7 constant dimension(s) across ALL episodes: dim 58 (=0.0000), dim 59 (=0.0000), dim 60 
+(=0.0000), dim 61 (=0.0000), dim 62 (=0.0000) -- possible stuck sensor
+  - observation.state.tcp: ALL 24 dimensions constant across ALL episodes -- possible broken sensor or unused feature
+
+[PASS] Portability
+
+[WARN] Per-Episode Summary
+  - 11/11 episode(s) flagged
+  - Episode 0: 3 action jump(s) in action
+  - Episode 1: 1 action jump(s) in action
+  - Episode 2: 1 action jump(s) in action
+  - Episode 3: 1 action jump(s) in action
+  - Episode 4: 2 action jump(s) in action
+  - Episode 5: 1 action jump(s) in action
+  - Episode 6: 1 action jump(s) in action
+  - Episode 7: 1 action jump(s) in action
+  - Episode 8: 1 action jump(s) in action
+  - Episode 9: 1 action jump(s) in action
+  - Episode 10: 2 action jump(s) in action
+
+Summary: 6 PASS | 5 WARN
+
+Suggested fixes:
+  # Drop zero-variance features from training inputs
+    # Exclude constant features in your policy config
+    input_features = [f for f in features if dataset_stats['std'].max() > 0]

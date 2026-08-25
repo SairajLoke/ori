@@ -48,16 +48,23 @@ class Transformer(nn.Module):
     def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,
                  num_decoder_layers=6, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False,
-                 return_intermediate_dec=False, use_tactile=False):
+                 return_intermediate_dec=False, use_tactile=False,
+                 explicit_flash_attn=False):
         super().__init__()
 
+        # explicit_flash_attn -> need_weights=False -> nn.MultiheadAttention may
+        # dispatch to fused SDPA. Without it the fast path is unreachable, since
+        # returning weights is incompatible with flash/mem-efficient kernels.
+        _nw = not explicit_flash_attn
         encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,
-                                                dropout, activation, normalize_before, use_tactile)
+                                                dropout, activation, normalize_before, use_tactile,
+                                                need_weights=_nw)
         encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
         self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
         decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,
-                                                dropout, activation, normalize_before)
+                                                dropout, activation, normalize_before,
+                                                need_weights=_nw)
         decoder_norm = nn.LayerNorm(d_model)
         self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,
                                           return_intermediate=return_intermediate_dec)
@@ -201,11 +208,23 @@ class TransformerDecoder(nn.Module):
         return output.unsqueeze(0)
 
 
+# nn.MultiheadAttention defaults to need_weights=True, which materialises the
+# full [T,T] attention matrix per head and blocks the fused SDPA (flash /
+# mem-efficient) kernels. EVERY call site here takes [0] and discards the
+# weights, so that work was always wasted.
+#
+# Carried per-LAYER rather than as a module global: a single process can build
+# several models (the eval scripts do), and a global would let the last build
+# silently change the attention path of the earlier ones.
+
+
 class TransformerEncoderLayer(nn.Module):
 
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
-                 activation="relu", normalize_before=False, use_tactile=False):
+                 activation="relu", normalize_before=False, use_tactile=False,
+                 need_weights=True):
         super().__init__()
+        self.need_weights = need_weights
         # print("use_tactile encoder", use_tactile)
         self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         if use_tactile:
@@ -242,7 +261,8 @@ class TransformerEncoderLayer(nn.Module):
         # ==== Self-attention ====
         q = k = self.with_pos_embed(src, pos)
         src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,
-                              key_padding_mask=src_key_padding_mask)[0]
+                              key_padding_mask=src_key_padding_mask,
+                              need_weights=self.need_weights)[0]
         src = src + self.dropout1(src2)
         src = self.norm1(src)
 
@@ -274,12 +294,12 @@ class TransformerEncoderLayer(nn.Module):
             tactile_token2 = self.cross_attn_1(
                 query=self.with_pos_embed(tactile_token, tactile_pos),
                 key=self.with_pos_embed(other_tokens, other_pos),
-                value=other_tokens)[0]
+                value=other_tokens, need_weights=self.need_weights)[0]
             
             other_tokens2 = self.cross_attn_2(
                 query=self.with_pos_embed(other_tokens, other_pos),
                 key=self.with_pos_embed(tactile_token, tactile_pos),
-                value=tactile_token)[0]
+                value=tactile_token, need_weights=self.need_weights)[0]
             
             tactile_token = tactile_token + self.dropout2(tactile_token2)
             tactile_token = self.norm2(tactile_token)
@@ -301,7 +321,8 @@ class TransformerEncoderLayer(nn.Module):
         src2 = self.norm1(src)
         q = k = self.with_pos_embed(src2, pos)
         src2 = self.self_attn(q, k, value=src2, attn_mask=src_mask,
-                              key_padding_mask=src_key_padding_mask)[0]
+                              key_padding_mask=src_key_padding_mask,
+                              need_weights=self.need_weights)[0]
         src = src + self.dropout1(src2)
         src2 = self.norm4(src)
         src2 = self.linear2(self.dropout(self.activation(self.linear1(src2))))
@@ -320,8 +341,9 @@ class TransformerEncoderLayer(nn.Module):
 class TransformerDecoderLayer(nn.Module):
 
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
-                 activation="relu", normalize_before=False):
+                 activation="relu", normalize_before=False, need_weights=True):
         super().__init__()
+        self.need_weights = need_weights
         self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)
         # Implementation of Feedforward model
@@ -351,13 +373,15 @@ class TransformerDecoderLayer(nn.Module):
                      query_pos: Optional[Tensor] = None):
         q = k = self.with_pos_embed(tgt, query_pos)
         tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,
-                              key_padding_mask=tgt_key_padding_mask)[0]
+                              key_padding_mask=tgt_key_padding_mask,
+                              need_weights=self.need_weights)[0]
         tgt = tgt + self.dropout1(tgt2)
         tgt = self.norm1(tgt)
         tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),
                                    key=self.with_pos_embed(memory, pos),
                                    value=memory, attn_mask=memory_mask,
-                                   key_padding_mask=memory_key_padding_mask)[0]
+                                   key_padding_mask=memory_key_padding_mask,
+                                   need_weights=self.need_weights)[0]
         tgt = tgt + self.dropout2(tgt2)
         tgt = self.norm2(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))
@@ -375,13 +399,15 @@ class TransformerDecoderLayer(nn.Module):
         tgt2 = self.norm1(tgt)
         q = k = self.with_pos_embed(tgt2, query_pos)
         tgt2 = self.self_attn(q, k, value=tgt2, attn_mask=tgt_mask,
-                              key_padding_mask=tgt_key_padding_mask)[0]
+                              key_padding_mask=tgt_key_padding_mask,
+                              need_weights=self.need_weights)[0]
         tgt = tgt + self.dropout1(tgt2)
         tgt2 = self.norm2(tgt)
         tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt2, query_pos),
                                    key=self.with_pos_embed(memory, pos),
                                    value=memory, attn_mask=memory_mask,
-                                   key_padding_mask=memory_key_padding_mask)[0]
+                                   key_padding_mask=memory_key_padding_mask,
+                                   need_weights=self.need_weights)[0]
         tgt = tgt + self.dropout2(tgt2)
         tgt2 = self.norm3(tgt)
         tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt2))))
@@ -417,6 +443,7 @@ def build_transformer(args):
         normalize_before=args.pre_norm,
         return_intermediate_dec=True,
         use_tactile=args.use_tactile,
+        explicit_flash_attn=getattr(args, 'explicit_flash_attn', False),
     )
 
 

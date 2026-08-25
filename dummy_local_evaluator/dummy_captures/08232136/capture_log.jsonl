@@ -1,0 +1,5 @@
+{"index": 0, "local_request_time": 1787501208.5588043, "latency_s": 0.47579026222229004, "server_observation_timestamp": 1787501209.0179253, "gap_since_prev_request_s": null, "prompt": "origami task"}
+{"index": 1, "local_request_time": 1787501209.0346494, "latency_s": 0.2167675495147705, "server_observation_timestamp": 1787501209.2307942, "gap_since_prev_request_s": 0.4758450984954834, "prompt": "origami task"}
+{"index": 2, "local_request_time": 1787501209.2514622, "latency_s": 0.22533941268920898, "server_observation_timestamp": 1787501209.4631124, "gap_since_prev_request_s": 0.2168128490447998, "prompt": "origami task"}
+{"index": 3, "local_request_time": 1787501209.4768412, "latency_s": 0.1832141876220703, "server_observation_timestamp": 1787501209.6494215, "gap_since_prev_request_s": 0.22537899017333984, "prompt": "origami task"}
+{"index": 4, "local_request_time": 1787501209.6600976, "latency_s": 0.2037649154663086, "server_observation_timestamp": 1787501209.8511062, "gap_since_prev_request_s": 0.1832563877105713, "prompt": "origami task"}

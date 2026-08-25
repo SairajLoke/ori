@@ -430,6 +430,7 @@ def _reply_payload(reply: Any) -> bytes:
     if isinstance(reply, (bytes, bytearray, memoryview)):
         return bytes(reply)
     error = getattr(reply, "err", None)
+    print("error in payload:", error)
     if error is not None:
         raise RemoteObservationError("Zenoh returned an error reply")
     sample = getattr(reply, "ok", None)

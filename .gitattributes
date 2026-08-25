@@ -1,0 +1,34 @@
+# Force LF in the working tree on every platform.
+#
+# core.autocrlf=input only normalises on COMMIT -- it does not stop a CRLF file
+# from being checked out or created by a Windows editor. A shell script with
+# CRLF fails on RHEL with the confusing
+#     /bin/bash^M: bad interpreter: No such file or directory
+# because the \r becomes part of the interpreter path. .gitattributes wins over
+# core.autocrlf and applies to everyone who clones, so it is the durable fix.
+
+* text=auto eol=lf
+
+# Explicit for the files where CRLF actually breaks execution/parsing
+*.sh    text eol=lf
+*.py    text eol=lf
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+*.md    text eol=lf
+Dockerfile text eol=lf
+
+# Windows-only helpers keep CRLF
+*.ps1   text eol=crlf
+*.bat   text eol=crlf
+
+# Never touch binaries
+*.ckpt  binary
+*.pth   binary
+*.mp4   binary
+*.parquet binary
+*.npy   binary
+*.npz   binary
+*.jpg   binary
+*.png   binary
+*.zst   binary

@@ -1,0 +1,65 @@
+{
+  "state_dim": 65,
+  "policy_class": "ACT",
+  "policy_config": {
+    "lr": 0.0003,
+    "num_queries": 100,
+    "kl_weight": 10,
+    "hidden_dim": 512,
+    "dim_feedforward": 3200,
+    "lr_backbone": 1e-05,
+    "backbone": "resnet18",
+    "enc_layers": 4,
+    "dec_layers": 7,
+    "nheads": 8,
+    "camera_names": [
+      "observation.images.head_left",
+      "observation.images.head_right",
+      "observation.images.wrist_right",
+      "observation.images.wrist_left"
+    ],
+    "use_tactile": true,
+    "state_dim": 65,
+    "proprioceptive_temporal_horizon": 6,
+    "backbone_weights": null,
+    "vit_unfrozen_layers": null
+  },
+  "camera_names": [
+    "observation.images.head_left",
+    "observation.images.head_right",
+    "observation.images.wrist_right",
+    "observation.images.wrist_left"
+  ],
+  "use_tactile": true,
+  "mask_fingers": false,
+  "hand_mask": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "image_hw": [
+    224,
+    224
+  ],
+  "disable_normalization": false,
+  "_note": "UNTRAINED integration-test checkpoint -- predictions are meaningless"
+}

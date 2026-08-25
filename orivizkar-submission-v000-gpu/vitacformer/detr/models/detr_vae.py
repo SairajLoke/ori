@@ -62,7 +62,7 @@ def get_sinusoid_encoding_table(n_position, d_hid):
 
 class DETRVAE(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_tactile, proprioceptive_temporal_horizon, action_dim=None):
+    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, use_tactile, proprioceptive_temporal_horizon, action_dim=None, tactile_mode='predict'):
         """ Initializes the model.
         Parameters:
             backbones: torch module of the backbone to be used. See backbone.py
@@ -79,6 +79,11 @@ class DETRVAE(nn.Module):
         self.transformer = transformer
         self.encoder = encoder
         hidden_dim = transformer.d_model
+        # 'predict' runs the transformer twice: once to produce tactile_hat,
+        # once for the actions with that prediction as an extra token. 'input'
+        # keeps tactile as a plain observation token and runs ONE pass -- the
+        # aux head is what makes the second pass exist.
+        self.tactile_mode = tactile_mode
         self.action_dim = int(action_dim) if action_dim else state_dim
         self.action_head = nn.Linear(hidden_dim, self.action_dim)
         self.is_pad_head = nn.Linear(hidden_dim, 1)
@@ -203,7 +208,9 @@ class DETRVAE(nn.Module):
             # Image observation features and position embeddings
             all_cam_features = []
             all_cam_pos = []
-            assert len(self.camera_names)==4
+            # camera count is whatever the run recorded; --cameras may select a
+            # subset. Was hardcoded to 4.
+            assert len(self.camera_names) >= 1
             for cam_id, cam_name in enumerate(self.camera_names):
                 features, pos = self.backbones[0](image[:, cam_id]) # HARDCODED
                 features = features[0] # take the last layer feature
@@ -225,26 +232,33 @@ class DETRVAE(nn.Module):
                 tactile_input = self.input_proj_tactile(tactile)
                 if _trace:
                     log_tensor(log, TRACE, "tactile_input (pass1)", tactile_input)
-                hs_tactile = self.transformer(src, None, self.query_embed_tactile.weight, pos, 
-                                              latent_input, proprio_input, self.additional_pos_embed.weight, 
-                                              tactile_input, None)[0]
-                
-                tactile_hat = self.tactile_head(hs_tactile)  ##[bs, 18, tactile_dim]
-                B, T, D = tactile_hat.shape
-                _teacher_forced = epoch < 75
-                if _teacher_forced:
-                    tactile_pred_input = tactile_next.view(B, T * D)
+                if self.tactile_mode == "input":
+                    # one pass, tactile as a plain observation token. The
+                    # tactile_pred=None branch in transformer.py already lays the
+                    # tokens out as [tactile, latent, proprio] + image.
+                    hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, None)[0]
+                    tactile_hat = None
                 else:
-                    tactile_pred_input = tactile_hat.view(B, T * D)
-                tactile_pred_input = self.input_proj_tactile(tactile_pred_input)
-                if _trace:
-                    log.log(TRACE, "pass1 -> tactile_hat %s ; pass2 tactile_pred source=%s (epoch=%s, threshold=75)",
-                            tuple(tactile_hat.shape),
-                            "GROUND TRUTH tactile_next" if _teacher_forced else "SELF-PREDICTED tactile_hat",
-                            epoch)
-                    log_tensor(log, TRACE, "tactile_hat", tactile_hat)
-                    log_tensor(log, TRACE, "tactile_pred_input (pass2)", tactile_pred_input)
-                hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, tactile_pred_input)[0]
+                    hs_tactile = self.transformer(src, None, self.query_embed_tactile.weight, pos, 
+                                                  latent_input, proprio_input, self.additional_pos_embed.weight, 
+                                                  tactile_input, None)[0]
+                
+                    tactile_hat = self.tactile_head(hs_tactile)  ##[bs, 18, tactile_dim]
+                    B, T, D = tactile_hat.shape
+                    _teacher_forced = epoch < 75
+                    if _teacher_forced:
+                        tactile_pred_input = tactile_next.view(B, T * D)
+                    else:
+                        tactile_pred_input = tactile_hat.view(B, T * D)
+                    tactile_pred_input = self.input_proj_tactile(tactile_pred_input)
+                    if _trace:
+                        log.log(TRACE, "pass1 -> tactile_hat %s ; pass2 tactile_pred source=%s (epoch=%s, threshold=75)",
+                                tuple(tactile_hat.shape),
+                                "GROUND TRUTH tactile_next" if _teacher_forced else "SELF-PREDICTED tactile_hat",
+                                epoch)
+                        log_tensor(log, TRACE, "tactile_hat", tactile_hat)
+                        log_tensor(log, TRACE, "tactile_pred_input (pass2)", tactile_pred_input)
+                    hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight, tactile_input, tactile_pred_input)[0]
             else:
                 hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight)[0]
                 tactile_hat = None
@@ -373,6 +387,7 @@ def build(args):
         encoder,
         state_dim=args.state_dim,
         action_dim=getattr(args, 'action_dim', None),
+        tactile_mode=getattr(args, 'tactile_mode', 'predict'),
         num_queries=args.num_queries,
         camera_names=args.camera_names,
         use_tactile = args.use_tactile,

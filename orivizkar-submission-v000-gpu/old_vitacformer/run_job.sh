@@ -1,0 +1,1 @@
+phd run -ng 1 -p shr_gpu -GR A100 -l %J.log -- bash origami_train.sh

@@ -8,11 +8,14 @@ must remain unchanged.
 from __future__ import annotations
 
 import argparse
+import ast
 import collections
+import glob
 import json
 import logging
 import math
 import os
+import re
 import signal
 import sys
 import threading
@@ -204,6 +207,41 @@ def unpack_payload(value: Any) -> Any:
     )
 
 
+def _policy_config_from_info_log(ckpt_dir: str) -> dict:
+    """Recover policy_config for runs predating it being written to JSON.
+
+    origami_imitate_episodes.py only started emitting policy_config into
+    training_configs.json recently; earlier runs logged the same dict to
+    info_<expt>.log under a "--- Policy Config ---" header. That log is the only
+    surviving record of their architecture, so parse it rather than guess.
+    """
+    logs = sorted(glob.glob(os.path.join(ckpt_dir, "info_*.log")))
+    if not logs:
+        raise KeyError(
+            f"training_configs.json in {ckpt_dir} has no 'policy_config' and no "
+            f"info_*.log to recover it from -- this checkpoint's architecture is "
+            f"unrecoverable and it cannot be deployed safely."
+        )
+    pc, inside = {}, False
+    for line in open(logs[0]):
+        line = line.rstrip("\n")
+        if line.startswith("---"):
+            inside = "Policy Config" in line
+            continue
+        m = re.match(r"\s\s(\w+):\s(.*)$", line) if inside else None
+        if m:
+            try:
+                pc[m.group(1)] = ast.literal_eval(m.group(2))
+            except (ValueError, SyntaxError):
+                pc[m.group(1)] = m.group(2)          # bare strings e.g. resnet18
+    missing = {"camera_names", "backbone", "hidden_dim", "state_dim"} - set(pc)
+    if missing:
+        raise KeyError(f"Policy Config block in {logs[0]} is missing {sorted(missing)}")
+    logging.warning("policy_config absent from training_configs.json; "
+                    "recovered %d keys from %s", len(pc), os.path.basename(logs[0]))
+    return pc
+
+
 class TeamPolicy:
     """VITAC (vitacformer ACT) adapter for the origami-zenoh-v1 protocol.
 
@@ -255,6 +293,8 @@ class TeamPolicy:
             )
         with open(path) as f:
             cfg = json.load(f)
+        if "policy_config" not in cfg:
+            cfg["policy_config"] = _policy_config_from_info_log(ckpt_dir)
         logging.info("training config loaded from %s", path)
         return cfg
 
@@ -352,6 +392,13 @@ class TeamPolicy:
         self.mask_fingers = train_cfg.get("mask_fingers", False)
         self.hand_mask = train_cfg.get("hand_mask", [1] * 5 + [1] * 4 + [1] * 4 + [0] * 4 + [0] * 5)
         self.train_image_hw = tuple(train_cfg.get("image_hw", (224, 224)))
+        # Centre crop applied AFTER the resize, exactly as convert_batch does --
+        # a mismatch here silently feeds the backbone a different field of view
+        # than it trained on.
+        self.image_crop = train_cfg.get("image_crop")
+        if self.image_crop:
+            logging.info("image_crop: centre-cropping to %dx%d after resize to %s",
+                         self.image_crop, self.image_crop, self.train_image_hw)
         # Dims the dataset holds constant: trained with zero loss weight, so the
         # model never learned them and its output there is unconstrained. The
         # reply is still a fixed 65 columns and the organizer checks jumps and
@@ -396,6 +443,18 @@ class TeamPolicy:
             os.environ.get("VITAC_BACKBONE_WEIGHTS")
             or (local_weights if os.path.exists(local_weights) else None)
         )
+
+        # Attention path is numerically equivalent either way (measured max
+        # deviation 9.5e-07), so inference need not match how the run trained --
+        # at deploy you almost always want the fused path. The checkpoint's own
+        # setting is the default; VITAC_EXPLICIT_FLASH_ATTN overrides it.
+        _efa = os.environ.get("VITAC_EXPLICIT_FLASH_ATTN")
+        if _efa is not None:
+            policy_config["explicit_flash_attn"] = _efa.lower() in ("1", "true", "yes")
+            logging.info("VITAC_EXPLICIT_FLASH_ATTN=%s overrides the checkpoint's setting", _efa)
+        logging.info("explicit_flash_attn=%s (need_weights=%s)",
+                     policy_config.get("explicit_flash_attn", False),
+                     not policy_config.get("explicit_flash_attn", False))
 
         self.normalizer, self.use_image_norm = self._load_normalizer()
 
@@ -471,6 +530,10 @@ class TeamPolicy:
             mean = torch.tensor(IMAGENET_MEAN, device=tensor.device).view(1, 3, 1, 1)
             std = torch.tensor(IMAGENET_STD, device=tensor.device).view(1, 3, 1, 1)
             tensor = (tensor - mean) / std
+        if self.image_crop:
+            h, w = tensor.shape[-2:]
+            t, l = (h - self.image_crop) // 2, (w - self.image_crop) // 2
+            tensor = tensor[..., t:t + self.image_crop, l:l + self.image_crop]
         return tensor
             
         
@@ -840,7 +903,7 @@ def main() -> int:
 
 if __name__ == "__main__":
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     raise SystemExit(main())

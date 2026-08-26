@@ -20,7 +20,7 @@ Usage (manual point -- pick by eye from --dump_first_frame):
         [--seconds 90] [--start_seconds 60] [--out_name ep0_head_left]
 
 Usage (automatic -- Grounding DINO detects "a paper" for the box prompt and
-"a gripper" for negative refinement points, zero manual coordinates, needed for
+"a hand" for negative refinement points, zero manual coordinates, needed for
 anything that has to run unattended across many episodes):
     python run_sam2_paper_mask.py --video <path> --auto_prompt [--seconds 90]
 
@@ -35,12 +35,14 @@ Either --point or --auto_prompt is required -- SAM2 itself has no notion of
 from __future__ import annotations
 
 import argparse
+import bisect
 import pathlib
 import tempfile
 
 import cv2
 import numpy as np
 import torch
+from transformers.image_transforms import center_to_corners_format
 
 FPS = 30
 OUT_DIR = pathlib.Path(__file__).parent / "results"
@@ -84,19 +86,72 @@ def _split_left_right(boxes: list[tuple[list[float], float]], frame_width: int,
     return out
 
 
+# [CLS], [SEP], '.' -- verified against the actual grounding-dino-tiny tokenizer
+# (bert-base-uncased under the hood): tokenizer.cls_token_id == 101, sep_token_id == 102,
+# convert_tokens_to_ids('.') == 1012.
+_SEP_TOKEN_IDS = {101, 102, 1012}
+
+
+def _phrase_from_posmap_confined(posmap_row: torch.Tensor, input_ids_row: torch.Tensor,
+                                  max_idx: torch.Tensor, tokenizer) -> str:
+    """One box's label text, confined to the single query phrase (the span between the
+    nearest separator tokens on each side) containing that box's single highest-confidence
+    token. Port of the original IDEA-Research/GroundingDINO repo's
+    groundingdino.util.inference.predict(..., remove_combined=True) fix for
+    https://github.com/IDEA-Research/GroundingDINO/issues/85 -- confirmed (by reading the
+    installed transformers source) that the HF port's own post_process_grounded_object_detection
+    / get_phrases_from_posmap has NO equivalent: it always extracts every above-text_threshold
+    token across the WHOLE caption, which is exactly what lets adjacent query phrases merge
+    into one label (observed here across 4 different phrasings on the same scene)."""
+    sep_idx = [i for i, tok in enumerate(input_ids_row.tolist()) if tok in _SEP_TOKEN_IDS]
+    insert_idx = bisect.bisect_left(sep_idx, max_idx.item())
+    left_idx, right_idx = sep_idx[insert_idx - 1], sep_idx[insert_idx]
+    posmap_row = posmap_row.clone()
+    posmap_row[: left_idx + 1] = False
+    posmap_row[right_idx:] = False
+    token_ids = input_ids_row[posmap_row.nonzero(as_tuple=True)[0]]
+    return tokenizer.decode(token_ids).replace(".", "").strip()
+
+
+def _post_process_remove_combined(outputs, inputs, processor, box_threshold: float,
+                                   text_threshold: float, target_size: tuple[int, int]) -> dict:
+    """Same box/score computation as GroundingDinoProcessor.post_process_grounded_object_detection
+    (single image only), but with remove_combined-style confined label extraction in place of
+    HF's whole-caption extraction -- see _phrase_from_posmap_confined."""
+    probs = torch.sigmoid(outputs.logits[0])            # (num_queries, 256)
+    scores = torch.max(probs, dim=-1)[0]                 # (num_queries,)
+    boxes = center_to_corners_format(outputs.pred_boxes[0])
+    img_h, img_w = target_size
+    boxes = boxes * torch.tensor([img_w, img_h, img_w, img_h], dtype=boxes.dtype)
+
+    keep = scores > box_threshold
+    scores, boxes, probs = scores[keep], boxes[keep], probs[keep]
+    input_ids_row = inputs.input_ids[0]
+
+    labels = [
+        _phrase_from_posmap_confined(prob_row > text_threshold, input_ids_row,
+                                      prob_row.argmax(), processor.tokenizer)
+        for prob_row in probs
+    ]
+    return {"scores": scores, "boxes": boxes, "labels": labels}
+
+
 def detect_objects(frame: np.ndarray, box_threshold: float, text_threshold: float,
                     full_scene: bool) -> tuple[dict[str, list[float]], np.ndarray]:
     """Grounding DINO on frame 0. Always detects "a paper" (box prompt).
-    With full_scene=True, also detects "a gripper" and "an arm" (each split
+    With full_scene=True, also detects "a hand" and "a robot arm" (each split
     left/right by box x-center) and "a table" -- every one becomes its own
     tracked SAM2 object: origami_paper, left_hand, left_arm, right_hand,
-    right_arm, table. Gripper centers additionally serve as negative points
-    that refine origami_paper's own boundary away from the gripper, independent
-    of whether grippers are also being tracked as their own object.
+    right_arm, table. Hand centers additionally serve as negative points that
+    refine origami_paper's own boundary away from the hand, independent of
+    whether hands are also being tracked as their own object.
 
-    Verified against the real HF transformers API (AutoModelForZeroShot
-    ObjectDetection + post_process_grounded_object_detection), not guessed
-    from memory -- docs/transformers/model_doc/grounding-dino.
+    Label extraction uses _post_process_remove_combined (see its docstring),
+    a manual port of the original GroundingDINO repo's remove_combined=True fix
+    for https://github.com/IDEA-Research/GroundingDINO/issues/85 -- the installed
+    HF transformers version has no equivalent and would merge adjacent query
+    phrases into one label (confirmed here across 4 different phrasings before
+    landing on this fix, e.g. 'a gripper an arm' for a single box).
 
     Returns ({name: box_xyxy}, negative_points[N,2]) -- negative_points may be empty.
     """
@@ -108,38 +163,34 @@ def detect_objects(frame: np.ndarray, box_threshold: float, text_threshold: floa
     model = AutoModelForZeroShotObjectDetection.from_pretrained(model_id)
 
     image = Image.fromarray(frame)
-    # "a gripper"/"an arm" (not "a hand"/"a robot arm") -- verified by direct comparison that
-    # this phrasing keeps hand and arm as separate detections; "a hand"/"a robot arm" merged
-    # into one label per box ('a hand a robot arm'), which silently gave both objects identical
-    # prompt coordinates and identical masks the whole clip.
-    queries = ["a paper", "a gripper"] + (["an arm", "a table"] if full_scene else [])
+    # Plain wording is fine now -- _post_process_remove_combined confines each box's label
+    # to the query segment around its single peak-confidence token (see that function's
+    # docstring), so adjacent phrases can no longer merge regardless of how they're worded.
+    if full_scene:
+        queries = ["a paper", "a robot arm", "a table"]
+    else:
+        queries = ["a paper", "a hand"]
+
     inputs = processor(images=image, text=[queries], return_tensors="pt")
     with torch.no_grad():
         outputs = model(**inputs)
-    results = processor.post_process_grounded_object_detection(
-        outputs, inputs.input_ids,
-        threshold=box_threshold, text_threshold=text_threshold,
-        target_sizes=[image.size[::-1]],
-    )[0]
+    results = _post_process_remove_combined(
+        outputs, inputs, processor, box_threshold, text_threshold,
+        target_size=image.size[::-1],
+    )
 
     print(results['labels'])
-    
-    
+
     paper_box, paper_score = None, -1.0
     hand_centers, hand_boxes, arm_boxes, table_box, table_score = [], [], [], None, -1.0
     for box, score, label in zip(results["boxes"], results["scores"], results["labels"]):
         box = box.tolist()
         print(f"    detected {label!r} score={score.item():.2f} box={[round(x,1) for x in box]}")
-        # Grounding DINO can return a label spanning >1 adjacent text query when it isn't sure
-        # of the phrase boundary -- happened with "a hand"/"a robot arm" ('a hand a robot arm'
-        # for ONE box covering the whole limb), which silently gave the hand and arm objects
-        # identical prompt coordinates -> identical masks the whole clip (caught by left_hand's
-        # stats being pixel-identical to left_arm's). "a gripper"/"an arm" avoids the merge in
-        # practice (verified by direct comparison), but keep the has_x/has_y split as a safety
-        # net: a merged label still counts as arm only, since a label saying "gripper" WITHOUT
-        # "arm" is what becomes its own tracked hand object. Paper's negative-point refinement
-        # is unaffected either way -- that fires on any "gripper" mention, merged or not.
-        has_hand, has_arm = "gripper" in label, "arm" in label
+        # With _post_process_remove_combined, each label is confined to a single query
+        # phrase, so "hand" and "arm" no longer both appear in the same label -- these are
+        # now just plain independent checks, not a merge-safety net.
+        has_hand = "hand" in label
+        has_arm = "arm" in label
         if "paper" in label and score.item() > paper_score:
             paper_box, paper_score = box, score.item()
         if has_hand:

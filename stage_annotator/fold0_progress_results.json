@@ -1,0 +1,502 @@
+{
+  "fold_name": "triangle_fold_1",
+  "fold_description": "Folding both top left corner of the flat paper inward along the pre-marked crease lines, and form valley fold.",
+  "anchor_start_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b0.jpg"
+  ],
+  "anchor_end_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b1.jpg"
+  ],
+  "frames": [
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0004.jpg",
+      "timestamp_norm": 0.10526315789473684,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0008.jpg",
+      "timestamp_norm": 0.21052631578947367,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0013.jpg",
+      "timestamp_norm": 0.34210526315789475,
+      "progress_raw": 40,
+      "progress_smooth": 40.0,
+      "reasoning": "The bottom left corner is being lifted and partially folded inward toward the crease line."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0017.jpg",
+      "timestamp_norm": 0.4473684210526316,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0021.jpg",
+      "timestamp_norm": 0.5526315789473685,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0025.jpg",
+      "timestamp_norm": 0.6578947368421053,
+      "progress_raw": 92,
+      "progress_smooth": 92.0,
+      "reasoning": "The corner is folded flat against the paper surface along the marked crease line."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0030.jpg",
+      "timestamp_norm": 0.7894736842105263,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0034.jpg",
+      "timestamp_norm": 0.8947368421052632,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0038.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0004.jpg",
+      "timestamp_norm": 0.10526315789473684,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0008.jpg",
+      "timestamp_norm": 0.21052631578947367,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0013.jpg",
+      "timestamp_norm": 0.34210526315789475,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0017.jpg",
+      "timestamp_norm": 0.4473684210526316,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0021.jpg",
+      "timestamp_norm": 0.5526315789473685,
+      "progress_raw": 98,
+      "progress_smooth": 98,
+      "reasoning": "The corner is completely folded inward along the crease and hands are finishing pressing it down."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0025.jpg",
+      "timestamp_norm": 0.6578947368421053,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0030.jpg",
+      "timestamp_norm": 0.7894736842105263,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0034.jpg",
+      "timestamp_norm": 0.8947368421052632,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0038.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0004.jpg",
+      "timestamp_norm": 0.11428571428571428,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0008.jpg",
+      "timestamp_norm": 0.22857142857142856,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0012.jpg",
+      "timestamp_norm": 0.34285714285714286,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0016.jpg",
+      "timestamp_norm": 0.45714285714285713,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0019.jpg",
+      "timestamp_norm": 0.5428571428571428,
+      "progress_raw": 90,
+      "progress_smooth": 90,
+      "reasoning": "The flap is folded over and being pressed down near full completion."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0023.jpg",
+      "timestamp_norm": 0.6571428571428571,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0027.jpg",
+      "timestamp_norm": 0.7714285714285715,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0031.jpg",
+      "timestamp_norm": 0.8857142857142857,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0035.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0005.jpg",
+      "timestamp_norm": 0.11627906976744186,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper is completely flat with no folding initiated yet."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0010.jpg",
+      "timestamp_norm": 0.23255813953488372,
+      "progress_raw": 15,
+      "progress_smooth": 15.0,
+      "reasoning": "Hands make contact with the paper edge and just begin lifting the corner."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0014.jpg",
+      "timestamp_norm": 0.32558139534883723,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0019.jpg",
+      "timestamp_norm": 0.4418604651162791,
+      "progress_raw": 65,
+      "progress_smooth": 65.0,
+      "reasoning": "The corner is folded more than halfway inward toward its target position."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0024.jpg",
+      "timestamp_norm": 0.5581395348837209,
+      "progress_raw": 80,
+      "progress_smooth": 80.0,
+      "reasoning": "The fold is almost fully formed, approaching alignment with the crease line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0029.jpg",
+      "timestamp_norm": 0.6744186046511628,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0033.jpg",
+      "timestamp_norm": 0.7674418604651163,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0038.jpg",
+      "timestamp_norm": 0.8837209302325582,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0043.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper is flat on the table, initial state."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0004.jpg",
+      "timestamp_norm": 0.10256410256410256,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0009.jpg",
+      "timestamp_norm": 0.23076923076923078,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0013.jpg",
+      "timestamp_norm": 0.3333333333333333,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0017.jpg",
+      "timestamp_norm": 0.4358974358974359,
+      "progress_raw": 85,
+      "progress_smooth": 70.0,
+      "reasoning": "The flap is folded over near full alignment, hands pressing the fold."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0022.jpg",
+      "timestamp_norm": 0.5641025641025641,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0026.jpg",
+      "timestamp_norm": 0.6666666666666666,
+      "progress_raw": 55,
+      "progress_smooth": 70.0,
+      "reasoning": "The corner flap is about halfway folded over."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0030.jpg",
+      "timestamp_norm": 0.7692307692307693,
+      "progress_raw": 95,
+      "progress_smooth": 95.0,
+      "reasoning": "The flap is completely folded over along the crease line and hands are securing the crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0035.jpg",
+      "timestamp_norm": 0.8974358974358975,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0039.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0006.jpg",
+      "timestamp_norm": 0.10714285714285714,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0012.jpg",
+      "timestamp_norm": 0.21428571428571427,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0019.jpg",
+      "timestamp_norm": 0.3392857142857143,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0025.jpg",
+      "timestamp_norm": 0.44642857142857145,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0031.jpg",
+      "timestamp_norm": 0.5535714285714286,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0037.jpg",
+      "timestamp_norm": 0.6607142857142857,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0044.jpg",
+      "timestamp_norm": 0.7857142857142857,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0050.jpg",
+      "timestamp_norm": 0.8928571428571429,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0056.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": null,
+      "progress_smooth": null,
+      "reasoning": ""
+    }
+  ]
+}

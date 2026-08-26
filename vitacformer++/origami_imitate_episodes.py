@@ -769,6 +769,11 @@ def main(args):
         config['tactile_mode'] = policy_config['tactile_mode']
         config['image_crop'] = args.get('image_crop')
         config['camera_names'] = policy_config['camera_names']
+        config['qpos_mask_prob'] = args.get('qpos_mask_prob', 0.0)
+        config['qpos_mask_mode'] = args.get('qpos_mask_mode', 'fixed')
+        config['qpos_static_velocity_threshold'] = args.get('qpos_static_velocity_threshold', 0.01)
+        if config['qpos_mask_prob'] > 0:
+            log.info("qpos_mask: mode=%s prob=%.2f", config['qpos_mask_mode'], config['qpos_mask_prob'])
         if config['image_crop']:
             log.info("image_crop: centre-cropping to %dx%d after the %s resize (~%d tokens/cam)",
                      config['image_crop'], config['image_crop'], IMAGE_HW,
@@ -1016,6 +1021,7 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
     qpos_data = data["lowdim"]               # [B, T1, D1]
     action_data = data["action"]            # [B, T, D_action]
     is_pad = data["action_mask"]            # [B, T]
+    qpos_mask = data.get("qpos_mask")       # [B] bool, or None
 
 
     #------------------------------------ NORMALIZE ??? #NOTE: ------------------------------------------------\
@@ -1056,6 +1062,8 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
     image_data       = image_data.to(device)# , non_blocking=True)
     action_data_norm = action_data_norm.to(device)#, non_blocking=True)
     is_pad = is_pad.to(device)# , non_blocking=True)
+    if qpos_mask is not None:
+        qpos_mask = qpos_mask.to(device)
 
     if use_tactile:
         tactile = data["tactile"]                          # [B, T2, D2]
@@ -1085,14 +1093,14 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
         return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
                       tactile_norm, tactile_next_norm,
                       tactile_next_pad=tactile_next_pad, epoch=epoch,
-                      return_a_hat=return_a_hat)
+                      return_a_hat=return_a_hat, qpos_mask=qpos_mask)
 
     if log_final_inputs:
         log_final_model_inputs(qpos_data_norm, image_data, action_data_norm, is_pad,
                                None, None, writer, global_step)
 
     return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
-                  return_a_hat=return_a_hat)
+                  return_a_hat=return_a_hat, qpos_mask=qpos_mask)
 
 
 
@@ -1144,7 +1152,8 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
         data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
                                          predict_deltas=predict_deltas,
                                          camera_names=camera_names, image_crop=image_crop,
-                             epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
+                             epoch=epoch, batch_idx=batch_idx, normalizer=normalizer,
+                             training=False)
         data.pop("_timing", None)
 
         if gradcam and batch_idx == 0:
@@ -1722,7 +1731,11 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                                          predict_deltas=config.get('predict_deltas', False),
                                          camera_names=config.get('camera_names'),
                                          image_crop=config.get('image_crop'),
-                                         epoch=epoch, batch_idx=batch_idx, normalizer=normalizer)
+                                         epoch=epoch, batch_idx=batch_idx, normalizer=normalizer,
+                                         training=True,
+                                         qpos_mask_prob=config.get('qpos_mask_prob', 0.0),
+                                         qpos_mask_mode=config.get('qpos_mask_mode', 'fixed'),
+                                         qpos_static_velocity_threshold=config.get('qpos_static_velocity_threshold', 0.01))
                     convert_timing = data.pop("_timing", {})
                     _batch_timings['convert_norm'] = convert_timing.get('norm', 0)
                     _batch_timings['convert_resize'] = convert_timing.get('resize', 0)
@@ -2020,6 +2033,18 @@ if __name__ == '__main__':
                              "'input' keeps tactile as a plain observation token and runs one "
                              "pass (~25-40%% less forward compute; zeroing the aux head moved "
                              "action MSE -2.4%%). 'none' drops tactile entirely (worth 3-5%%).")
+    parser.add_argument('--qpos_mask_prob', type=float, default=0.0,
+                        help='Probability of masking qpos per sample during training, to reduce '
+                             'state->action shortcutting. 0 = disabled (default). 1.0 = qpos never '
+                             'reaches the model (vision/tactile-only ablation).')
+    parser.add_argument('--qpos_mask_mode', type=str, default='fixed',
+                        choices=['fixed', 'static_adaptive'],
+                        help="'fixed': every sample masked independently at qpos_mask_prob. "
+                             "'static_adaptive': only masks (at qpos_mask_prob) samples where "
+                             "qpos barely moved over the observation window.")
+    parser.add_argument('--qpos_static_velocity_threshold', type=float, default=0.01,
+                        help='qpos_mask_mode=static_adaptive: below this mean per-step velocity '
+                             '(normalized-state units), qpos counts as static.')
     parser.add_argument('--cameras', type=str, default=None,
                         help='Comma-separated subset of camera short names to feed the model, '
                              'e.g. "head_left,wrist_left,wrist_right". Default: all of '

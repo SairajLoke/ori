@@ -104,7 +104,7 @@ def episode_frame_to_file_frame(episode_frame: int, ep: dict) -> int:
 
 def export_episode_frames(dataset_root: pathlib.Path, camera: str, episode_index: int,
                            export_root: pathlib.Path, export_fps: float,
-                           stages: dict[int, str], data: dict) -> None:
+                           stages: dict[int, str], episodes_data: dict) -> None:
     """Non-interactive: dump this episode's frames into fold_progress_pipeline.py's
     expected layout --
 
@@ -125,7 +125,7 @@ def export_episode_frames(dataset_root: pathlib.Path, camera: str, episode_index
     Requires all 6 boundaries (b1-b6) already marked for this episode.
     """
     ep_key = str(episode_index)
-    marked = data["episodes"].get(ep_key, {})
+    marked = episodes_data.get(ep_key, {})
     missing = [f"b{i}" for i in range(1, 7) if f"b{i}" not in marked]
     if missing:
         raise SystemExit(f"episode {episode_index} is missing boundaries {missing} -- "
@@ -157,7 +157,14 @@ def export_episode_frames(dataset_root: pathlib.Path, camera: str, episode_index
         end_ef = b_frames[f + 1]
         fold_dir = export_root / f"fold{f}_frames" / f"episode_{episode_index:03d}"
         fold_dir.mkdir(parents=True, exist_ok=True)
-        frame_positions = list(range(start_ef, end_ef + 1, step))
+        # range(start, end+1, step) doesn't guarantee landing exactly on end_ef
+        # unless (end_ef - start_ef) is a multiple of step -- up to step-1 frames
+        # could be silently missing right at the boundary, which is exactly the
+        # frame that matters most (it's the 0%/100% anchor reference). Force it
+        # in explicitly rather than relying on the stride to land there by luck.
+        frame_positions = list(range(start_ef, end_ef, step))
+        if not frame_positions or frame_positions[-1] != end_ef:
+            frame_positions.append(end_ef)
         for i, ef in enumerate(frame_positions):
             cv2.imwrite(str(fold_dir / f"frame_{i:04d}.jpg"), read_at(ef))
         print(f"  fold{f} ({stages[f]}): episode_frame [{start_ef}:{end_ef}] "
@@ -174,11 +181,42 @@ def export_episode_frames(dataset_root: pathlib.Path, camera: str, episode_index
           f"never overwritten after) -> {meta_path}")
 
 
-def load_annotations() -> dict:
+def load_annotations(dataset_root: pathlib.Path) -> dict:
+    """Multi-dataset-safe: episodes are namespaced under the resolved --dataset_root
+    path (not a bare episode_index), so a second dataset's episode 0 can never collide
+    with the first's. Also means that after a LeRobot aggregate_datasets() merge,
+    remapping is just adding a known offset per source dataset_root -- aggregate_datasets
+    shifts episode_index/global index by each source's total_episodes/total_frames
+    (verified against lerobot 0.6.0's aggregate.py), and writes no provenance of its own,
+    so keeping our own dataset_root-keyed record is what makes that offset computable
+    after the fact instead of the annotations becoming orphaned."""
     path = ANNOT_DIR / "boundaries.json"
-    if path.exists():
-        return json.loads(path.read_text())
-    return {"stages_file": "stages.txt", "camera": None, "episodes": {}}
+    if not path.exists():
+        return {"stages_file": "stages.txt", "datasets": {}}
+    data = json.loads(path.read_text())
+    if "datasets" not in data:
+        # Migrate the old single-dataset flat format. It had zero provenance, so the
+        # only sound attribution for existing entries is "whatever --dataset_root this
+        # run was given" -- there was never any other dataset they could have come from.
+        old_episodes = data.pop("episodes", {})
+        old_camera = data.pop("camera", None)
+        key = str(dataset_root.resolve())
+        data["datasets"] = {key: {"camera": old_camera, "episodes": old_episodes}}
+        print(f"[migrate] old single-dataset annotations (camera={old_camera!r}, "
+              f"{len(old_episodes)} episode(s)) attributed to dataset_root={key}")
+    return data
+
+
+def dataset_section(data: dict, dataset_root: pathlib.Path, camera: str) -> dict:
+    """This dataset_root's {"camera", "episodes"} section, created empty on first use."""
+    key = str(dataset_root.resolve())
+    ds = data["datasets"].setdefault(key, {"camera": None, "episodes": {}})
+    if ds["camera"] not in (None, camera):
+        print(f"WARNING: existing annotations for {key} were made with camera={ds['camera']!r}, "
+              f"now using {camera!r} -- abs_idx/episode_frame are camera-independent so this "
+              f"is fine, just noting the mismatch.")
+    ds["camera"] = camera
+    return ds
 
 
 def save_annotations(data: dict) -> pathlib.Path:
@@ -228,9 +266,10 @@ def main() -> int:
     stages = load_stages()
 
     if args.export_frames_root is not None:
-        data = load_annotations()
+        data = load_annotations(args.dataset_root)
+        ds = dataset_section(data, args.dataset_root, args.camera)
         export_episode_frames(args.dataset_root, args.camera, args.episode,
-                              args.export_frames_root, args.export_fps, stages, data)
+                              args.export_frames_root, args.export_fps, stages, ds["episodes"])
         return 0
 
     video_path, episodes = load_episode_index(args.dataset_root, args.camera, args.episode)
@@ -239,19 +278,15 @@ def main() -> int:
     print(f"{video_path}\n{n} frames, {len(episodes)} episode(s) in this file: "
           f"{[e['episode_index'] for e in episodes]}")
 
-    data = load_annotations()
-    if data["camera"] not in (None, args.camera):
-        print(f"WARNING: existing annotations were made with camera={data['camera']!r}, "
-              f"now using {args.camera!r} -- abs_idx/episode_frame are camera-independent "
-              f"so this is fine, just noting the mismatch.")
-    data["camera"] = args.camera
+    data = load_annotations(args.dataset_root)
+    ds = dataset_section(data, args.dataset_root, args.camera)
     print(__doc__.split("Controls:")[1])
 
     # Resume where this episode's annotation left off, not the start of the FILE
     # (which is only the start of episode 0 within it -- e.g. --episode 2 previously
     # always opened on whatever episode 0's frames happen to be).
     ep = next(e for e in episodes if e["episode_index"] == args.episode)
-    marked = data["episodes"].get(str(args.episode), {})
+    marked = ds["episodes"].get(str(args.episode), {})
     if marked:
         last_b = max(int(k[1:]) for k in marked)
         start_ef = marked[f"b{last_b}"]["episode_frame"]
@@ -267,7 +302,7 @@ def main() -> int:
         return resolve_position(idx, episodes)
 
     def next_boundary(ep_idx: int) -> int:
-        marked = data["episodes"].get(str(ep_idx), {})
+        marked = ds["episodes"].get(str(ep_idx), {})
         for b in range(1, 7):
             if f"b{b}" not in marked:
                 return b
@@ -328,7 +363,7 @@ def main() -> int:
                 prompt_label = f"b6 (end of {stages[5]} / episode end)"
                 to_stage = None
             ep_key = str(pos["episode_index"])
-            data["episodes"].setdefault(ep_key, {})[f"b{b}"] = {
+            ds["episodes"].setdefault(ep_key, {})[f"b{b}"] = {
                 "abs_idx": pos["abs_idx"], "episode_frame": pos["episode_frame"],
                 "time_s": pos["time_s"], "from_stage": b - 1, "to_stage": to_stage,
                 "annotated_at": datetime.now(timezone.utc).isoformat(),
@@ -342,12 +377,12 @@ def main() -> int:
             if pos is None:
                 continue
             ep_key = str(pos["episode_index"])
-            marked = data["episodes"].get(ep_key, {})
+            marked = ds["episodes"].get(ep_key, {})
             if not marked:
                 print(f"no boundaries marked yet for episode {pos['episode_index']}")
                 continue
             last_b = max(int(k[1:]) for k in marked)
-            del data["episodes"][ep_key][f"b{last_b}"]
+            del ds["episodes"][ep_key][f"b{last_b}"]
             print(f"  invalidated b{last_b} for episode {pos['episode_index']}")
             frame = show()
             frame = show()
@@ -359,9 +394,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
-
-
-# (.venv) (base) sai@sai:~/Desktop/ORI/ori/stage_annotator$ .venv/bin/python3 annotate.py   --dataset_root /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0_shortgop15_224   --episode 0^C
-# (.venv) (base) sai@sai:~/Desktop/ORI/ori/stage_annotator$ .venv/bin/python annotate.py --dataset_root /media/sai/CRUZER_BLA/ori/dataset/season_POC22061_2026_07_09_16_23_46_train/lerobot3.0_shortgop15  --episode 0 --export_frames_root ./auto_progress --export_fps 1^C
 # (.venv) (base) sai@sai:~/Desktop/ORI/ori/stage_annotator$ 

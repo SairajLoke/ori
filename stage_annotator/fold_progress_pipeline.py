@@ -39,13 +39,21 @@ Expected frame directory layout:
 
 Notes on Gemini free tier (as of 2026):
   - Flash and Flash-Lite are free (Pro is paid-only now). Default model here is
-    gemini-3.6-flash (gemini-2.5-flash was retired for new API keys). Free tier:
-    ~1,500 requests/day, 1M TPM, ~15 RPM -- reverify these against your own key's
-    actual quota, since they may have changed along with the model retirement.
+    gemini-3.6-flash (gemini-2.5-flash was retired for new API keys).
+  - ACTUAL observed free-tier limit for gemini-3.6-flash specifically:
+    GenerateRequestsPerDayPerProjectPerModel-FreeTier = 20 requests/day (confirmed via
+    a real 429 RESOURCE_EXHAUSTED response, quotaValue: '20'). The "~1,500 requests/day"
+    previously claimed here was wrong -- untested, carried over from stale/generic docs,
+    and not specific to this model. Quota is tracked per (project, model), so a
+    different model (e.g. gemini-3.5-flash-lite) likely has its own separate, unrelated
+    pool -- don't assume it shares this one's remaining budget either way without
+    checking. At BATCH_SIZE=12, this caps you at ~1-4 folds/day depending on how many
+    episodes/sample_per_episode you're running.
   - Free-tier inputs/outputs may be used by Google to improve their models — avoid
     the free tier if your footage is sensitive.
   - BATCH_SIZE is kept modest and a small delay is added between calls to stay
-    comfortably under the RPM cap; raise/lower depending on your quota tier.
+    comfortably under the RPM cap; raise/lower depending on your quota tier. This does
+    NOT help with the per-day cap above, only the per-minute one.
 
 Requires: pip install google-genai scikit-learn numpy --break-system-packages
 """
@@ -227,6 +235,16 @@ def build_prompt_content(job: FoldAnnotationJob, batch: List[Frame]) -> List[Any
     return content
 
 
+class DailyQuotaExhausted(RuntimeError):
+    """Gemini returned a per-DAY (not per-minute) quota exhaustion. Retrying within
+    this process cannot help -- the observed quotaId is
+    'GenerateRequestsPerDayPerProjectPerModel-FreeTier', which only resets on Google's
+    daily schedule, not within a MAX_RETRIES backoff window. Raised instead of
+    retried so one exhausted batch fails the whole run immediately (propagating
+    through run_gemini_progress.sh's `set -e`) instead of every remaining batch/fold
+    separately burning ~35s of guaranteed-futile backoff before giving up."""
+
+
 def call_vlm(client, job: FoldAnnotationJob, batch: List[Frame]) -> Dict[str, Any]:
     system_prompt = (
         "You are an expert annotator estimating fold-completion progress in origami "
@@ -243,7 +261,14 @@ def call_vlm(client, job: FoldAnnotationJob, batch: List[Frame]) -> Dict[str, An
                 contents=content,
                 config=genai_types.GenerateContentConfig(
                     system_instruction=system_prompt,
-                    max_output_tokens=2000,
+                    # 2000 was too tight for a full BATCH_SIZE=12 response (each entry has
+                    # frame_id/episode/progress/reasoning text) -- real 429-run logs showed
+                    # repeated "Expecting property name"/"Unterminated string" JSON errors,
+                    # the exact signature of a response getting cut off mid-generation.
+                    # Retrying a truncated request with the same cap just truncates again,
+                    # burning quota on doomed retries for a deterministic (not transient)
+                    # cause. 8000 gives real headroom; it's a ceiling, not a cost.
+                    max_output_tokens=8000,
                     response_mime_type="application/json",  # asks Gemini to return raw JSON
                 ),
             )
@@ -251,7 +276,14 @@ def call_vlm(client, job: FoldAnnotationJob, batch: List[Frame]) -> Dict[str, An
             clean = text.replace("```json", "").replace("```", "").strip()
             return json.loads(clean)
         except (json.JSONDecodeError, Exception) as e:
-            wait = 2 ** attempt * 5  # backoff for 429s: 5s, 10s, 20s
+            if "PerDay" in str(e):
+                raise DailyQuotaExhausted(
+                    f"Gemini daily quota exhausted for model={MODEL} -- retrying won't "
+                    f"help until it resets (check https://ai.dev/rate-limit for exact "
+                    f"timing, or try a different model -- quota is tracked per-model). "
+                    f"Original error: {e}"
+                ) from e
+            wait = 2 ** attempt * 5  # backoff for transient/per-minute 429s: 5s, 10s, 20s
             if attempt == MAX_RETRIES - 1:
                 print(f"  [WARN] batch failed after {MAX_RETRIES} attempts: {e}")
                 return {"estimates": []}

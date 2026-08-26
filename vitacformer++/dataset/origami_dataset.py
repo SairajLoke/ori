@@ -100,13 +100,20 @@ def log_before_after(name, data_raw, data_norm):
 
 
 def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, normalizer=None,
-                  predict_deltas=False, camera_names=None, image_crop=None):
+                  predict_deltas=False, camera_names=None, image_crop=None,
+                  training=True, qpos_mask_prob=0.0, qpos_mask_mode="fixed",
+                  qpos_static_velocity_threshold=0.01):
 
     """
     Convert a LeRobot batch into the format expected by the old ACT code.
 
+    qpos_mask_*: training-only proprioception dropout, to reduce state->action
+    shortcutting. "static_adaptive" masks harder when qpos barely moved (where
+    copying it forward would trivially minimize loss). training=False disables
+    masking regardless of qpos_mask_prob.
+
     Returns:
-        output: dict with keys "image", "lowdim", "action", "action_mask",
+        output: dict with keys "image", "lowdim", "action", "action_mask", "qpos_mask",
                 and optionally "tactile", "tactile_next".
         output["_timing"]: dict of per-sub-step timings in seconds.
     """
@@ -179,6 +186,21 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
             log.debug("  jitter/observation.state: pool %s -> gathered %s, "
                       "row0 gaps(frames)=%s", _pool_shape, tuple(lowdim.shape),
                       _state_gaps[0].tolist())
+
+    B_lowdim = lowdim.shape[0]
+    qpos_mask = torch.zeros(B_lowdim, dtype=torch.bool, device=lowdim.device)
+    if training and qpos_mask_prob > 0:
+        if qpos_mask_mode == "fixed":
+            qpos_mask = torch.rand(B_lowdim, device=lowdim.device) < qpos_mask_prob
+        elif qpos_mask_mode == "static_adaptive":
+            velocity = (lowdim[:, 1:, :] - lowdim[:, :-1, :]).norm(dim=-1).mean(dim=-1)
+            is_static = velocity < qpos_static_velocity_threshold
+            qpos_mask = is_static & (torch.rand(B_lowdim, device=lowdim.device) < qpos_mask_prob)
+        else:
+            raise ValueError(f"unknown qpos_mask_mode: {qpos_mask_mode!r}")
+        if _verbose:
+            log.debug("  qpos_mask: %d/%d masked (mode=%s)",
+                      int(qpos_mask.sum().item()), B_lowdim, qpos_mask_mode)
 
     # Action. With predict_deltas the target is the residual against the CURRENT
     # pose -- observation.state at offset 0, which is the LAST entry of the
@@ -280,6 +302,7 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         "lowdim": lowdim,
         "action": action,
         "action_mask": action_mask,
+        "qpos_mask": qpos_mask,
     }
 
     if use_tactile:

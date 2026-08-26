@@ -97,6 +97,7 @@ class DETRVAE(nn.Module):
             self.input_proj = nn.Conv2d(backbones[0].num_channels, hidden_dim, kernel_size=1)
             self.backbones = nn.ModuleList(backbones)
             self.input_proj_robot_state = nn.Linear(qpos_dim, hidden_dim)
+            self.qpos_mask_embed = nn.Parameter(torch.randn(hidden_dim) * 0.02)
         else:
             # input_dim = 14 + 7 # robot_state + env_state
             self.input_proj_robot_state = nn.Linear(qpos_dim, hidden_dim)
@@ -145,7 +146,7 @@ class DETRVAE(nn.Module):
         log_module_shapes(log, TRACE, self, max_params=200)
 
 
-    def forward(self, qpos, image, env_state, tactile=None, actions=None, is_pad=None, tactile_next=None, epoch=0):
+    def forward(self, qpos, image, env_state, tactile=None, actions=None, is_pad=None, tactile_next=None, epoch=0, qpos_mask=None):
         """
         qpos: batch, qpos_dim
         image: batch, num_cam, channel, height, width
@@ -221,6 +222,8 @@ class DETRVAE(nn.Module):
                     log_tensor(log, TRACE, f"backbone/cam{cam_id}({cam_name.split('.')[-1]})", features)
             # proprioception features
             proprio_input = self.input_proj_robot_state(qpos)
+            if qpos_mask is not None and qpos_mask.any():
+                proprio_input = torch.where(qpos_mask.unsqueeze(-1), self.qpos_mask_embed, proprio_input)
             # fold camera dimension into width dimension
             src = torch.cat(all_cam_features, axis=3)
             pos = torch.cat(all_cam_pos, axis=3)

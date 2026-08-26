@@ -1,0 +1,982 @@
+{
+  "fold_name": "wings_folded_together",
+  "fold_description": "Folding the triangle-tipped paper in half along its center spine, bringing the two halves together into one folded body.",
+  "anchor_start_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b2.jpg"
+  ],
+  "anchor_end_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b3.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b3.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b3.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b3.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b3.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b3.jpg"
+  ],
+  "frames": [
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is laying flat on the surface in initial pre-fold state."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0005.jpg",
+      "timestamp_norm": 0.05319148936170213,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is fully flat prior to folding."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0010.jpg",
+      "timestamp_norm": 0.10638297872340426,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is completely flat on the surface before any folding action begins."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0015.jpg",
+      "timestamp_norm": 0.1595744680851064,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is flat on table in pre-fold position."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0020.jpg",
+      "timestamp_norm": 0.2127659574468085,
+      "progress_raw": 50,
+      "progress_smooth": 25.0,
+      "reasoning": "The paper is bent upwards around 90 degrees along the central crease, roughly halfway through the fold."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0025.jpg",
+      "timestamp_norm": 0.26595744680851063,
+      "progress_raw": 15,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands are lifting the outer edges slightly, initiating the center fold."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0030.jpg",
+      "timestamp_norm": 0.3191489361702128,
+      "progress_raw": 35,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands are lifting and pushing both outer edges inward, bending the center line into an early V-shape."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0035.jpg",
+      "timestamp_norm": 0.3723404255319149,
+      "progress_raw": 5,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands are resting on the flat paper, just starting initial leverage for the fold."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0040.jpg",
+      "timestamp_norm": 0.425531914893617,
+      "progress_raw": 20,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands grab paper edges and center spine begins to lift slightly."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0045.jpg",
+      "timestamp_norm": 0.4787234042553192,
+      "progress_raw": 25,
+      "progress_smooth": 25.0,
+      "reasoning": "The robot hands are lifting both outer edges, beginning to form a tented ridge along the center line."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0049.jpg",
+      "timestamp_norm": 0.5212765957446809,
+      "progress_raw": 100,
+      "progress_smooth": 82.5,
+      "reasoning": "Paper is fully folded together into a single body."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0054.jpg",
+      "timestamp_norm": 0.574468085106383,
+      "progress_raw": 65,
+      "progress_smooth": 82.5,
+      "reasoning": "Paper is folded along the center line into a V-shape roughly two-thirds closed."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0059.jpg",
+      "timestamp_norm": 0.6276595744680851,
+      "progress_raw": 90,
+      "progress_smooth": 82.5,
+      "reasoning": "The two halves are brought together, and the hands are actively pressing down to form the central crease."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0064.jpg",
+      "timestamp_norm": 0.6808510638297872,
+      "progress_raw": 95,
+      "progress_smooth": 82.5,
+      "reasoning": "The fold is completely formed with both halves pressed flat together."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0069.jpg",
+      "timestamp_norm": 0.7340425531914894,
+      "progress_raw": 85,
+      "progress_smooth": 82.5,
+      "reasoning": "Paper wings are almost fully brought together, nearing complete fold."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0074.jpg",
+      "timestamp_norm": 0.7872340425531915,
+      "progress_raw": 60,
+      "progress_smooth": 82.5,
+      "reasoning": "Paper is partially folded in half into a clear V shape."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0079.jpg",
+      "timestamp_norm": 0.8404255319148937,
+      "progress_raw": 90,
+      "progress_smooth": 90.0,
+      "reasoning": "Paper is almost fully folded in half, hands holding the sides closed."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0084.jpg",
+      "timestamp_norm": 0.8936170212765957,
+      "progress_raw": 98,
+      "progress_smooth": 98.0,
+      "reasoning": "Paper is folded in half with halves pressed fully together."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0089.jpg",
+      "timestamp_norm": 0.9468085106382979,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "The fold along the center spine is fully completed and flat, matching anchor end."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_000/frame_0094.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Paper is completely folded in half along the center line, identical to the anchor end."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Flat pre-fold state matching anchor start directly."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0007.jpg",
+      "timestamp_norm": 0.050359712230215826,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper remains resting flat on the table prior to folding in half."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0015.jpg",
+      "timestamp_norm": 0.1079136690647482,
+      "progress_raw": 2,
+      "progress_smooth": 2.0,
+      "reasoning": "Paper is lying flat on the surface as hands position at the edges."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0022.jpg",
+      "timestamp_norm": 0.15827338129496402,
+      "progress_raw": 50,
+      "progress_smooth": 25.0,
+      "reasoning": "Paper is partially folded in half, forming a distinct V-shape / peak along the center line."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0029.jpg",
+      "timestamp_norm": 0.20863309352517986,
+      "progress_raw": 30,
+      "progress_smooth": 25.0,
+      "reasoning": "Central crease is starting to buckle upward into a low tent structure."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0037.jpg",
+      "timestamp_norm": 0.26618705035971224,
+      "progress_raw": 0,
+      "progress_smooth": 25.0,
+      "reasoning": "Paper is completely flat on the table in initial pre-fold configuration."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0044.jpg",
+      "timestamp_norm": 0.31654676258992803,
+      "progress_raw": 35,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands push the sides inward, creating a visible triangular tent shape along the center line."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0051.jpg",
+      "timestamp_norm": 0.3669064748201439,
+      "progress_raw": 10,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands grab the outer corners of the flat paper to begin bringing them up."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0059.jpg",
+      "timestamp_norm": 0.4244604316546763,
+      "progress_raw": 55,
+      "progress_smooth": 55.0,
+      "reasoning": "Both halves of the paper are lifted upward off the table and brought halfway together toward closing."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0066.jpg",
+      "timestamp_norm": 0.4748201438848921,
+      "progress_raw": 85,
+      "progress_smooth": 81.66666666666667,
+      "reasoning": "Paper halves are brought close together into a folded shape, held by both hands."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0073.jpg",
+      "timestamp_norm": 0.5251798561151079,
+      "progress_raw": 90,
+      "progress_smooth": 81.66666666666667,
+      "reasoning": "The wings/halves are nearly pressed together in half, with only a small gap remaining near the outer edges."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0080.jpg",
+      "timestamp_norm": 0.5755395683453237,
+      "progress_raw": 70,
+      "progress_smooth": 81.66666666666667,
+      "reasoning": "Paper sides are folded up significantly, approaching a complete closed fold."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0088.jpg",
+      "timestamp_norm": 0.6330935251798561,
+      "progress_raw": 100,
+      "progress_smooth": 91.66666666666667,
+      "reasoning": "The two halves of the airplane body are fully brought together and compressed along the central fold."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0095.jpg",
+      "timestamp_norm": 0.6834532374100719,
+      "progress_raw": 85,
+      "progress_smooth": 91.66666666666667,
+      "reasoning": "Halves are brought close together into a single body shape."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0102.jpg",
+      "timestamp_norm": 0.7338129496402878,
+      "progress_raw": 95,
+      "progress_smooth": 91.66666666666667,
+      "reasoning": "Halves are fully brought together, hands finalizing alignment along crease."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0110.jpg",
+      "timestamp_norm": 0.7913669064748201,
+      "progress_raw": 100,
+      "progress_smooth": 91.66666666666667,
+      "reasoning": "The paper is completely folded in half along the center line, with the two halves fully pressed together."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0117.jpg",
+      "timestamp_norm": 0.841726618705036,
+      "progress_raw": 85,
+      "progress_smooth": 91.66666666666667,
+      "reasoning": "The two halves of the paper are brought very close together, almost fully closing the fold."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0124.jpg",
+      "timestamp_norm": 0.8920863309352518,
+      "progress_raw": 85,
+      "progress_smooth": 91.66666666666667,
+      "reasoning": "Paper is folded together into a single body and hands are pressing the top edges."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0132.jpg",
+      "timestamp_norm": 0.9496402877697842,
+      "progress_raw": 98,
+      "progress_smooth": 98.0,
+      "reasoning": "The paper is completely folded in half with hands applying final pressure along the crease."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_001/frame_0139.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Fold is complete and paper is fully pressed along center line into final shape."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper is completely flat on the workspace prior to any folding motion, matching anchor start."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0002.jpg",
+      "timestamp_norm": 0.0425531914893617,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper remains flat with hands hovering near the sides, canonical 0% state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0005.jpg",
+      "timestamp_norm": 0.10638297872340426,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper is flat on the table prior to folding along the center line, identical to the start anchor state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0007.jpg",
+      "timestamp_norm": 0.14893617021276595,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper remains flat on the surface with initial hand contact starting."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0010.jpg",
+      "timestamp_norm": 0.2127659574468085,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is flat on the table, no fold progress visible."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0012.jpg",
+      "timestamp_norm": 0.2553191489361702,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is lying flat on table in original pre-fold state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0015.jpg",
+      "timestamp_norm": 0.3191489361702128,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper remains completely flat on the workspace."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0017.jpg",
+      "timestamp_norm": 0.3617021276595745,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is flat on the work surface prior to folding."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0020.jpg",
+      "timestamp_norm": 0.425531914893617,
+      "progress_raw": 20,
+      "progress_smooth": 20.0,
+      "reasoning": "Paper is slightly tented as folding motion begins."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0022.jpg",
+      "timestamp_norm": 0.46808510638297873,
+      "progress_raw": 75,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "The paper halves are brought close together into a steep angle, well past the halfway mark."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0025.jpg",
+      "timestamp_norm": 0.5319148936170213,
+      "progress_raw": 35,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "Paper is lifted and bent along the spine at a gentle angle."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0027.jpg",
+      "timestamp_norm": 0.574468085106383,
+      "progress_raw": 35,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "Center spine is tented upward into a shallow V-shape as sides are pushed inward."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0030.jpg",
+      "timestamp_norm": 0.6382978723404256,
+      "progress_raw": 65,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "The paper is brought well past half-fold into a clear V-shape as the sides move together."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0032.jpg",
+      "timestamp_norm": 0.6808510638297872,
+      "progress_raw": 20,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "Paper is just beginning to tent upwards along the central crease line."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0035.jpg",
+      "timestamp_norm": 0.7446808510638298,
+      "progress_raw": 50,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "The paper is folded roughly halfway into a symmetric V-shape angle along the center spine."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0037.jpg",
+      "timestamp_norm": 0.7872340425531915,
+      "progress_raw": 35,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "Paper is tented upward into a clear V-shape as folding proceeds."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0040.jpg",
+      "timestamp_norm": 0.851063829787234,
+      "progress_raw": 0,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "Paper is flat on the table prior to folding."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0042.jpg",
+      "timestamp_norm": 0.8936170212765957,
+      "progress_raw": 20,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "Hands are beginning to lift and bend the paper along the central crease line."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0045.jpg",
+      "timestamp_norm": 0.9574468085106383,
+      "progress_raw": 25,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "The paper is starting to bend along the center spine, forming a slight ridge."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_002/frame_0047.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 20,
+      "progress_smooth": 34.54545454545455,
+      "reasoning": "The edges are slightly lifted, starting the upward folding motion along the center spine."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is resting completely flat on the table, matching the initial pre-fold state."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0005.jpg",
+      "timestamp_norm": 0.049019607843137254,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper remains flat on the surface with no upward crease formed yet."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0011.jpg",
+      "timestamp_norm": 0.10784313725490197,
+      "progress_raw": 30,
+      "progress_smooth": 15.0,
+      "reasoning": "Center spine is lifting upward into a tent shape as hands push the sides together."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0016.jpg",
+      "timestamp_norm": 0.1568627450980392,
+      "progress_raw": 0,
+      "progress_smooth": 15.0,
+      "reasoning": "Paper rests flat on table before any lifting or folding begins."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0021.jpg",
+      "timestamp_norm": 0.20588235294117646,
+      "progress_raw": 30,
+      "progress_smooth": 17.5,
+      "reasoning": "Paper is tented upwards along center crease, halves beginning to close."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0027.jpg",
+      "timestamp_norm": 0.2647058823529412,
+      "progress_raw": 5,
+      "progress_smooth": 17.5,
+      "reasoning": "Hands grab the sides with initial subtle upward tension on the center crease."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0032.jpg",
+      "timestamp_norm": 0.3137254901960784,
+      "progress_raw": 25,
+      "progress_smooth": 25.0,
+      "reasoning": "Hands are lifting paper slightly along the center line to begin the fold."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0038.jpg",
+      "timestamp_norm": 0.37254901960784315,
+      "progress_raw": 75,
+      "progress_smooth": 73.33333333333333,
+      "reasoning": "The two halves are nearing each other as hands pinch them shut."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0043.jpg",
+      "timestamp_norm": 0.4215686274509804,
+      "progress_raw": 95,
+      "progress_smooth": 73.33333333333333,
+      "reasoning": "The paper is folded together into a single body and pressed flat."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0048.jpg",
+      "timestamp_norm": 0.47058823529411764,
+      "progress_raw": 50,
+      "progress_smooth": 73.33333333333333,
+      "reasoning": "Paper is folded roughly halfway into a V-shape profile."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0054.jpg",
+      "timestamp_norm": 0.5294117647058824,
+      "progress_raw": 75,
+      "progress_smooth": 75.0,
+      "reasoning": "Paper halves are pulled close together into a tight vertical profile."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0059.jpg",
+      "timestamp_norm": 0.5784313725490197,
+      "progress_raw": 75,
+      "progress_smooth": 75.0,
+      "reasoning": "Wings are pushed close together in a steep vertical angle."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0064.jpg",
+      "timestamp_norm": 0.6274509803921569,
+      "progress_raw": 90,
+      "progress_smooth": 86.66666666666667,
+      "reasoning": "Paper halves are fully brought together, fingers holding the folded body closed."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0070.jpg",
+      "timestamp_norm": 0.6862745098039216,
+      "progress_raw": 100,
+      "progress_smooth": 86.66666666666667,
+      "reasoning": "Paper is fully folded in half into a single finished flat body."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0075.jpg",
+      "timestamp_norm": 0.7352941176470589,
+      "progress_raw": 70,
+      "progress_smooth": 86.66666666666667,
+      "reasoning": "Paper is folded significantly upward along the center line into a narrow V-shape."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0081.jpg",
+      "timestamp_norm": 0.7941176470588235,
+      "progress_raw": 100,
+      "progress_smooth": 92.33333333333333,
+      "reasoning": "The paper is completely folded in half along the center spine into a single body, matching the canonical end anchor."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0086.jpg",
+      "timestamp_norm": 0.8431372549019608,
+      "progress_raw": 92,
+      "progress_smooth": 92.33333333333333,
+      "reasoning": "Both halves of the paper are brought together and held tightly folded by fingers."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0091.jpg",
+      "timestamp_norm": 0.8921568627450981,
+      "progress_raw": 85,
+      "progress_smooth": 92.33333333333333,
+      "reasoning": "Paper halves are almost fully brought together along center spine."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0097.jpg",
+      "timestamp_norm": 0.9509803921568627,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Paper is completely folded in half along center spine."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_003/frame_0102.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Paper is fully folded in half along its center spine, matching completed anchor state."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper lies completely flat on the surface before folding starts, matching anchor start."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0008.jpg",
+      "timestamp_norm": 0.050314465408805034,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper remains completely flat on the surface before folding begins."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0017.jpg",
+      "timestamp_norm": 0.1069182389937107,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper is flat on the table before the fold begins, matching anchor start."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0025.jpg",
+      "timestamp_norm": 0.15723270440251572,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is resting flat on table prior to folding motion."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0033.jpg",
+      "timestamp_norm": 0.20754716981132076,
+      "progress_raw": 50,
+      "progress_smooth": 17.5,
+      "reasoning": "Paper is folded halfway with sides raised at a moderate angle."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0042.jpg",
+      "timestamp_norm": 0.2641509433962264,
+      "progress_raw": 20,
+      "progress_smooth": 17.5,
+      "reasoning": "Hands pinch the sides and center line starts rising upward off table."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0050.jpg",
+      "timestamp_norm": 0.31446540880503143,
+      "progress_raw": 0,
+      "progress_smooth": 17.5,
+      "reasoning": "Hands touch paper edges, paper is flat without folding."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0059.jpg",
+      "timestamp_norm": 0.3710691823899371,
+      "progress_raw": 0,
+      "progress_smooth": 17.5,
+      "reasoning": "Paper is completely flat with hands positioning at edges."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0067.jpg",
+      "timestamp_norm": 0.42138364779874216,
+      "progress_raw": 70,
+      "progress_smooth": 60.0,
+      "reasoning": "Paper is brought well past halfway folded as hands press the two sides closer."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0075.jpg",
+      "timestamp_norm": 0.4716981132075472,
+      "progress_raw": 50,
+      "progress_smooth": 60.0,
+      "reasoning": "Paper is folded about halfway up along its central spine."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0084.jpg",
+      "timestamp_norm": 0.5283018867924528,
+      "progress_raw": 85,
+      "progress_smooth": 76.6,
+      "reasoning": "The paper halves are nearly touching as hands bring them together."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0092.jpg",
+      "timestamp_norm": 0.5786163522012578,
+      "progress_raw": 85,
+      "progress_smooth": 76.6,
+      "reasoning": "Paper halves are brought together into a single folded body, pinched by robot fingers."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0100.jpg",
+      "timestamp_norm": 0.6289308176100629,
+      "progress_raw": 93,
+      "progress_smooth": 76.6,
+      "reasoning": "The two halves are brought fully together and hands are pinching the spine edge to lock the fold."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0109.jpg",
+      "timestamp_norm": 0.6855345911949685,
+      "progress_raw": 95,
+      "progress_smooth": 76.6,
+      "reasoning": "Halves are fully together, with fingers pressing along the folded spine to set crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0117.jpg",
+      "timestamp_norm": 0.7358490566037735,
+      "progress_raw": 25,
+      "progress_smooth": 76.6,
+      "reasoning": "Hands begin lifting the side edges, forming a shallow upward bend along the center line."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0126.jpg",
+      "timestamp_norm": 0.7924528301886793,
+      "progress_raw": 95,
+      "progress_smooth": 90.0,
+      "reasoning": "The paper is folded closed along the center line, with hands pressing the edges together."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0134.jpg",
+      "timestamp_norm": 0.8427672955974843,
+      "progress_raw": 85,
+      "progress_smooth": 90.0,
+      "reasoning": "Halves are almost fully brought together with minor gap remaining at the open edges."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0142.jpg",
+      "timestamp_norm": 0.8930817610062893,
+      "progress_raw": 95,
+      "progress_smooth": 95.0,
+      "reasoning": "Paper is completely folded in half on the table with hands flattening the seam."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0151.jpg",
+      "timestamp_norm": 0.949685534591195,
+      "progress_raw": 98,
+      "progress_smooth": 98.0,
+      "reasoning": "Paper is completely folded together flatly, hand smoothing along the spine."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_004/frame_0159.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "The wings are fully brought together into a single folded body, matching anchor end."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Pre-fold baseline frame showing flat paper before folding."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0007.jpg",
+      "timestamp_norm": 0.050724637681159424,
+      "progress_raw": 70,
+      "progress_smooth": 43.0,
+      "reasoning": "Paper is folded partially upright along the center spine as wings are brought together."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0015.jpg",
+      "timestamp_norm": 0.10869565217391304,
+      "progress_raw": 95,
+      "progress_smooth": 43.0,
+      "reasoning": "The paper is fully folded in half with sides aligned and being flattened."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0022.jpg",
+      "timestamp_norm": 0.15942028985507245,
+      "progress_raw": 15,
+      "progress_smooth": 43.0,
+      "reasoning": "The hands are beginning to push the sides inward, creating an initial slight tent along the center spine."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0029.jpg",
+      "timestamp_norm": 0.21014492753623187,
+      "progress_raw": 25,
+      "progress_smooth": 43.0,
+      "reasoning": "The two sides are being lifted slightly upward off the table, creating a shallow ridge along the fold line."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0036.jpg",
+      "timestamp_norm": 0.2608695652173913,
+      "progress_raw": 10,
+      "progress_smooth": 43.0,
+      "reasoning": "The hands are positioned at the paper edges and the central fold is just beginning to initialize."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0044.jpg",
+      "timestamp_norm": 0.3188405797101449,
+      "progress_raw": 80,
+      "progress_smooth": 78.33333333333333,
+      "reasoning": "Paper halves are brought together and held close, establishing the central fold."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0051.jpg",
+      "timestamp_norm": 0.3695652173913043,
+      "progress_raw": 90,
+      "progress_smooth": 78.33333333333333,
+      "reasoning": "The two halves are nearly completely pressed together in half."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0058.jpg",
+      "timestamp_norm": 0.42028985507246375,
+      "progress_raw": 70,
+      "progress_smooth": 78.33333333333333,
+      "reasoning": "Wings are raised into a narrow V-shape, significantly far along in bringing two halves together."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0065.jpg",
+      "timestamp_norm": 0.47101449275362317,
+      "progress_raw": 90,
+      "progress_smooth": 78.33333333333333,
+      "reasoning": "Paper is folded in half along center spine with wings brought together, robot hands pressing the fold."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0073.jpg",
+      "timestamp_norm": 0.5289855072463768,
+      "progress_raw": 95,
+      "progress_smooth": 78.33333333333333,
+      "reasoning": "Paper is nearly completely folded together in half."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0080.jpg",
+      "timestamp_norm": 0.5797101449275363,
+      "progress_raw": 45,
+      "progress_smooth": 78.33333333333333,
+      "reasoning": "The paper halves are angled upwards significantly toward each other in a distinct V-shape."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0087.jpg",
+      "timestamp_norm": 0.6304347826086957,
+      "progress_raw": 100,
+      "progress_smooth": 92.66666666666667,
+      "reasoning": "Paper is completely folded together in half, lying flat under hands."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0094.jpg",
+      "timestamp_norm": 0.6811594202898551,
+      "progress_raw": 98,
+      "progress_smooth": 92.66666666666667,
+      "reasoning": "Halves are completely brought together and flattened into a single body."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0102.jpg",
+      "timestamp_norm": 0.7391304347826086,
+      "progress_raw": 80,
+      "progress_smooth": 92.66666666666667,
+      "reasoning": "Wings are almost fully folded together, held at the top edge by robot hands."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0109.jpg",
+      "timestamp_norm": 0.7898550724637681,
+      "progress_raw": 95,
+      "progress_smooth": 93.33333333333333,
+      "reasoning": "Paper is folded together and hands are pressing the spine crease flat onto the surface."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0116.jpg",
+      "timestamp_norm": 0.8405797101449275,
+      "progress_raw": 95,
+      "progress_smooth": 93.33333333333333,
+      "reasoning": "Paper is almost fully folded in half, hands finishing creasing along the edge."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0123.jpg",
+      "timestamp_norm": 0.8913043478260869,
+      "progress_raw": 90,
+      "progress_smooth": 93.33333333333333,
+      "reasoning": "The two halves are brought together, with hands pressing to refine the fold."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0131.jpg",
+      "timestamp_norm": 0.9492753623188406,
+      "progress_raw": 98,
+      "progress_smooth": 98.0,
+      "reasoning": "Paper is completely folded in half flat on the surface with fingers finishing the crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold2_frames/episode_005/frame_0138.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Paper is fully folded in half along center spine and rests completely flat."
+    }
+  ]
+}

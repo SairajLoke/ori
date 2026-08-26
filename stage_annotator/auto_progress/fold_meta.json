@@ -1,26 +1,26 @@
 {
   "0": {
     "fold_name": "triangle_fold_1",
-    "fold_description": ""
+    "fold_description": "Folding top left corner of the flat paper inward along the pre-marked crease lines, and form valley fold."
   },
   "1": {
     "fold_name": "triangle_fold_2",
-    "fold_description": ""
+    "fold_description": "Folding the top right corener inward, symmetric to , valley fold."
   },
   "2": {
     "fold_name": "wings_folded_together",
-    "fold_description": ""
+    "fold_description": "Folding the triangle-tipped paper in half along its center spine, bringing the two halves together into one folded body."
   },
   "3": {
     "fold_name": "left_wing_folded_out",
-    "fold_description": ""
+    "fold_description": "Unfolding the left half outward along a wing crease, extending the left wing away from the folded body."
   },
   "4": {
     "fold_name": "right_wing_folded_out",
-    "fold_description": ""
+    "fold_description": "Unfolding the right half outward along a matching wing crease, extending the right wing to complete the symmetric airplane silhouette."
   },
   "5": {
     "fold_name": "final_sharpen",
-    "fold_description": ""
+    "fold_description": "Pressing and sharpening the vertical fold on the completed airplane before releasing it on the table."
   }
 }

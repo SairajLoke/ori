@@ -1,0 +1,982 @@
+{
+  "fold_name": "triangle_fold_2",
+  "fold_description": "Folding the top right corener inward, symmetric to , valley fold.",
+  "anchor_start_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b1.jpg"
+  ],
+  "anchor_end_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b2.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b2.jpg"
+  ],
+  "frames": [
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Identical to canonical start frame; paper is flat on right side."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0004.jpg",
+      "timestamp_norm": 0.047619047619047616,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Starting position with right corner flat and untouched."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0009.jpg",
+      "timestamp_norm": 0.10714285714285714,
+      "progress_raw": 5,
+      "progress_smooth": 5.0,
+      "reasoning": "The right edge of the paper is just beginning to be lifted off the table."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0013.jpg",
+      "timestamp_norm": 0.15476190476190477,
+      "progress_raw": 65,
+      "progress_smooth": 65.0,
+      "reasoning": "Right corner brought inward to form the triangular fold, initial crease being pressed."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0018.jpg",
+      "timestamp_norm": 0.21428571428571427,
+      "progress_raw": 92,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "Top right fold aligned symmetrically, fingers actively pressing down along the fold crease."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0022.jpg",
+      "timestamp_norm": 0.2619047619047619,
+      "progress_raw": 88,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The fold is aligned to center line, hands actively pressing down to secure the fold."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0027.jpg",
+      "timestamp_norm": 0.32142857142857145,
+      "progress_raw": 100,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "Triangle fold 2 fully completed with sharp symmetric crease, matching 100% anchor."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0031.jpg",
+      "timestamp_norm": 0.36904761904761907,
+      "progress_raw": 75,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The flap is almost entirely folded down into position, with fingers beginning to press the crease."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0035.jpg",
+      "timestamp_norm": 0.4166666666666667,
+      "progress_raw": 90,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The right corner is folded over to the center and hands are securing the crease."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0040.jpg",
+      "timestamp_norm": 0.47619047619047616,
+      "progress_raw": 95,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The flap is fully folded over and aligned, receiving the final pressing pass."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0044.jpg",
+      "timestamp_norm": 0.5238095238095238,
+      "progress_raw": 65,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The right corner is folded more than halfway across toward the centerline."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0049.jpg",
+      "timestamp_norm": 0.5833333333333334,
+      "progress_raw": 40,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The right corner is lifted and partially folded inward."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0053.jpg",
+      "timestamp_norm": 0.6309523809523809,
+      "progress_raw": 40,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "The top right corner is being folded inward and down towards the centerline, partially through the fold motion."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0057.jpg",
+      "timestamp_norm": 0.6785714285714286,
+      "progress_raw": 65,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "Right corner is brought inward and being aligned along the fold line."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0062.jpg",
+      "timestamp_norm": 0.7380952380952381,
+      "progress_raw": 50,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "Top right corner lifted and folded halfway toward the centerline."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0066.jpg",
+      "timestamp_norm": 0.7857142857142857,
+      "progress_raw": 88,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "Right corner is folded inward and hands are running along the crease."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0071.jpg",
+      "timestamp_norm": 0.8452380952380952,
+      "progress_raw": 40,
+      "progress_smooth": 71.38461538461539,
+      "reasoning": "Right corner is folded roughly halfway over, paper is partially curved."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0075.jpg",
+      "timestamp_norm": 0.8928571428571429,
+      "progress_raw": 75,
+      "progress_smooth": 75.0,
+      "reasoning": "The right corner is folded over towards the center line, but the crease is still being formed."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0080.jpg",
+      "timestamp_norm": 0.9523809523809523,
+      "progress_raw": 85,
+      "progress_smooth": 85.0,
+      "reasoning": "Top right corner folded inward over the center line, hand beginning to press the crease down."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_000/frame_0084.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Identical to canonical end frame; fold is completely finished and creased."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Initial state before the fold begins, matching the 0% anchor."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0003.jpg",
+      "timestamp_norm": 0.05555555555555555,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The right corner is flat on the table with no fold initiated."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0007.jpg",
+      "timestamp_norm": 0.1111111111111111,
+      "progress_raw": 5,
+      "progress_smooth": 5.0,
+      "reasoning": "Right hand makes contact with the top right corner to begin the fold movement."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0010.jpg",
+      "timestamp_norm": 0.16666666666666666,
+      "progress_raw": 70,
+      "progress_smooth": 70.0,
+      "reasoning": "The corner has been brought down near the center line, forming the initial crease line."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0013.jpg",
+      "timestamp_norm": 0.2037037037037037,
+      "progress_raw": 80,
+      "progress_smooth": 80.0,
+      "reasoning": "Top right corner flipped over towards center, hand holding edge into place."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0017.jpg",
+      "timestamp_norm": 0.25925925925925924,
+      "progress_raw": 100,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Top right fold is fully completed, symmetric, and creased down."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0020.jpg",
+      "timestamp_norm": 0.3148148148148148,
+      "progress_raw": 95,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Symmetric triangle fold completed, hands pressing down to firm up the crease."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0023.jpg",
+      "timestamp_norm": 0.37037037037037035,
+      "progress_raw": 95,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "The top right corner is fully folded down to the center, with hands pressing along the crease line."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0027.jpg",
+      "timestamp_norm": 0.42592592592592593,
+      "progress_raw": 96,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Fold is nearly finished with hands firmly pressing down on the crease line."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0055.jpg",
+      "timestamp_norm": 0.48148148148148145,
+      "progress_raw": 85,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Right flap folded down over center, hands flattening crease."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0057.jpg",
+      "timestamp_norm": 0.5185185185185185,
+      "progress_raw": 92,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Top right corner folded down symmetrically, hands flattening the crease near top edge."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0060.jpg",
+      "timestamp_norm": 0.5740740740740741,
+      "progress_raw": 100,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "The symmetric triangle fold is fully completed and flat, matching anchor end state."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0063.jpg",
+      "timestamp_norm": 0.6296296296296297,
+      "progress_raw": 95,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Right corner is folded symmetrically to the left side with both hands firmly flattening the fold."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0066.jpg",
+      "timestamp_norm": 0.6851851851851852,
+      "progress_raw": 80,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Right corner is folded over into symmetric position, hands pressing top corner crease."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0069.jpg",
+      "timestamp_norm": 0.7407407407407407,
+      "progress_raw": 85,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Right corner is folded over and hands are applying pressure along the crease."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0072.jpg",
+      "timestamp_norm": 0.7962962962962963,
+      "progress_raw": 98,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Fold completely down to bottom tip, hands securing final creased alignment."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0074.jpg",
+      "timestamp_norm": 0.8333333333333334,
+      "progress_raw": 98,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Fold is complete and flat, hands resting near final position."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0077.jpg",
+      "timestamp_norm": 0.8888888888888888,
+      "progress_raw": 90,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Right corner folded down flat against table, creasing in progress."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0080.jpg",
+      "timestamp_norm": 0.9444444444444444,
+      "progress_raw": 75,
+      "progress_smooth": 91.71428571428571,
+      "reasoning": "Right corner folded inward toward center, crease being established."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_001/frame_0083.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Fold is completely finished, identical to end anchor state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The right corner remains flat on the workspace prior to folding."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0002.jpg",
+      "timestamp_norm": 0.058823529411764705,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Matches anchor start state; right corner unbent before fold begins."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0004.jpg",
+      "timestamp_norm": 0.11764705882352941,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Right corner has not been folded yet; paper is in initial state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0005.jpg",
+      "timestamp_norm": 0.14705882352941177,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Paper is lying flat before right corner fold begins."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0007.jpg",
+      "timestamp_norm": 0.20588235294117646,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The top right corner is completely unfolded, matching the 0% start anchor state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0009.jpg",
+      "timestamp_norm": 0.2647058823529412,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Top right corner has not been folded yet, initial un-folded state."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0011.jpg",
+      "timestamp_norm": 0.3235294117647059,
+      "progress_raw": 15,
+      "progress_smooth": 12.5,
+      "reasoning": "Right edge is just beginning to be lifted and turned inward."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0013.jpg",
+      "timestamp_norm": 0.38235294117647056,
+      "progress_raw": 10,
+      "progress_smooth": 12.5,
+      "reasoning": "Right corner is slightly lifted and initiated to fold inward."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0014.jpg",
+      "timestamp_norm": 0.4117647058823529,
+      "progress_raw": 75,
+      "progress_smooth": 75.0,
+      "reasoning": "Right corner is folded inward, edge aligned, crease starting to be flattened."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0016.jpg",
+      "timestamp_norm": 0.47058823529411764,
+      "progress_raw": 98,
+      "progress_smooth": 91.5,
+      "reasoning": "Fold is completely finished with hands making final pressing touches on the fully formed crease."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0018.jpg",
+      "timestamp_norm": 0.5294117647058824,
+      "progress_raw": 85,
+      "progress_smooth": 91.5,
+      "reasoning": "Right corner folded over to meet center line, hands smoothing down the fold."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0020.jpg",
+      "timestamp_norm": 0.5882352941176471,
+      "progress_raw": 95,
+      "progress_smooth": 92.0,
+      "reasoning": "Symmetrical triangle fold is fully formed and flat."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0021.jpg",
+      "timestamp_norm": 0.6176470588235294,
+      "progress_raw": 95,
+      "progress_smooth": 92.0,
+      "reasoning": "Fold completed symmetrically with hands smoothing down the crease."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0023.jpg",
+      "timestamp_norm": 0.6764705882352942,
+      "progress_raw": 95,
+      "progress_smooth": 92.0,
+      "reasoning": "Top right corner folded over to meet center line, crease almost completely set."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0025.jpg",
+      "timestamp_norm": 0.7352941176470589,
+      "progress_raw": 85,
+      "progress_smooth": 92.0,
+      "reasoning": "The right corner is folded in and hands are pressing along the fold line."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0027.jpg",
+      "timestamp_norm": 0.7941176470588235,
+      "progress_raw": 90,
+      "progress_smooth": 92.0,
+      "reasoning": "The fold is aligned along the centerline and fingers are flattening the final crease."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0029.jpg",
+      "timestamp_norm": 0.8529411764705882,
+      "progress_raw": 95,
+      "progress_smooth": 93.75,
+      "reasoning": "The fold is symmetrically down and hands are performing final crease flattening."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0030.jpg",
+      "timestamp_norm": 0.8823529411764706,
+      "progress_raw": 95,
+      "progress_smooth": 93.75,
+      "reasoning": "The right flap is completely folded inward and hands are finishing pressing the crease."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0032.jpg",
+      "timestamp_norm": 0.9411764705882353,
+      "progress_raw": 95,
+      "progress_smooth": 93.75,
+      "reasoning": "The right flap is fully folded down symmetric to the left, hands finishing pressing the crease."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_002/frame_0034.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 90,
+      "progress_smooth": 93.75,
+      "reasoning": "Top right corner folded inward symmetrically, fingers actively pressing down along the crease line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Top right corner flat and un-folded, identical to canonical 0% start anchor."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0004.jpg",
+      "timestamp_norm": 0.05194805194805195,
+      "progress_raw": 20,
+      "progress_smooth": 20.0,
+      "reasoning": "Right hand is just beginning to lift and fold the top right corner inward."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0008.jpg",
+      "timestamp_norm": 0.1038961038961039,
+      "progress_raw": 55,
+      "progress_smooth": 55.0,
+      "reasoning": "Top right flap is brought about halfway through the folding motion."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0012.jpg",
+      "timestamp_norm": 0.15584415584415584,
+      "progress_raw": 95,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right corner fully aligned to center line, hands smoothing down the fold."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0016.jpg",
+      "timestamp_norm": 0.2077922077922078,
+      "progress_raw": 100,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Fold completely finished and flattened into final triangle shape."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0020.jpg",
+      "timestamp_norm": 0.2597402597402597,
+      "progress_raw": 92,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Fold is completed with hands pressing the crease flat along the seam."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0024.jpg",
+      "timestamp_norm": 0.3116883116883117,
+      "progress_raw": 85,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right corner is folded in and hands are beginning to press down the main crease line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0028.jpg",
+      "timestamp_norm": 0.36363636363636365,
+      "progress_raw": 95,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right corner is fully folded inward and hands are pressing the final crease down."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0032.jpg",
+      "timestamp_norm": 0.4155844155844156,
+      "progress_raw": 98,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Fold complete and aligned symmetrically at bottom point, hands making final contact."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0036.jpg",
+      "timestamp_norm": 0.4675324675324675,
+      "progress_raw": 92,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Fold is fully aligned with sharp bottom point, crease almost complete."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0041.jpg",
+      "timestamp_norm": 0.5324675324675324,
+      "progress_raw": 98,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Fold is fully formed and pressed flat, matching 100% completion anchor."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0045.jpg",
+      "timestamp_norm": 0.5844155844155844,
+      "progress_raw": 85,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right corner folded inward symmetrically, hands creasing along the fold line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0049.jpg",
+      "timestamp_norm": 0.6363636363636364,
+      "progress_raw": 95,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right flap is fully positioned along centerline with final crease pressing in progress."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0053.jpg",
+      "timestamp_norm": 0.6883116883116883,
+      "progress_raw": 92,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right corner is fully aligned and crease is being firmly pressed down."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0057.jpg",
+      "timestamp_norm": 0.7402597402597403,
+      "progress_raw": 75,
+      "progress_smooth": 91.83333333333333,
+      "reasoning": "Right corner flap is turned over to the center line and creasing is underway."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0061.jpg",
+      "timestamp_norm": 0.7922077922077922,
+      "progress_raw": 95,
+      "progress_smooth": 92.33333333333333,
+      "reasoning": "The right corner fold is completely down with hands pressing down the final crease."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0065.jpg",
+      "timestamp_norm": 0.8441558441558441,
+      "progress_raw": 90,
+      "progress_smooth": 92.33333333333333,
+      "reasoning": "Right corner folded inward close to center crease, being pressed flat."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0069.jpg",
+      "timestamp_norm": 0.8961038961038961,
+      "progress_raw": 92,
+      "progress_smooth": 92.33333333333333,
+      "reasoning": "The fold is symmetrically completed and hands are pressing down the crease."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0073.jpg",
+      "timestamp_norm": 0.948051948051948,
+      "progress_raw": 95,
+      "progress_smooth": 95.0,
+      "reasoning": "Top right corner folded inward symmetrically, hands flattening the crease line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_003/frame_0077.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Matches anchor end state; symmetric fold completely finished and hands releasing."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 15,
+      "progress_smooth": 15.0,
+      "reasoning": "Robot hands grasping right corner and starting to lift/fold it inward."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0005.jpg",
+      "timestamp_norm": 0.04854368932038835,
+      "progress_raw": 35,
+      "progress_smooth": 35.0,
+      "reasoning": "Right corner is partially folded over inward toward the center line."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0011.jpg",
+      "timestamp_norm": 0.10679611650485436,
+      "progress_raw": 40,
+      "progress_smooth": 40.0,
+      "reasoning": "The right corner is partially folded over inward towards the center."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0016.jpg",
+      "timestamp_norm": 0.1553398058252427,
+      "progress_raw": 95,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Top right corner folded down symmetrically, hands pressing fold down."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0022.jpg",
+      "timestamp_norm": 0.21359223300970873,
+      "progress_raw": 90,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "The right flap is folded over into position while hands flatten the top edge crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0027.jpg",
+      "timestamp_norm": 0.2621359223300971,
+      "progress_raw": 80,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Right corner flap is completely over to the center line, hands actively creasing."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0033.jpg",
+      "timestamp_norm": 0.32038834951456313,
+      "progress_raw": 100,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Triangle fold is fully complete with sharp crease and hands holding top edge."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0038.jpg",
+      "timestamp_norm": 0.36893203883495146,
+      "progress_raw": 95,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Fold is completely down, hands doing final pressure on top."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0043.jpg",
+      "timestamp_norm": 0.4174757281553398,
+      "progress_raw": 95,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Top right corner fully folded inward to the center line and crease is being pressed down."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0049.jpg",
+      "timestamp_norm": 0.47572815533980584,
+      "progress_raw": 90,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Crease line is almost fully flattened by hands."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0054.jpg",
+      "timestamp_norm": 0.5242718446601942,
+      "progress_raw": 100,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "The right corner fold is fully completed and pressed into alignment."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0060.jpg",
+      "timestamp_norm": 0.5825242718446602,
+      "progress_raw": 90,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Right corner folded over almost completely to meet center fold."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0065.jpg",
+      "timestamp_norm": 0.6310679611650486,
+      "progress_raw": 80,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "The right flap is folded inward with hands smoothing down the top crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0070.jpg",
+      "timestamp_norm": 0.6796116504854369,
+      "progress_raw": 95,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Top right flap fully folded inward to center line with hands applying final crease pressure."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0076.jpg",
+      "timestamp_norm": 0.7378640776699029,
+      "progress_raw": 98,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Fold is completely in place with hands flattening the upper edge."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0081.jpg",
+      "timestamp_norm": 0.7864077669902912,
+      "progress_raw": 90,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Corner is folded into place and hands are flattening the resulting crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0087.jpg",
+      "timestamp_norm": 0.8446601941747572,
+      "progress_raw": 88,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "The right corner fold is almost fully formed with hands flattening the edge."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0092.jpg",
+      "timestamp_norm": 0.8932038834951457,
+      "progress_raw": 80,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "Right corner folded down to center line, crease formed and being flattened."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0098.jpg",
+      "timestamp_norm": 0.9514563106796117,
+      "progress_raw": 85,
+      "progress_smooth": 91.23076923076923,
+      "reasoning": "The right flap is positioned against the fold line and fingers are actively setting the crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_004/frame_0103.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "The fold is completely finished with hands releasing the paper."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "Matches anchor start state; top right corner is completely unfolded."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0005.jpg",
+      "timestamp_norm": 0.05813953488372093,
+      "progress_raw": 0,
+      "progress_smooth": 0.0,
+      "reasoning": "The paper remains in initial un-folded state for this stage as hands position to begin."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0009.jpg",
+      "timestamp_norm": 0.10465116279069768,
+      "progress_raw": 95,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Fold complete, hand smoothing over the established crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0014.jpg",
+      "timestamp_norm": 0.16279069767441862,
+      "progress_raw": 85,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Folded flap is nearly flattened along the crease line."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0018.jpg",
+      "timestamp_norm": 0.20930232558139536,
+      "progress_raw": 95,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "The right corner is fully folded and aligned, with hands giving final pressure."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0023.jpg",
+      "timestamp_norm": 0.26744186046511625,
+      "progress_raw": 85,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Top right corner is folded over into position, hands are beginning to press down the crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0027.jpg",
+      "timestamp_norm": 0.313953488372093,
+      "progress_raw": 100,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Fold fully completed with symmetric triangle point formed and crease firmly pressed."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0032.jpg",
+      "timestamp_norm": 0.37209302325581395,
+      "progress_raw": 92,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "The right corner is fully folded inward and hands are pressing down the final crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0036.jpg",
+      "timestamp_norm": 0.4186046511627907,
+      "progress_raw": 100,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "The triangle fold is complete and neatly flattened, matching the completed state."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0041.jpg",
+      "timestamp_norm": 0.47674418604651164,
+      "progress_raw": 95,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Right corner fold is fully flat and formed, hands securing crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0045.jpg",
+      "timestamp_norm": 0.5232558139534884,
+      "progress_raw": 65,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Top right corner is partially folded inward over halfway toward the centerline."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0050.jpg",
+      "timestamp_norm": 0.5813953488372093,
+      "progress_raw": 80,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Right flap folded over most of the way, hands finishing pressing the crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0054.jpg",
+      "timestamp_norm": 0.627906976744186,
+      "progress_raw": 90,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Top right corner is folded down flat to the center line, hands beginning to crease."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0059.jpg",
+      "timestamp_norm": 0.686046511627907,
+      "progress_raw": 98,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Fold is completely finished with clean symmetric point."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0063.jpg",
+      "timestamp_norm": 0.7325581395348837,
+      "progress_raw": 95,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Top right corner is completely folded inward and hands are pressing down the fold line."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0068.jpg",
+      "timestamp_norm": 0.7906976744186046,
+      "progress_raw": 90,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Right corner completely folded inward, hands tightly pinching/creasing the edge."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0072.jpg",
+      "timestamp_norm": 0.8372093023255814,
+      "progress_raw": 60,
+      "progress_smooth": 88.33333333333333,
+      "reasoning": "Top right corner is lifted and folded over about halfway toward the center line."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0077.jpg",
+      "timestamp_norm": 0.8953488372093024,
+      "progress_raw": 95,
+      "progress_smooth": 95.0,
+      "reasoning": "The right flap is fully folded over to symmetry and the hands are pressing along the fold line."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0081.jpg",
+      "timestamp_norm": 0.9418604651162791,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Fold fully completed with symmetric triangle point formed, matching 100% anchor state."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold1_frames/episode_005/frame_0086.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 100,
+      "progress_smooth": 100.0,
+      "reasoning": "Fold is fully complete and symmetric, matching the 100% anchor state."
+    }
+  ]
+}

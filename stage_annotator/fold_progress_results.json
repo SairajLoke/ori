@@ -1,0 +1,502 @@
+{
+  "fold_name": "triangle_fold_1",
+  "fold_description": "bringing left wing edge to align with center crease",
+  "anchor_start_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b0.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b0.jpg"
+  ],
+  "anchor_end_paths": [
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_000/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_001/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_002/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_003/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_004/b1.jpg",
+    "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/anchors/episode_005/b1.jpg"
+  ],
+  "frames": [
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 15,
+      "progress_smooth": 15.0,
+      "reasoning": "Initial flat paper state with hands positioned at sides."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0004.jpg",
+      "timestamp_norm": 0.10526315789473684,
+      "progress_raw": 26,
+      "progress_smooth": 23.0,
+      "reasoning": "Initial contact on flat paper."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0008.jpg",
+      "timestamp_norm": 0.21052631578947367,
+      "progress_raw": 20,
+      "progress_smooth": 23.0,
+      "reasoning": "Hands contacting flat sheet before folding."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0013.jpg",
+      "timestamp_norm": 0.34210526315789475,
+      "progress_raw": 64,
+      "progress_smooth": 64.0,
+      "reasoning": "Left flap folded inward toward middle."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0017.jpg",
+      "timestamp_norm": 0.4473684210526316,
+      "progress_raw": 75,
+      "progress_smooth": 71.25,
+      "reasoning": "Left wing fully folded to center line and pressed."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0021.jpg",
+      "timestamp_norm": 0.5526315789473685,
+      "progress_raw": 68,
+      "progress_smooth": 71.25,
+      "reasoning": "Wing folded across, crease line taking shape."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0025.jpg",
+      "timestamp_norm": 0.6578947368421053,
+      "progress_raw": 89,
+      "progress_smooth": 71.25,
+      "reasoning": "Folded wing fully flattened against center target."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0030.jpg",
+      "timestamp_norm": 0.7894736842105263,
+      "progress_raw": 53,
+      "progress_smooth": 71.25,
+      "reasoning": "Left wing partially folded toward center line."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0034.jpg",
+      "timestamp_norm": 0.8947368421052632,
+      "progress_raw": 74,
+      "progress_smooth": 74.0,
+      "reasoning": "Left wing edge aligned near center crease."
+    },
+    {
+      "episode": "episode_000",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_000/frame_0038.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 88,
+      "progress_smooth": 88.0,
+      "reasoning": "Left wing edge fully aligned to center crease with final press."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 20,
+      "progress_smooth": 16.666666666666668,
+      "reasoning": "Initial flat paper state."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0004.jpg",
+      "timestamp_norm": 0.10526315789473684,
+      "progress_raw": 18,
+      "progress_smooth": 16.666666666666668,
+      "reasoning": "Hands approaching flat paper."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0008.jpg",
+      "timestamp_norm": 0.21052631578947367,
+      "progress_raw": 12,
+      "progress_smooth": 16.666666666666668,
+      "reasoning": "Hands positioning near flat paper sheet."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0013.jpg",
+      "timestamp_norm": 0.34210526315789475,
+      "progress_raw": 45,
+      "progress_smooth": 45.0,
+      "reasoning": "Paper edge lifted into initial folding stage."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0017.jpg",
+      "timestamp_norm": 0.4473684210526316,
+      "progress_raw": 77,
+      "progress_smooth": 75.0,
+      "reasoning": "Left wing fully aligned and pressed."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0021.jpg",
+      "timestamp_norm": 0.5526315789473685,
+      "progress_raw": 86,
+      "progress_smooth": 75.0,
+      "reasoning": "Edge aligned with center, crease line being flattened."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0025.jpg",
+      "timestamp_norm": 0.6578947368421053,
+      "progress_raw": 82,
+      "progress_smooth": 75.0,
+      "reasoning": "Completed left wing triangle fold."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0030.jpg",
+      "timestamp_norm": 0.7894736842105263,
+      "progress_raw": 55,
+      "progress_smooth": 75.0,
+      "reasoning": "Left wing folded closer to center crease line."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0034.jpg",
+      "timestamp_norm": 0.8947368421052632,
+      "progress_raw": 85,
+      "progress_smooth": 80.0,
+      "reasoning": "Left wing aligned with center crease and flattened."
+    },
+    {
+      "episode": "episode_001",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_001/frame_0038.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 75,
+      "progress_smooth": 80.0,
+      "reasoning": "Left edge aligned near center crease and held down."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 15,
+      "progress_smooth": 15.0,
+      "reasoning": "Initial state with flat paper."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0004.jpg",
+      "timestamp_norm": 0.11428571428571428,
+      "progress_raw": 20,
+      "progress_smooth": 20.0,
+      "reasoning": "Hands touching edges of mostly flat paper."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0008.jpg",
+      "timestamp_norm": 0.22857142857142856,
+      "progress_raw": 22,
+      "progress_smooth": 22.0,
+      "reasoning": "Hands positioning over flat paper."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0012.jpg",
+      "timestamp_norm": 0.34285714285714286,
+      "progress_raw": 45,
+      "progress_smooth": 45.0,
+      "reasoning": "Left edge partially lifted and folded inward."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0016.jpg",
+      "timestamp_norm": 0.45714285714285713,
+      "progress_raw": 76,
+      "progress_smooth": 68.66666666666667,
+      "reasoning": "Left wing fold completed and flattened."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0019.jpg",
+      "timestamp_norm": 0.5428571428571428,
+      "progress_raw": 68,
+      "progress_smooth": 68.66666666666667,
+      "reasoning": "Left edge folded close to center line."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0023.jpg",
+      "timestamp_norm": 0.6571428571428571,
+      "progress_raw": 62,
+      "progress_smooth": 68.66666666666667,
+      "reasoning": "Left wing folding in progress."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0027.jpg",
+      "timestamp_norm": 0.7714285714285715,
+      "progress_raw": 72,
+      "progress_smooth": 72.0,
+      "reasoning": "Left wing folded past halfway mark towards center."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0031.jpg",
+      "timestamp_norm": 0.8857142857142857,
+      "progress_raw": 78,
+      "progress_smooth": 73.0,
+      "reasoning": "Left edge aligned along center line, crease pressed."
+    },
+    {
+      "episode": "episode_002",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_002/frame_0035.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 68,
+      "progress_smooth": 73.0,
+      "reasoning": "Left edge partially aligned with center line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 15,
+      "progress_smooth": 15.0,
+      "reasoning": "Starting position, paper flat."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0005.jpg",
+      "timestamp_norm": 0.11627906976744186,
+      "progress_raw": 20,
+      "progress_smooth": 20.0,
+      "reasoning": "Hands positioning over paper prior to major fold."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0010.jpg",
+      "timestamp_norm": 0.23255813953488372,
+      "progress_raw": 22,
+      "progress_smooth": 22.0,
+      "reasoning": "Left paper edge slightly lifted off table."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0014.jpg",
+      "timestamp_norm": 0.32558139534883723,
+      "progress_raw": 62,
+      "progress_smooth": 57.0,
+      "reasoning": "Left corner folded past midpoint toward center line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0019.jpg",
+      "timestamp_norm": 0.4418604651162791,
+      "progress_raw": 52,
+      "progress_smooth": 57.0,
+      "reasoning": "Left wing bent upward, partially reaching centerline."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0024.jpg",
+      "timestamp_norm": 0.5581395348837209,
+      "progress_raw": 70,
+      "progress_smooth": 61.4,
+      "reasoning": "Left wing folded over and crease being pressed."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0029.jpg",
+      "timestamp_norm": 0.6744186046511628,
+      "progress_raw": 77,
+      "progress_smooth": 61.4,
+      "reasoning": "Completed left wing fold along center crease."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0033.jpg",
+      "timestamp_norm": 0.7674418604651163,
+      "progress_raw": 60,
+      "progress_smooth": 61.4,
+      "reasoning": "Left wing corner folded inward toward center line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0038.jpg",
+      "timestamp_norm": 0.8837209302325582,
+      "progress_raw": 55,
+      "progress_smooth": 61.4,
+      "reasoning": "Fold positioned near center line."
+    },
+    {
+      "episode": "episode_003",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_003/frame_0043.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 45,
+      "progress_smooth": 61.4,
+      "reasoning": "Left side folded halfway toward center crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 20,
+      "progress_smooth": 20.0,
+      "reasoning": "Unfolded flat paper."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0004.jpg",
+      "timestamp_norm": 0.10256410256410256,
+      "progress_raw": 22,
+      "progress_smooth": 20.0,
+      "reasoning": "Hands contacting paper edges just as folding initiates."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0009.jpg",
+      "timestamp_norm": 0.23076923076923078,
+      "progress_raw": 18,
+      "progress_smooth": 20.0,
+      "reasoning": "Fingers contacting edge before visible fold formation."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0013.jpg",
+      "timestamp_norm": 0.3333333333333333,
+      "progress_raw": 38,
+      "progress_smooth": 38.0,
+      "reasoning": "Initial curling of left edge toward center crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0017.jpg",
+      "timestamp_norm": 0.4358974358974359,
+      "progress_raw": 72,
+      "progress_smooth": 59.5,
+      "reasoning": "Flap aligned with crease line, pressing sequence ongoing."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0022.jpg",
+      "timestamp_norm": 0.5641025641025641,
+      "progress_raw": 78,
+      "progress_smooth": 59.5,
+      "reasoning": "Fold closely approaches center crease line."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0026.jpg",
+      "timestamp_norm": 0.6666666666666666,
+      "progress_raw": 40,
+      "progress_smooth": 59.5,
+      "reasoning": "Left wing lifted and rolling toward center crease."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0030.jpg",
+      "timestamp_norm": 0.7692307692307693,
+      "progress_raw": 48,
+      "progress_smooth": 59.5,
+      "reasoning": "Left edge partially folded over toward center line."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0035.jpg",
+      "timestamp_norm": 0.8974358974358975,
+      "progress_raw": 65,
+      "progress_smooth": 65.0,
+      "reasoning": "Left wing folded over, hands pressing center seam."
+    },
+    {
+      "episode": "episode_004",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_004/frame_0039.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 85,
+      "progress_smooth": 85.0,
+      "reasoning": "Fold fully formed and crease secured by hands."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0000.jpg",
+      "timestamp_norm": 0.0,
+      "progress_raw": 15,
+      "progress_smooth": 15.0,
+      "reasoning": "Paper flat on table, hands wide in starting position."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0006.jpg",
+      "timestamp_norm": 0.10714285714285714,
+      "progress_raw": 18,
+      "progress_smooth": 18.0,
+      "reasoning": "Hands approaching paper top, no physical fold started."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0012.jpg",
+      "timestamp_norm": 0.21428571428571427,
+      "progress_raw": 20,
+      "progress_smooth": 20.0,
+      "reasoning": "Hands positioned on paper, slight lift commencing."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0019.jpg",
+      "timestamp_norm": 0.3392857142857143,
+      "progress_raw": 35,
+      "progress_smooth": 35.0,
+      "reasoning": "Left flap lifted and turning upward."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0025.jpg",
+      "timestamp_norm": 0.44642857142857145,
+      "progress_raw": 72,
+      "progress_smooth": 68.4,
+      "reasoning": "Left edge folded to center, crease being formed."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0031.jpg",
+      "timestamp_norm": 0.5535714285714286,
+      "progress_raw": 75,
+      "progress_smooth": 68.4,
+      "reasoning": "Left wing folded and flattened at center."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0037.jpg",
+      "timestamp_norm": 0.6607142857142857,
+      "progress_raw": 71,
+      "progress_smooth": 68.4,
+      "reasoning": "Left wing folded down toward crease line."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0044.jpg",
+      "timestamp_norm": 0.7857142857142857,
+      "progress_raw": 80,
+      "progress_smooth": 68.4,
+      "reasoning": "Left edge aligned with center, final creasing in progress."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0050.jpg",
+      "timestamp_norm": 0.8928571428571429,
+      "progress_raw": 44,
+      "progress_smooth": 68.4,
+      "reasoning": "Left corner lifted to start fold."
+    },
+    {
+      "episode": "episode_005",
+      "frame_path": "/home/sai/Desktop/ORI/ori/stage_annotator/auto_progress/fold0_frames/episode_005/frame_0056.jpg",
+      "timestamp_norm": 1.0,
+      "progress_raw": 75,
+      "progress_smooth": 75.0,
+      "reasoning": "Folded wing aligned along center crease line."
+    }
+  ]
+}

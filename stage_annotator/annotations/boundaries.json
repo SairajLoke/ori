@@ -1,0 +1,306 @@
+{
+  "stages_file": "stages.txt",
+  "camera": "observation.images.head_left",
+  "episodes": {
+    "0": {
+      "b1": {
+        "abs_idx": 1156,
+        "episode_frame": 1156,
+        "time_s": 38.53,
+        "from_stage": 0,
+        "to_stage": 1,
+        "annotated_at": "2026-08-26T10:12:53.983276+00:00"
+      },
+      "b2": {
+        "abs_idx": 1987,
+        "episode_frame": 1987,
+        "time_s": 66.23,
+        "from_stage": 1,
+        "to_stage": 2,
+        "annotated_at": "2026-08-26T10:13:26.863360+00:00"
+      },
+      "b3": {
+        "abs_idx": 2924,
+        "episode_frame": 2924,
+        "time_s": 97.47,
+        "from_stage": 2,
+        "to_stage": 3,
+        "annotated_at": "2026-08-26T10:13:44.795496+00:00"
+      },
+      "b4": {
+        "abs_idx": 4298,
+        "episode_frame": 4298,
+        "time_s": 143.27,
+        "from_stage": 3,
+        "to_stage": 4,
+        "annotated_at": "2026-08-26T10:13:58.864660+00:00"
+      },
+      "b5": {
+        "abs_idx": 5687,
+        "episode_frame": 5687,
+        "time_s": 189.57,
+        "from_stage": 4,
+        "to_stage": 5,
+        "annotated_at": "2026-08-26T10:14:16.936990+00:00"
+      },
+      "b6": {
+        "abs_idx": 6361,
+        "episode_frame": 6361,
+        "time_s": 212.03,
+        "from_stage": 5,
+        "to_stage": null,
+        "annotated_at": "2026-08-26T10:28:09.262616+00:00"
+      }
+    },
+    "1": {
+      "b1": {
+        "abs_idx": 7656,
+        "episode_frame": 1142,
+        "time_s": 38.07,
+        "from_stage": 0,
+        "to_stage": 1,
+        "annotated_at": "2026-08-26T10:34:19.568416+00:00"
+      },
+      "b2": {
+        "abs_idx": 8485,
+        "episode_frame": 1971,
+        "time_s": 65.7,
+        "from_stage": 1,
+        "to_stage": 2,
+        "annotated_at": "2026-08-26T10:34:35.238124+00:00"
+      },
+      "b3": {
+        "abs_idx": 9875,
+        "episode_frame": 3361,
+        "time_s": 112.03,
+        "from_stage": 2,
+        "to_stage": 3,
+        "annotated_at": "2026-08-26T10:35:04.629702+00:00"
+      },
+      "b4": {
+        "abs_idx": 11415,
+        "episode_frame": 4901,
+        "time_s": 163.37,
+        "from_stage": 3,
+        "to_stage": 4,
+        "annotated_at": "2026-08-26T10:35:17.368866+00:00"
+      },
+      "b5": {
+        "abs_idx": 12501,
+        "episode_frame": 5987,
+        "time_s": 199.57,
+        "from_stage": 4,
+        "to_stage": 5,
+        "annotated_at": "2026-08-26T10:35:30.409595+00:00"
+      },
+      "b6": {
+        "abs_idx": 13172,
+        "episode_frame": 6658,
+        "time_s": 221.93,
+        "from_stage": 5,
+        "to_stage": null,
+        "annotated_at": "2026-08-26T10:35:49.403681+00:00"
+      }
+    },
+    "2": {
+      "b1": {
+        "abs_idx": 14372,
+        "episode_frame": 1067,
+        "time_s": 35.57,
+        "from_stage": 0,
+        "to_stage": 1,
+        "annotated_at": "2026-08-26T10:39:18.548210+00:00"
+      },
+      "b2": {
+        "abs_idx": 15396,
+        "episode_frame": 2091,
+        "time_s": 69.7,
+        "from_stage": 1,
+        "to_stage": 2,
+        "annotated_at": "2026-08-26T10:39:28.943937+00:00"
+      },
+      "b3": {
+        "abs_idx": 16806,
+        "episode_frame": 3501,
+        "time_s": 116.7,
+        "from_stage": 2,
+        "to_stage": 3,
+        "annotated_at": "2026-08-26T10:39:38.933966+00:00"
+      },
+      "b4": {
+        "abs_idx": 17787,
+        "episode_frame": 4482,
+        "time_s": 149.4,
+        "from_stage": 3,
+        "to_stage": 4,
+        "annotated_at": "2026-08-26T10:39:50.345474+00:00"
+      },
+      "b5": {
+        "abs_idx": 19440,
+        "episode_frame": 6135,
+        "time_s": 204.5,
+        "from_stage": 4,
+        "to_stage": 5,
+        "annotated_at": "2026-08-26T10:40:00.770986+00:00"
+      },
+      "b6": {
+        "abs_idx": 20020,
+        "episode_frame": 6715,
+        "time_s": 223.83,
+        "from_stage": 5,
+        "to_stage": null,
+        "annotated_at": "2026-08-26T10:40:09.705648+00:00"
+      }
+    },
+    "3": {
+      "b1": {
+        "abs_idx": 21450,
+        "episode_frame": 1299,
+        "time_s": 43.3,
+        "from_stage": 0,
+        "to_stage": 1,
+        "annotated_at": "2026-08-26T11:54:22.841573+00:00"
+      },
+      "b2": {
+        "abs_idx": 22220,
+        "episode_frame": 2069,
+        "time_s": 68.97,
+        "from_stage": 1,
+        "to_stage": 2,
+        "annotated_at": "2026-08-26T11:54:28.750152+00:00"
+      },
+      "b3": {
+        "abs_idx": 23240,
+        "episode_frame": 3089,
+        "time_s": 102.97,
+        "from_stage": 2,
+        "to_stage": 3,
+        "annotated_at": "2026-08-26T11:54:41.046641+00:00"
+      },
+      "b4": {
+        "abs_idx": 24240,
+        "episode_frame": 4089,
+        "time_s": 136.3,
+        "from_stage": 3,
+        "to_stage": 4,
+        "annotated_at": "2026-08-26T11:54:46.420966+00:00"
+      },
+      "b5": {
+        "abs_idx": 25670,
+        "episode_frame": 5519,
+        "time_s": 183.97,
+        "from_stage": 4,
+        "to_stage": 5,
+        "annotated_at": "2026-08-26T11:54:52.476942+00:00"
+      },
+      "b6": {
+        "abs_idx": 26270,
+        "episode_frame": 6119,
+        "time_s": 203.97,
+        "from_stage": 5,
+        "to_stage": null,
+        "annotated_at": "2026-08-26T11:58:52.830190+00:00"
+      }
+    },
+    "4": {
+      "b1": {
+        "abs_idx": 27602,
+        "episode_frame": 1172,
+        "time_s": 39.07,
+        "from_stage": 0,
+        "to_stage": 1,
+        "annotated_at": "2026-08-26T11:55:40.048951+00:00"
+      },
+      "b2": {
+        "abs_idx": 28632,
+        "episode_frame": 2202,
+        "time_s": 73.4,
+        "from_stage": 1,
+        "to_stage": 2,
+        "annotated_at": "2026-08-26T11:55:48.967817+00:00"
+      },
+      "b3": {
+        "abs_idx": 30222,
+        "episode_frame": 3792,
+        "time_s": 126.4,
+        "from_stage": 2,
+        "to_stage": 3,
+        "annotated_at": "2026-08-26T11:56:11.714571+00:00"
+      },
+      "b4": {
+        "abs_idx": 31182,
+        "episode_frame": 4752,
+        "time_s": 158.4,
+        "from_stage": 3,
+        "to_stage": 4,
+        "annotated_at": "2026-08-26T11:56:19.635831+00:00"
+      },
+      "b5": {
+        "abs_idx": 32202,
+        "episode_frame": 5772,
+        "time_s": 192.4,
+        "from_stage": 4,
+        "to_stage": 5,
+        "annotated_at": "2026-08-26T11:56:27.022258+00:00"
+      },
+      "b6": {
+        "abs_idx": 32762,
+        "episode_frame": 6332,
+        "time_s": 211.07,
+        "from_stage": 5,
+        "to_stage": null,
+        "annotated_at": "2026-08-26T11:59:09.249491+00:00"
+      }
+    },
+    "5": {
+      "b1": {
+        "abs_idx": 34630,
+        "episode_frame": 1709,
+        "time_s": 56.97,
+        "from_stage": 0,
+        "to_stage": 1,
+        "annotated_at": "2026-08-26T11:56:52.951800+00:00"
+      },
+      "b2": {
+        "abs_idx": 35486,
+        "episode_frame": 2565,
+        "time_s": 85.5,
+        "from_stage": 1,
+        "to_stage": 2,
+        "annotated_at": "2026-08-26T11:57:00.298891+00:00"
+      },
+      "b3": {
+        "abs_idx": 36866,
+        "episode_frame": 3945,
+        "time_s": 131.5,
+        "from_stage": 2,
+        "to_stage": 3,
+        "annotated_at": "2026-08-26T11:57:09.962333+00:00"
+      },
+      "b4": {
+        "abs_idx": 37806,
+        "episode_frame": 4885,
+        "time_s": 162.83,
+        "from_stage": 3,
+        "to_stage": 4,
+        "annotated_at": "2026-08-26T11:57:26.578909+00:00"
+      },
+      "b5": {
+        "abs_idx": 39056,
+        "episode_frame": 6135,
+        "time_s": 204.5,
+        "from_stage": 4,
+        "to_stage": 5,
+        "annotated_at": "2026-08-26T11:57:37.496404+00:00"
+      },
+      "b6": {
+        "abs_idx": 39606,
+        "episode_frame": 6685,
+        "time_s": 222.83,
+        "from_stage": 5,
+        "to_stage": null,
+        "annotated_at": "2026-08-26T11:57:42.802078+00:00"
+      }
+    }
+  }
+}

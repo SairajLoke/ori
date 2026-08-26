@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import bisect
 import pathlib
+import shutil
 import tempfile
 
 import cv2
@@ -237,6 +238,17 @@ def overlay_mask_video(frames: np.ndarray, masks: dict[str, np.ndarray], out_pat
     writer.release()
 
 
+def _box_from_mask(mask: np.ndarray) -> list[float] | None:
+    """mask: [H,W] bool, one frame. [x0,y0,x1,y1] bounding box of the True pixels,
+    or None if the mask is empty (object not visible / track lost this frame -- e.g.
+    moved out of frame). Used to hand a tracked object's box forward into the next
+    chunk's prompt, so a fresh init_state can pick up where the last one left off."""
+    ys, xs = np.where(mask)
+    if len(xs) == 0:
+        return None
+    return [float(xs.min()), float(ys.min()), float(xs.max()), float(ys.max())]
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--video", type=pathlib.Path, required=True)
@@ -257,28 +269,37 @@ def main() -> int:
                          "SAM2 objects (requires --auto_prompt)")
     p.add_argument("--box_threshold", type=float, default=0.3)
     p.add_argument("--text_threshold", type=float, default=0.25)
+    p.add_argument("--chunk_frames", type=int, default=300,
+                    help="process this many frames at a time (default 300 = 10s @ 30fps, "
+                         "~3.75GB peak SAM2 tensor). SAM2's init_state loads an ENTIRE clip "
+                         "as one [T,3,1024,1024] float32 tensor upfront regardless of "
+                         "--model_size/CPU-vs-GPU offload -- chunking is what actually bounds "
+                         "memory for a long --seconds, not model size. Object boxes carry "
+                         "forward between chunks (from the previous chunk's last propagated "
+                         "mask); with --auto_prompt, Grounding DINO re-detects each chunk too "
+                         "and is used as a fallback if a track was lost. Trade-off: each new "
+                         "chunk's memory bank starts cold (seeded only from the box prompt, no "
+                         "carried-over temporal context -- SAM2 has no cross-init_state "
+                         "continuity), so the first 1-2 frames of every chunk are visibly "
+                         "noisier than mid-chunk frames before the memory bank rebuilds "
+                         "(verified by eye on a real clip). Bigger chunks = fewer boundaries = "
+                         "fewer of these dips, at the cost of more peak memory per chunk.")
     args = p.parse_args()
     if args.full_scene and not args.auto_prompt:
         raise SystemExit("--full_scene requires --auto_prompt (arm/table boxes are detected, not clicked)")
 
     OUT_DIR.mkdir(exist_ok=True)
     name = args.out_name or args.video.stem
-    frames = read_clip(args.video, args.start_seconds, args.seconds if args.dump_first_frame is False else 1)
 
     if args.dump_first_frame:
+        frame0 = read_clip(args.video, args.start_seconds, 1)
         out = OUT_DIR / f"{name}_frame0.png"
-        cv2.imwrite(str(out), cv2.cvtColor(frames[0], cv2.COLOR_RGB2BGR))
+        cv2.imwrite(str(out), cv2.cvtColor(frame0[0], cv2.COLOR_RGB2BGR))
         print(f"first frame -> {out}; pick a paper pixel (x,y) from it and pass --point X Y")
         return 0
 
     if not args.auto_prompt and args.point is None:
         raise SystemExit("--point X Y is required, or pass --auto_prompt (or run --dump_first_frame first)")
-
-    objects = negative_points = None
-    if args.auto_prompt:
-        print("running Grounding DINO on frame 0 for an automatic prompt...")
-        objects, negative_points = detect_objects(frames[0], args.box_threshold, args.text_threshold, args.full_scene)
-        print(f"    objects={list(objects)}, {len(negative_points)} negative hand point(s) (paper only)")
 
     import sys
     sys.path.insert(0, str(args.sam2_root))
@@ -291,57 +312,125 @@ def main() -> int:
     print(f"model: {args.model_size} -- {checkpoint}")
     predictor = build_sam2_video_predictor(config, str(checkpoint), device=device)
 
-    # init_state only accepts an mp4 path or a directory of "<N>.jpg" frames (verified against
-    # sam2/utils/misc.py:load_video_frames -- a raw frame array is NOT supported and raises
-    # NotImplementedError). Dump our already-sliced clip there instead of pointing at the raw
-    # video file, so --start_seconds/--seconds still apply.
-    jpg_dir = tempfile.mkdtemp(prefix="sam2_frames_")
-    for i, frame in enumerate(frames):
-        cv2.imwrite(f"{jpg_dir}/{i:05d}.jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
-    print(f"    wrote {len(frames)} JPEG frames -> {jpg_dir}")
-
-    # init_state loads the WHOLE clip as one upfront [T,3,1024,1024] float32 tensor
-    # (sam2/utils/misc.py:load_video_frames_from_jpg_images) -- not chunked, unlike
-    # CoTracker's online mode. Independent of --model_size (that's network weights only).
-    est_gb = len(frames) * 3 * 1024 * 1024 * 4 / 2**30
-    print(f"    est. frame-tensor memory: {est_gb:.1f} GB (T={len(frames)} @ 1024x1024 float32)")
+    est_gb = args.chunk_frames * 3 * 1024 * 1024 * 4 / 2**30
+    print(f"    chunk_frames={args.chunk_frames} -> est. peak frame-tensor memory: {est_gb:.1f} "
+          f"GB/chunk (T=chunk_frames @ 1024x1024 float32, independent of --model_size)")
     if est_gb > 4:
-        print(f"    WARNING: likely to OOM on this box -- try a shorter --seconds", flush=True)
-    if args.full_scene:
-        print(f"    --full_scene: tracking {len(objects)} objects adds per-object memory-bank "
-              f"cost on top of the estimate above (no verified formula for that part -- "
-              f"if it OOMs, cut --seconds further)", flush=True)
+        print(f"    WARNING: likely to OOM even per-chunk -- lower --chunk_frames", flush=True)
 
-    with torch.inference_mode(), torch.autocast(device, dtype=torch.bfloat16 if device == "cuda" else torch.float32):
-        state = predictor.init_state(video_path=jpg_dir)
+    # Process in bounded chunks so only ONE chunk's frames/SAM2 tensor is ever resident at
+    # once (init_state loads a whole chunk upfront -- see --chunk_frames help above). Each
+    # chunk is a fresh init_state/propagate_in_video call (SAM2 has no cross-call memory
+    # continuity); object boxes are handed forward via _box_from_mask on the previous
+    # chunk's last frame so tracking doesn't restart from scratch each chunk.
+    total_requested = round(args.seconds * FPS) if args.seconds is not None else None
+    all_frames: list[np.ndarray] = []
+    all_masks: dict[str, list[np.ndarray]] = {}
+    last_boxes: dict[str, list[float] | None] = {}
+    obj_order: list[str] | None = None  # fixed tracked-object-name order, set at chunk 0
+    frames_done = 0
+    chunk_idx = 0
+
+    while total_requested is None or frames_done < total_requested:
+        chunk_seconds = (args.chunk_frames / FPS if total_requested is None
+                         else min(args.chunk_frames, total_requested - frames_done) / FPS)
+        chunk_start = args.start_seconds + frames_done / FPS
+        print(f"--- chunk {chunk_idx}: frames [{frames_done}:{frames_done + round(chunk_seconds * FPS)}) "
+              f"(t={chunk_start:.1f}s) ---", flush=True)
+        chunk = read_clip(args.video, chunk_start, chunk_seconds)
+        if len(chunk) == 0:
+            break  # ran off the end of the video
+
+        objects: dict[str, list[float]] = {}
+        negative_points = np.zeros((0, 2), dtype=np.float32)
         if args.auto_prompt:
-            # All objects must be added before the first propagate_in_video call --
-            # sam2_video_predictor.py explicitly forbids adding one after tracking starts.
-            # Object ids assigned in `objects` dict order (insertion order, Python 3.7+).
-            obj_ids = {n: i + 1 for i, n in enumerate(objects)}
-            for obj_name, box in objects.items():
-                # negative hand-center points only refine the paper's boundary away from the
-                # gripper -- both points and box are additive in add_new_points_or_box, not
-                # mutually exclusive (verified against the function's own signature).
-                kwargs = dict(box=np.array(box, dtype=np.float32))
-                if obj_name == "origami_paper" and len(negative_points):
-                    kwargs["points"] = negative_points
-                    kwargs["labels"] = np.zeros(len(negative_points), dtype=np.int32)  # 0 = negative
-                predictor.add_new_points_or_box(state, frame_idx=0, obj_id=obj_ids[obj_name], **kwargs)
+            print("    running Grounding DINO on this chunk's frame 0...")
+            try:
+                detected, negative_points = detect_objects(chunk[0], args.box_threshold,
+                                                            args.text_threshold, args.full_scene)
+            except SystemExit as e:
+                if last_boxes.get("origami_paper") is None:
+                    raise  # no continuity box either -- genuinely nothing to prompt paper with
+                print(f"    WARNING: {e} -- continuing with the previous chunk's tracked box(es) only")
+                detected = {}
+            if obj_order is None:
+                obj_order = list(detected)
+            objects = dict(detected)
+            for onm, box in last_boxes.items():
+                if box is not None:
+                    objects[onm] = box  # prefer continuity over a fresh (possibly drifted) redetection
+            missing = [n for n in obj_order if n not in objects]
+            if missing:
+                print(f"    WARNING: no box available this chunk for {missing} -- untracked "
+                      f"(mask stays empty) until redetected in a later chunk")
+            print(f"    objects={list(objects)}, {len(negative_points)} negative hand point(s) (paper only)")
         else:
-            obj_ids = {"paper": 1}
-            predictor.add_new_points_or_box(
-                state, frame_idx=0, obj_id=1,
-                points=np.array([args.point], dtype=np.float32),
-                labels=np.array([1], dtype=np.int32),  # 1 = foreground click
-            )
-        id_to_name = {v: k for k, v in obj_ids.items()}
-        masks = {n: np.zeros(frames.shape[:3], dtype=bool) for n in obj_ids}  # {name: [T,H,W]}
-        for frame_idx, frame_obj_ids, mask_logits in predictor.propagate_in_video(state):
-            for i, oid in enumerate(frame_obj_ids):
-                masks[id_to_name[oid]][frame_idx] = (mask_logits[i] > 0).cpu().numpy().squeeze()
-            if frame_idx % 500 == 0:
-                print(f"    propagated {frame_idx}/{frames.shape[0]}", flush=True)
+            obj_order = obj_order or ["paper"]
+            if chunk_idx > 0 and last_boxes.get("paper") is None:
+                raise SystemExit(f"chunk {chunk_idx}: paper track lost and no auto-detector to "
+                                 f"fall back on in manual --point mode -- use --auto_prompt for "
+                                 f"automatic re-detection between chunks")
+
+        jpg_dir = tempfile.mkdtemp(prefix="sam2_frames_")
+        try:
+            for i, frame in enumerate(chunk):
+                cv2.imwrite(f"{jpg_dir}/{i:05d}.jpg", cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+
+            with torch.inference_mode(), torch.autocast(device, dtype=torch.bfloat16 if device == "cuda" else torch.float32):
+                state = predictor.init_state(video_path=jpg_dir)
+                # All objects must be added before the first propagate_in_video call --
+                # sam2_video_predictor.py explicitly forbids adding one after tracking starts.
+                obj_ids = {n: i + 1 for i, n in enumerate(obj_order)}
+                if args.auto_prompt:
+                    for obj_name in obj_order:
+                        if obj_name not in objects:
+                            continue  # no box this chunk (see WARNING above)
+                        # negative hand-center points only refine the paper's boundary away from
+                        # the gripper -- both points and box are additive in add_new_points_or_box,
+                        # not mutually exclusive (verified against the function's own signature).
+                        kwargs = dict(box=np.array(objects[obj_name], dtype=np.float32))
+                        if obj_name == "origami_paper" and len(negative_points):
+                            kwargs["points"] = negative_points
+                            kwargs["labels"] = np.zeros(len(negative_points), dtype=np.int32)  # 0 = negative
+                        predictor.add_new_points_or_box(state, frame_idx=0, obj_id=obj_ids[obj_name], **kwargs)
+                elif chunk_idx == 0:
+                    predictor.add_new_points_or_box(
+                        state, frame_idx=0, obj_id=obj_ids["paper"],
+                        points=np.array([args.point], dtype=np.float32),
+                        labels=np.array([1], dtype=np.int32),  # 1 = foreground click
+                    )
+                else:
+                    predictor.add_new_points_or_box(
+                        state, frame_idx=0, obj_id=obj_ids["paper"],
+                        box=np.array(last_boxes["paper"], dtype=np.float32))
+
+                id_to_name = {v: k for k, v in obj_ids.items()}
+                chunk_masks = {n: np.zeros(chunk.shape[:3], dtype=bool) for n in obj_order}
+                for frame_idx, frame_obj_ids, mask_logits in predictor.propagate_in_video(state):
+                    for i, oid in enumerate(frame_obj_ids):
+                        chunk_masks[id_to_name[oid]][frame_idx] = (mask_logits[i] > 0).cpu().numpy().squeeze()
+                    if frame_idx % 100 == 0:
+                        print(f"    propagated {frame_idx}/{chunk.shape[0]}", flush=True)
+
+            del state
+            if device == "cuda":
+                torch.cuda.empty_cache()
+        finally:
+            shutil.rmtree(jpg_dir, ignore_errors=True)
+
+        for onm in obj_order:
+            all_masks.setdefault(onm, []).append(chunk_masks[onm])
+            last_boxes[onm] = _box_from_mask(chunk_masks[onm][-1])
+        all_frames.append(chunk)
+
+        got = len(chunk)
+        frames_done += got
+        chunk_idx += 1
+        if got < round(chunk_seconds * FPS):
+            break  # short read -> end of video
+
+    frames = np.concatenate(all_frames, axis=0)
+    masks = {onm: np.concatenate(parts, axis=0) for onm, parts in all_masks.items()}
 
     for obj_name, m in masks.items():
         pct = m.mean(axis=(1, 2))

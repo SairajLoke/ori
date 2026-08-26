@@ -1,0 +1,8 @@
+{
+  "0": "triangle_fold_1",
+  "1": "triangle_fold_2",
+  "2": "wings_folded_together",
+  "3": "left_wing_folded_out",
+  "4": "right_wing_folded_out",
+  "5": "final_sharpen"
+}

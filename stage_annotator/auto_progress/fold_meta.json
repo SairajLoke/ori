@@ -1,0 +1,26 @@
+{
+  "0": {
+    "fold_name": "triangle_fold_1",
+    "fold_description": ""
+  },
+  "1": {
+    "fold_name": "triangle_fold_2",
+    "fold_description": ""
+  },
+  "2": {
+    "fold_name": "wings_folded_together",
+    "fold_description": ""
+  },
+  "3": {
+    "fold_name": "left_wing_folded_out",
+    "fold_description": ""
+  },
+  "4": {
+    "fold_name": "right_wing_folded_out",
+    "fold_description": ""
+  },
+  "5": {
+    "fold_name": "final_sharpen",
+    "fold_description": ""
+  }
+}

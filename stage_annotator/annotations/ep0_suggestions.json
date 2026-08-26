@@ -1,0 +1,631 @@
+{
+  "episode": 0,
+  "num_frames": 6514,
+  "fps": 30,
+  "boundaries": [
+    {
+      "frame": 64,
+      "time_s": 2.13,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 162,
+      "time_s": 5.4,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 203,
+      "time_s": 6.77,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 238,
+      "time_s": 7.93,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 311,
+      "time_s": 10.37,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 343,
+      "time_s": 11.43,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 377,
+      "time_s": 12.57,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 410,
+      "time_s": 13.67,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 454,
+      "time_s": 15.13,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 543,
+      "time_s": 18.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 579,
+      "time_s": 19.3,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 633,
+      "time_s": 21.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 665,
+      "time_s": 22.17,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 767,
+      "time_s": 25.57,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 798,
+      "time_s": 26.6,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 831,
+      "time_s": 27.7,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 874,
+      "time_s": 29.13,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 920,
+      "time_s": 30.67,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1001,
+      "time_s": 33.37,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1054,
+      "time_s": 35.13,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1154,
+      "time_s": 38.47,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 1198,
+      "time_s": 39.93,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 1233,
+      "time_s": 41.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1346,
+      "time_s": 44.87,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1383,
+      "time_s": 46.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1435,
+      "time_s": 47.83,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1476,
+      "time_s": 49.2,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1515,
+      "time_s": 50.5,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1626,
+      "time_s": 54.2,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1697,
+      "time_s": 56.57,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1751,
+      "time_s": 58.37,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1802,
+      "time_s": 60.07,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1847,
+      "time_s": 61.57,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1877,
+      "time_s": 62.57,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 1928,
+      "time_s": 64.27,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2097,
+      "time_s": 69.9,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 2143,
+      "time_s": 71.43,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2178,
+      "time_s": 72.6,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 2255,
+      "time_s": 75.17,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2306,
+      "time_s": 76.87,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2341,
+      "time_s": 78.03,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 2381,
+      "time_s": 79.37,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2506,
+      "time_s": 83.53,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2584,
+      "time_s": 86.13,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2628,
+      "time_s": 87.6,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2689,
+      "time_s": 89.63,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 2754,
+      "time_s": 91.8,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2808,
+      "time_s": 93.6,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2859,
+      "time_s": 95.3,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 2890,
+      "time_s": 96.33,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 2926,
+      "time_s": 97.53,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 2958,
+      "time_s": 98.6,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 3058,
+      "time_s": 101.93,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3211,
+      "time_s": 107.03,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3327,
+      "time_s": 110.9,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3361,
+      "time_s": 112.03,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 3437,
+      "time_s": 114.57,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3468,
+      "time_s": 115.6,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3499,
+      "time_s": 116.63,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 3556,
+      "time_s": 118.53,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 3629,
+      "time_s": 120.97,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 3757,
+      "time_s": 125.23,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3808,
+      "time_s": 126.93,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3838,
+      "time_s": 127.93,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 3872,
+      "time_s": 129.07,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4093,
+      "time_s": 136.43,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4142,
+      "time_s": 138.07,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4239,
+      "time_s": 141.3,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4275,
+      "time_s": 142.5,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 4311,
+      "time_s": 143.7,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 4354,
+      "time_s": 145.13,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4471,
+      "time_s": 149.03,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 4535,
+      "time_s": 151.17,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4595,
+      "time_s": 153.17,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4647,
+      "time_s": 154.9,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4750,
+      "time_s": 158.33,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4798,
+      "time_s": 159.93,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4854,
+      "time_s": 161.8,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4895,
+      "time_s": 163.17,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 4989,
+      "time_s": 166.3,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5088,
+      "time_s": 169.6,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5139,
+      "time_s": 171.3,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 5190,
+      "time_s": 173.0,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 5248,
+      "time_s": 174.93,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5288,
+      "time_s": 176.27,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 5353,
+      "time_s": 178.43,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5389,
+      "time_s": 179.63,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5441,
+      "time_s": 181.37,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5602,
+      "time_s": 186.73,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5679,
+      "time_s": 189.3,
+      "stage": null,
+      "source": "hand_state_crossing"
+    },
+    {
+      "frame": 5731,
+      "time_s": 191.03,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5763,
+      "time_s": 192.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5814,
+      "time_s": 193.8,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5858,
+      "time_s": 195.27,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5895,
+      "time_s": 196.5,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 5953,
+      "time_s": 198.43,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6003,
+      "time_s": 200.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6068,
+      "time_s": 202.27,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6134,
+      "time_s": 204.47,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6183,
+      "time_s": 206.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6213,
+      "time_s": 207.1,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6366,
+      "time_s": 212.2,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6440,
+      "time_s": 214.67,
+      "stage": null,
+      "source": "arm_velocity_min"
+    },
+    {
+      "frame": 6502,
+      "time_s": 216.73,
+      "stage": null,
+      "source": "arm_velocity_min"
+    }
+  ]
+}

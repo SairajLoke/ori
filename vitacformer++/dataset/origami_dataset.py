@@ -88,6 +88,53 @@ def _jitter_gather(pool, n_out, max_gap_frames):
     return gathered, gaps
 
 
+def _sample_image_history_indices(B, L, num_history, history_sec, std_sec, device):
+    """
+    Gaussian-mode subsampling for image history (see configs.IMAGE_HISTORY_*).
+    Unlike _jitter_gather's uniform-gap random walk (meant to emulate irregular
+    NATIVE-FPS inference cadence), images are already fetched at a low target
+    frequency, so history instead samples num_history evenly-spaced reference
+    points ("modes") across [0, history_sec] seconds into the past, each
+    independently Gaussian-jittered (std=std_sec) per batch row. Mode 0 ("now")
+    stays undithered, mirroring _jitter_gather's exact-"now" anchor.
+
+    Shared across all cameras for one sample (computed once, reused per camera)
+    so history slot k means the same wall-clock moment for every camera.
+
+    Returns:
+        pool_idx: [B, num_history] long, index into the pool's L axis.
+            pool_idx[:, -1] indexes "now" (offset 0).
+        elapsed_sec: [B, num_history] float, realized seconds into the past for
+            each gathered sample (0 = now) -- feeds a continuous-time
+            positional encoding, not a discrete slot index.
+    """
+    if num_history > 1:
+        mode_means = torch.linspace(0.0, history_sec, num_history, device=device)
+    else:
+        mode_means = torch.zeros(1, device=device)
+    noise = torch.randn(B, num_history, device=device) * std_sec
+    noise[:, 0] = 0.0
+    elapsed_sec = (mode_means.unsqueeze(0) + noise).clamp(min=0.0, max=history_sec)
+
+    pool_fps = (L - 1) / history_sec
+    steps_into_past = torch.round(elapsed_sec * pool_fps).long().clamp(min=0, max=L - 1)
+    pool_idx = L - 1 - steps_into_past
+
+    # reverse so the LAST slot is "now" (elapsed=0), matching _jitter_gather's convention
+    pool_idx = pool_idx.flip(dims=[1])
+    elapsed_sec = elapsed_sec.flip(dims=[1])
+    return pool_idx, elapsed_sec
+
+
+def _gather_image_history(pool, pool_idx):
+    """pool: [B, L, C, H, W]. pool_idx: [B, num_history] from
+    _sample_image_history_indices. Returns [B, num_history, C, H, W]."""
+    B, L, C, H, W = pool.shape
+    num_history = pool_idx.shape[1]
+    idx = pool_idx.view(B, num_history, 1, 1, 1).expand(-1, -1, C, H, W)
+    return torch.gather(pool, 1, idx)
+
+
 def log_before_after(name, data_raw, data_norm):
     """Log shape, device, dtype, range before/after normalization."""
     print(f"\n[{name}]")
@@ -102,7 +149,9 @@ def log_before_after(name, data_raw, data_norm):
 def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, normalizer=None,
                   predict_deltas=False, camera_names=None, image_crop=None,
                   training=True, qpos_mask_prob=0.0, qpos_mask_mode="fixed",
-                  qpos_static_velocity_threshold=0.01):
+                  qpos_static_velocity_threshold=0.01,
+                  image_history=False, image_history_sec=5.0, image_num_history=5,
+                  image_history_std_sec=0.25, torque_input=False):
 
     """
     Convert a LeRobot batch into the format expected by the old ACT code.
@@ -111,6 +160,11 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     shortcutting. "static_adaptive" masks harder when qpos barely moved (where
     copying it forward would trivially minimize loss). training=False disables
     masking regardless of qpos_mask_prob.
+
+    image_history/torque_input: whether batch[_cam]/batch["observation.state.joint_torque"]
+    were fetched with the extended windows from configs.build_delta_timestamps(...)
+    -- must match whatever was actually passed as delta_timestamps, since these
+    control how the raw batch tensors get interpreted here, not just modeling choices.
 
     Returns:
         output: dict with keys "image", "lowdim", "action", "action_mask", "qpos_mask",
@@ -225,26 +279,58 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     if _verbose:
         log_before_after("action", action_raw, action)
 
-    # observation.state.joint_torque is NOT a model input. It used to be
-    # normalized, moved to GPU and mutated here every single batch, then
-    # dropped -- pure overhead on the critical path. Trace it if you want to
-    # inspect it, but do no work by default.
-    if _verbose and "observation.state.joint_torque" in batch:
-        log_tensor(log, TRACE, "  raw/joint_torque (unused by the model)",
+    # observation.state.joint_torque: gated behind the torque_input parameter
+    # (default off) -- previously extracted only for a debug log and never fed
+    # to the model at all; see my_utils/normalizer.py's recommended_modes() for
+    # why normalizing it is not a missing-stats problem, just previously-unneeded work.
+    torque = None
+    if torque_input:
+        torque_raw = batch["observation.state.joint_torque"]
+        torque = normalizer.normalize("observation.state.joint_torque", torque_raw) if normalizer else torque_raw
+        if _verbose:
+            log_before_after("observation.state.joint_torque (torque)", torque_raw, torque)
+        if JITTER_HISTORY:
+            _torque_pool_shape = tuple(torque.shape)
+            torque, _torque_gaps = _jitter_gather(torque, PROPRIOCEPTIVE_TEMPORAL_HORIZON, JITTER_MAX_GAP_FRAMES)
+            if _verbose:
+                log.debug("  jitter/observation.state.joint_torque: pool %s -> gathered %s",
+                          _torque_pool_shape, tuple(torque.shape))
+    elif _verbose and "observation.state.joint_torque" in batch:
+        log_tensor(log, TRACE, "  raw/joint_torque (unused by the model, torque_input=False)",
                    batch["observation.state.joint_torque"])
 
     # Images. The camera list is driven by camera_names (which the training run
     # records in policy_config) rather than four hardcoded locals, so --cameras
     # can select a subset without this function knowing which.
+    # Image history: when enabled, batch[_cam] comes back as a [B,L,C,H,W]
+    # low-freq pool (per configs.build_delta_timestamps); Gaussian-mode
+    # subsample down to image_num_history frames, shared across all cameras so
+    # history slot k means the same wall-clock moment for every camera. When
+    # disabled, T is fixed at 1 -- unsqueeze to the same [B,T,C,H,W] shape so the
+    # per-frame ops below are a single code path, and the final squeeze makes
+    # this a true no-op (byte-for-byte identical to pre-history-support behavior).
+    image_history_elapsed_sec = None
+    if image_history:
+        _first_raw = batch[camera_names[0]]
+        _pool_idx, image_history_elapsed_sec = _sample_image_history_indices(
+            _first_raw.shape[0], _first_raw.shape[1], image_num_history,
+            image_history_sec, image_history_std_sec, _first_raw.device)
+
     cams = []
     for _cam in camera_names:
         _raw = batch[_cam]
+        if image_history:
+            _raw = _gather_image_history(_raw, _pool_idx)  # [B, T, C, H, W]
+        else:
+            _raw = _raw.unsqueeze(1)  # [B, 1, C, H, W]
+        _cam_B, _cam_T = _raw.shape[0], _raw.shape[1]
+        _raw = _raw.reshape(_cam_B * _cam_T, *_raw.shape[2:])  # [B*T, C, H, W]
         if _raw.dtype == torch.uint8:
             _raw = _raw.float() / 255.0
         _img = normalizer.normalize(_cam, _raw) if normalizer else _raw
         if _verbose:
             log_before_after(_cam, _raw, _img)
-        cams.append(_img)
+        cams.append((_img, _cam_B, _cam_T))
 
     timing['norm'] = time.time() - _t_norm_start
 
@@ -252,7 +338,7 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
     _t_resize_start = time.time()
 
     resized = []
-    for img in cams:
+    for img, _cam_B, _cam_T in cams:
         # Images already converted to float32 [0,1] above (uint8→float32 conversion)
         img = F.interpolate(
             img,
@@ -270,8 +356,11 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
             _h, _w = img.shape[-2:]
             _t, _l = (_h - image_crop) // 2, (_w - image_crop) // 2
             img = img[..., _t:_t + image_crop, _l:_l + image_crop]
+        img = img.reshape(_cam_B, _cam_T, *img.shape[1:])  # [B, T, C, H, W]
+        if _cam_T == 1:
+            img = img.squeeze(1)  # [B, C, H, W] -- matches pre-history-support shape exactly
         resized.append(img)
-    image = torch.stack(resized, dim=1)
+    image = torch.stack(resized, dim=1)  # [B, num_cam, C, H, W] or [B, num_cam, T, C, H, W]
     assert action.shape[0] == image.shape[0] and action.shape[1] == len(delta_timestamps["action"])
 
     timing['resize'] = time.time() - _t_resize_start
@@ -303,6 +392,8 @@ def convert_batch(batch, use_tactile, delta_timestamps, epoch=0, batch_idx=0, no
         "action": action,
         "action_mask": action_mask,
         "qpos_mask": qpos_mask,
+        "image_history_elapsed_sec": image_history_elapsed_sec,
+        "torque": torque,
     }
 
     if use_tactile:

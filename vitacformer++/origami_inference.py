@@ -50,7 +50,7 @@ from train_eval_utils import (
 
 from configs import (
     EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE,
-    IS_ORIGAMI_TASK, DELTA_TIMESTAMPS, CHUNK_SIZE,
+    IS_ORIGAMI_TASK, build_delta_timestamps, CHUNK_SIZE,
     PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, MAXDURATION_IN_EPISODE_SEC, FPS,INFERENCE_DATASET_ROOT
 )
 
@@ -70,24 +70,54 @@ def timing_measure(func):
 
 
 # ──────────────────────────────────────────────────────────────────────
-# Build policy config (matching training)
+# Load the training run's own config (source of truth for architecture)
 # ──────────────────────────────────────────────────────────────────────
-def build_policy_config(args):
+def load_training_config(ckpt_dir):
+    """Read training_configs.json from ckpt_dir. Raises a clear error if
+    missing -- same "raise rather than guess" philosophy as
+    load_training_normalizer below: silently guessing the architecture here
+    means either a shape-mismatch crash on load_state_dict, or worse, a
+    checkpoint that loads with a subtly wrong architecture and produces
+    quietly-meaningless predictions."""
+    path = os.path.join(ckpt_dir, 'training_configs.json')
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"No training_configs.json in {ckpt_dir} -- this is the only record "
+            f"of what architecture this checkpoint was trained with (hidden_dim, "
+            f"use_tactile, use_decision_fusion, image_history, torque_input, ...). "
+            f"Cannot safely reconstruct the model without it."
+        )
+    with open(path) as f:
+        return json.load(f)
+
+
+# ──────────────────────────────────────────────────────────────────────
+# Build policy config from the training run's own record (not CLI guesses)
+# ──────────────────────────────────────────────────────────────────────
+def build_policy_config(training_config, args):
+    """Reconstruct policy_config from training_config['policy_config'], with
+    argparse defaults filling in anything genuinely absent (old checkpoints
+    predating a given key -- the key's absence IS the correct signal that the
+    feature didn't exist yet, so the argparse default matches what was
+    actually used, not a guess)."""
+    pc = training_config.get('policy_config', {})
     return {
-        'num_queries': CHUNK_SIZE,
-        'hidden_dim': args.hidden_dim,
-        'dim_feedforward': args.dim_feedforward,
+        'num_queries': pc.get('num_queries', CHUNK_SIZE),
+        'hidden_dim': pc.get('hidden_dim', args.hidden_dim),
+        'dim_feedforward': pc.get('dim_feedforward', args.dim_feedforward),
         'kl_weight': 10,           # unused at inference
         'lr': 1e-4,                # unused at inference
-        'lr_backbone': LR_BACKBONE,
-        'backbone': BACKBONE,
-        'enc_layers': 4,
-        'dec_layers': 7,
-        'nheads': 8,
-        'camera_names': CAMERA_NAMES,
-        'use_tactile': args.use_tactile,
-        'state_dim': args.state_dim,
-        'proprioceptive_temporal_horizon': PROPRIOCEPTIVE_TEMPORAL_HORIZON,
+        'lr_backbone': pc.get('lr_backbone', LR_BACKBONE),
+        'backbone': pc.get('backbone', BACKBONE),
+        'enc_layers': pc.get('enc_layers', 4),
+        'dec_layers': pc.get('dec_layers', 7),
+        'nheads': pc.get('nheads', 8),
+        'camera_names': pc.get('camera_names', CAMERA_NAMES),
+        'use_tactile': pc.get('use_tactile', args.use_tactile),
+        'state_dim': pc.get('state_dim', args.state_dim),
+        'proprioceptive_temporal_horizon': pc.get('proprioceptive_temporal_horizon', PROPRIOCEPTIVE_TEMPORAL_HORIZON),
+        'tactile_mode': pc.get('tactile_mode', 'predict'),
+        'use_decision_fusion': pc.get('use_decision_fusion', False),
     }
 
 
@@ -100,15 +130,36 @@ def load_policy(ckpt_path, policy_config, device):
 
     policy = ACTPolicy(policy_config)
 
-    # Handle both dict-with-'model' and raw state_dict
-    if isinstance(checkpoint, dict) and 'model' in checkpoint:
-        policy.load_state_dict(checkpoint['model'])
+    # strict=False: some modules (qpos_mask_embed, history_attn,
+    # input_proj_torque_per_step, input_proj_tactile_per_step) are built
+    # unconditionally in DETRVAE.__init__ regardless of whether their features
+    # are enabled -- a checkpoint predating those additions is legitimately
+    # missing those keys (they'd just be randomly-initialized-and-unused for
+    # such a checkpoint, which is correct, not a bug). unexpected_keys is a
+    # different, more concerning signal (the checkpoint has keys THIS
+    # architecture doesn't recognize at all -- e.g. wrong policy_config) and
+    # is still treated as a hard error, not silently ignored.
+    is_wrapped = isinstance(checkpoint, dict) and 'model' in checkpoint
+    state_dict = checkpoint['model'] if is_wrapped else checkpoint
+    missing, unexpected = policy.load_state_dict(state_dict, strict=False)
+    if is_wrapped:
         print(f"  Loaded from checkpoint['model']")
         print(f"  Checkpoint epoch: {checkpoint.get('epoch', '?')}")
         print(f"  Checkpoint global_step: {checkpoint.get('global_step', '?')}")
     else:
-        policy.load_state_dict(checkpoint)
         print(f"  Loaded raw state_dict")
+
+    if unexpected:
+        raise RuntimeError(
+            f"{ckpt_path}: checkpoint has {len(unexpected)} key(s) this model architecture "
+            f"doesn't recognize at all -- likely policy_config mismatch (wrong hidden_dim, "
+            f"use_decision_fusion, etc.), not just an old checkpoint missing new "
+            f"always-built modules. First few: {unexpected[:5]}"
+        )
+    if missing:
+        print(f"  NOTE: {len(missing)} key(s) absent from this checkpoint (left at random "
+              f"init) -- expected when the checkpoint predates a module built unconditionally "
+              f"now: {missing[:5]}{' ...' if len(missing) > 5 else ''}")
 
     policy.eval().to(device)
     print(f"  Policy loaded and set to eval mode on {device}")
@@ -118,17 +169,23 @@ def load_policy(ckpt_path, policy_config, device):
 # ──────────────────────────────────────────────────────────────────────
 # Inference forward pass (mirrors origami_forward_pass but no actions)
 # ──────────────────────────────────────────────────────────────────────
-def origami_inference_forward(data, policy, device, use_tactile):
+def origami_inference_forward(data, policy, device, use_tactile, use_decision_fusion=False):
     """
     Run the policy in inference mode (no actions passed → samples from prior).
 
     Mirrors origami_forward_pass from origami_imitate_episodes.py but without
     actions / is_pad (inference mode).
 
+    use_decision_fusion: whether the loaded checkpoint's policy_config recorded
+    use_decision_fusion=True -- when so, data must carry "torque" and
+    "image_history_elapsed_sec" (i.e. the dataset must have been built with
+    delta_timestamps from configs.build_delta_timestamps(image_history=True, ...)),
+    or DETRVAE.forward's own assertion will raise a clear error.
+
     Returns:
         a_hat: [B, T, D_action] predicted actions
     """
-    image_data = data["image"]       # [B, N_cam, 3, H, W]
+    image_data = data["image"]       # [B, N_cam, 3, H, W] or [B, N_cam, T, 3, H, W]
     qpos_data  = data["lowdim"]      # [B, T1, D1]
 
     # Inputs are already in model space: convert_batch applied the SAME
@@ -150,6 +207,19 @@ def origami_inference_forward(data, policy, device, use_tactile):
     qpos_data_norm = qpos_data_norm.to(device)
     image_data      = image_data.to(device)
 
+    torque_data = data.get("torque")
+    if torque_data is not None:
+        _Bt, _Tt, _Dt = torque_data.shape
+        torque_data = torque_data.reshape(_Bt, _Tt * _Dt).to(device)  # flatten like qpos
+    image_history_elapsed_sec = data.get("image_history_elapsed_sec")
+    if image_history_elapsed_sec is not None:
+        image_history_elapsed_sec = image_history_elapsed_sec.to(device)
+    if use_decision_fusion:
+        assert image_history_elapsed_sec is not None, (
+            "use_decision_fusion checkpoint but the dataset wasn't built with "
+            "image_history -- pass build_delta_timestamps(image_history=True, ...) "
+            "when constructing the eval dataset.")
+
     if use_tactile:
         tactile = data["tactile"]                          # [B, T2, D2]
         tactile_norm = tactile
@@ -163,9 +233,11 @@ def origami_inference_forward(data, policy, device, use_tactile):
 
         a_hat = policy(qpos_data_norm, image_data,
                         device=device, tactile=tactile_norm,
-                        tactile_next=tactile_next_norm)
+                        tactile_next=tactile_next_norm,
+                        torque=torque_data, image_history_elapsed_sec=image_history_elapsed_sec)
     else:
-        a_hat = policy(qpos_data_norm, image_data, device=device)
+        a_hat = policy(qpos_data_norm, image_data, device=device,
+                        torque=torque_data, image_history_elapsed_sec=image_history_elapsed_sec)
 
     return a_hat  # [B, T, D_action]
 
@@ -421,7 +493,11 @@ def get_episode_frame_indices(dataset, episode_idx):
 
 
 def run_episode_inference(dataset, policy, device, use_tactile, episode_idx,
-                          pred_horizon, output_dir, normalizer=None):
+                          pred_horizon, output_dir, normalizer=None,
+                          delta_timestamps=None, use_decision_fusion=False,
+                          image_history=False, image_history_sec=5.0,
+                          image_num_history=5, image_history_std=0.25,
+                          torque_input=False):
     """
     Run inference over a single complete episode in non-overlapping chunks.
 
@@ -473,8 +549,12 @@ def run_episode_inference(dataset, policy, device, use_tactile, episode_idx,
 
         # Convert using the same convert_batch
         data = convert_batch(raw_batch, use_tactile=use_tactile,
-                             delta_timestamps=DELTA_TIMESTAMPS,
-                             epoch=99, batch_idx=99, normalizer=normalizer)
+                             delta_timestamps=delta_timestamps,
+                             epoch=99, batch_idx=99, normalizer=normalizer,
+                             training=False,
+                             image_history=image_history, image_history_sec=image_history_sec,
+                             image_num_history=image_num_history, image_history_std_sec=image_history_std,
+                             torque_input=torque_input)
 
         _gt = data["action"]
         if normalizer is not None:
@@ -483,7 +563,8 @@ def run_episode_inference(dataset, policy, device, use_tactile, episode_idx,
 
         # Run model forward
         with torch.inference_mode():
-            a_hat = origami_inference_forward(data, policy, device, use_tactile)
+            a_hat = origami_inference_forward(data, policy, device, use_tactile,
+                                              use_decision_fusion=use_decision_fusion)
 
         # Back to physical joint angles. a_hat is in model space; with a
         # normalized checkpoint these are normalized values, and feeding them to
@@ -603,19 +684,24 @@ def run_episode_inference(dataset, policy, device, use_tactile, episode_idx,
 
 def main():
     parser = argparse.ArgumentParser(description="Origami Inference & Open-Loop Evaluation")
-    parser.add_argument('--ckpt_path', type=str, required=True, help='path to policy_*.ckpt')
+    parser.add_argument('--ckpt_dir', type=str, required=True,
+                        help='Training run directory (the one holding training_configs.json, '
+                             'normalizer_config.json, and the policy_*.ckpt files).')
+    parser.add_argument('--ckpt_name', type=str, required=True,
+                        help='Exact checkpoint filename inside --ckpt_dir, e.g. policy_last.ckpt.')
     parser.add_argument('--dataset_root', type=str, default=None,
                         help='dataset to run inference over. Defaults to configs.INFERENCE_DATASET_ROOT, '
                              'which is a hardcoded absolute server path -- set this to run anywhere else.')
-    parser.add_argument('--stats_path', type=str, default=None,
-                        help='DEPRECATED and ignored. Normalization is rebuilt from '
-                             'normalizer_config.json next to the checkpoint.')
     parser.add_argument('--assume_unnormalized', action='store_true',
                         help='Treat the checkpoint as trained without normalization. Only for '
                              'checkpoints predating normalizer_config.json -- all of those were '
                              'unnormalized. Wrong here means joint commands in the wrong units.')
+    # The following are FALLBACKS only, used when training_configs.json (read
+    # via load_training_config below) doesn't record the corresponding field --
+    # i.e. checkpoints predating that field's introduction. For any checkpoint
+    # trained with the current code, these are ignored in favor of the recorded
+    # values, matching origami_imitate_episodes.py's own CLI defaults exactly.
     parser.add_argument('--use_tactile', action='store_true')
-    parser.add_argument('--chunk_size', type=int, default=100)
     parser.add_argument('--hidden_dim', type=int, default=512)
     parser.add_argument('--dim_feedforward', type=int, default=3200)
     parser.add_argument('--state_dim', type=int, default=65)
@@ -624,7 +710,9 @@ def main():
     parser.add_argument('--batch_size', type=int, default=1,
                         help='Batch size for inference (default: 1)')
     parser.add_argument('--output_dir', type=str, default='inference_results',
-                        help='Output directory for results and plots')
+                        help='Top-level output directory. Results for this (ckpt_dir, ckpt_name) '
+                             'pair go to <output_dir>/<ckpt_dir_basename>__<ckpt_name_without_ext>/ '
+                             'so different checkpoints never collide.')
     parser.add_argument('--device', type=str, default='cuda',
                         help='Device: cuda or cpu (default: cuda)')
     # Episode-level inference mode
@@ -635,17 +723,46 @@ def main():
                         help='Number of steps to predict per segment in episode mode (default: 64)')
     args = parser.parse_args()
 
+    ckpt_path = os.path.join(args.ckpt_dir, args.ckpt_name)
 
-    output_dir = Path(args.output_dir)
+    # ── Read the training run's own record (source of truth for architecture) ──
+    training_config = load_training_config(args.ckpt_dir)
+    pc = training_config.get('policy_config', {})
+    use_tactile = pc.get('use_tactile', args.use_tactile)
+    use_decision_fusion = pc.get('use_decision_fusion', False)
+    image_history = training_config.get('image_history', False)
+    image_history_sec = training_config.get('image_history_sec', 5.0)
+    image_history_pool_fps = training_config.get('image_history_pool_fps', 5.0)
+    image_num_history = training_config.get('image_num_history', 5)
+    image_history_std = training_config.get('image_history_std', 0.25)
+    torque_input = training_config.get('torque_input', False)
+
+    if use_decision_fusion and 'image_history' not in training_config:
+        raise RuntimeError(
+            f"{ckpt_path}: policy_config.use_decision_fusion=True, but this checkpoint's "
+            f"training_configs.json predates recording image_history/torque_input (both "
+            f"required to correctly rebuild the eval dataset for a decision-fusion "
+            f"checkpoint). Cannot reliably auto-configure -- re-train with the current "
+            f"code to get this recorded, or evaluate a different checkpoint."
+        )
+
+    delta_timestamps = build_delta_timestamps(
+        image_history=image_history, image_history_sec=image_history_sec,
+        image_history_pool_fps=image_history_pool_fps, torque_input=torque_input,
+        camera_names=CAMERA_NAMES,
+    )
+
+    output_dir = Path(args.output_dir) / f"{Path(args.ckpt_dir).name}__{Path(args.ckpt_name).stem}"
     plots_dir = output_dir / "plots"
     plots_dir.mkdir(parents=True, exist_ok=True)
 
     print("=" * 70)
     print("  Origami Inference & Open-Loop Evaluation")
     print("=" * 70)
-    print(f"  Checkpoint:  {args.ckpt_path}")
+    print(f"  Checkpoint:  {ckpt_path}")
     print(f"  Stats:       (from normalizer_config.json beside the ckpt)")
-    print(f"  Use tactile: {args.use_tactile}")
+    print(f"  Use tactile: {use_tactile}  use_decision_fusion: {use_decision_fusion}  "
+          f"image_history: {image_history}  torque_input: {torque_input}")
     if args.episode_idx is not None:
         print(f"  Mode:        Episode (idx={args.episode_idx}, pred_horizon={args.pred_horizon})")
     else:
@@ -661,8 +778,8 @@ def main():
         device = torch.device('cpu')
 
     # ── Build policy config & load model ──────────────────────────────
-    policy_config = build_policy_config(args)
-    policy = load_policy(args.ckpt_path, policy_config, device)
+    policy_config = build_policy_config(training_config, args)
+    policy = load_policy(ckpt_path, policy_config, device)
 
     # ── Load the normalizer the checkpoint was trained with ──
     print("\n[Stats] Resolving normalization from the checkpoint directory")
@@ -670,20 +787,20 @@ def main():
         normalizer = None
         print("[Normalizer] --assume_unnormalized: inputs and outputs left in raw units")
     else:
-        normalizer, _norm_cfg = load_training_normalizer(args.ckpt_path, device)
+        normalizer, _norm_cfg = load_training_normalizer(ckpt_path, device)
     print(f"  Normalizer type: {type(normalizer).__name__}")
 
     # ── Load dataset ──────────────────────────────────────────────────
     print("\n[Dataset] Loading origami dataset...")
-    
+
     _ds_root = Path(args.dataset_root) if args.dataset_root else INFERENCE_DATASET_ROOT
     print(f"  Dataset root: {_ds_root}")
     dataset = get_origami_full_dataset(
         dataset_root=_ds_root,
         split="full", #NOTE: till i don't have train/test /val splits
         TOLERANCE=TOLERANCE,
-        delta_timestamps=DELTA_TIMESTAMPS,
-        use_tactile=args.use_tactile,
+        delta_timestamps=delta_timestamps,
+        use_tactile=use_tactile,
         max_duration_sec=MAXDURATION_IN_EPISODE_SEC,
         doImageTransforms=False,
     )
@@ -698,11 +815,16 @@ def main():
             dataset=dataset,
             policy=policy,
             device=device,
-            use_tactile=args.use_tactile,
+            use_tactile=use_tactile,
             episode_idx=args.episode_idx,
             pred_horizon=args.pred_horizon,
             output_dir=output_dir,
             normalizer=normalizer,
+            delta_timestamps=delta_timestamps,
+            use_decision_fusion=use_decision_fusion,
+            image_history=image_history, image_history_sec=image_history_sec,
+            image_num_history=image_num_history, image_history_std=image_history_std,
+            torque_input=torque_input,
         )
         print(f"\n{'=' * 70}")
         print("  Episode inference done!")
@@ -740,9 +862,13 @@ def main():
     for batch_idx, raw_batch in enumerate(dataloader):
         # Time data loading + conversion
         t_data_start = time.perf_counter()
-        data = convert_batch(raw_batch, use_tactile=args.use_tactile,
-                             delta_timestamps=DELTA_TIMESTAMPS,
-                             epoch=99, batch_idx=99, normalizer=normalizer)
+        data = convert_batch(raw_batch, use_tactile=use_tactile,
+                             delta_timestamps=delta_timestamps,
+                             epoch=99, batch_idx=99, normalizer=normalizer,
+                             training=False,
+                             image_history=image_history, image_history_sec=image_history_sec,
+                             image_num_history=image_num_history, image_history_std_sec=image_history_std,
+                             torque_input=torque_input)
         t_data = time.perf_counter() - t_data_start
         data_load_times.append(t_data)
 
@@ -754,7 +880,8 @@ def main():
         # Time model forward
         t_fwd_start = time.perf_counter()
         with torch.inference_mode():
-            a_hat = origami_inference_forward(data, policy, device, args.use_tactile)
+            a_hat = origami_inference_forward(data, policy, device, use_tactile,
+                                              use_decision_fusion=use_decision_fusion)
         t_fwd = time.perf_counter() - t_fwd_start
         inference_times.append(t_fwd)
 
@@ -889,12 +1016,14 @@ def main():
     results_path = output_dir / "eval_results.json"
     with open(results_path, 'w') as f:
         json.dump({
-            "checkpoint": args.ckpt_path,
-            "stats_path": args.stats_path,
-            "use_tactile": args.use_tactile,
+            "checkpoint": ckpt_path,
+            "use_tactile": use_tactile,
+            "use_decision_fusion": use_decision_fusion,
+            "image_history": image_history,
+            "torque_input": torque_input,
             "n_samples": n_samples,
             "chunk_size": CHUNK_SIZE,
-            "state_dim": args.state_dim,
+            "state_dim": policy_config['state_dim'],
             "overall_mse": {
                 "mean": mean_mse,
                 "std": std_mse,

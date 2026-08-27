@@ -49,7 +49,7 @@ class Transformer(nn.Module):
                  num_decoder_layers=6, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False,
                  return_intermediate_dec=False, use_tactile=False,
-                 explicit_flash_attn=False):
+                 explicit_flash_attn=False, use_decision_fusion=False):
         super().__init__()
 
         # explicit_flash_attn -> need_weights=False -> nn.MultiheadAttention may
@@ -58,7 +58,7 @@ class Transformer(nn.Module):
         _nw = not explicit_flash_attn
         encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,
                                                 dropout, activation, normalize_before, use_tactile,
-                                                need_weights=_nw)
+                                                need_weights=_nw, use_decision_fusion=use_decision_fusion)
         encoder_norm = nn.LayerNorm(d_model) if normalize_before else None
         self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)
 
@@ -79,7 +79,7 @@ class Transformer(nn.Module):
             if p.dim() > 1:
                 nn.init.xavier_uniform_(p)
 
-    def forward(self, src, mask, query_embed, pos_embed, latent_input=None, proprio_input=None, additional_pos_embed=None, tactile=None, tactile_pred=None):
+    def forward(self, src, mask, query_embed, pos_embed, latent_input=None, proprio_input=None, additional_pos_embed=None, tactile=None, tactile_pred=None, decision_latent=None):
 
         _trace = _tf_gate() and log.isEnabledFor(TRACE)
 
@@ -101,6 +101,17 @@ class Transformer(nn.Module):
                 src = torch.cat([addition_input, src], axis=0)
                 pred_action = True
             else:
+                # additional_pos_embed has 4 rows normally, 5 when decision_latent
+                # is used (see DETRVAE's use_decision_fusion) -- this assertion
+                # catches a lockstep drift against TransformerEncoderLayer's
+                # use_decision_fusion flag at the source, loudly, instead of
+                # silently mis-slicing downstream.
+                expected_slots = 5 if decision_latent is not None else 4
+                assert additional_pos_embed.shape[0] == expected_slots, (
+                    f"additional_pos_embed has {additional_pos_embed.shape[0]} slots but "
+                    f"decision_latent={'present' if decision_latent is not None else 'None'} "
+                    f"expects {expected_slots} -- DETRVAE's use_decision_fusion and this call "
+                    f"disagree on the token layout.")
 
                 tokens = [tactile]
                 pos_list = [additional_pos_embed[0]]
@@ -114,16 +125,20 @@ class Transformer(nn.Module):
 
                 tokens.extend([latent_input, proprio_input])
                 pos_list.extend([additional_pos_embed[2], additional_pos_embed[3]])
+                if decision_latent is not None:
+                    tokens.append(decision_latent)
+                    pos_list.append(additional_pos_embed[4])
 
-                addition_input = torch.stack(tokens, dim=0)  # [3 + 1, B, D]
+                addition_input = torch.stack(tokens, dim=0)  # [3 + 1 (+1), B, D]
                 pos_list = torch.stack(pos_list, dim=0).unsqueeze(1).repeat(1, bs, 1)  # [N_token, B, D]
 
-                pos_embed = torch.cat([pos_list, pos_embed], dim=0)  # [3 + 1 + HW, B, D]
-                src = torch.cat([addition_input, src], dim=0)  # [3 + 1 + HW, B, D]
+                pos_embed = torch.cat([pos_list, pos_embed], dim=0)  # [N_token + HW, B, D]
+                src = torch.cat([addition_input, src], dim=0)  # [N_token + HW, B, D]
 
                 if _trace:
                     _layout = (["tactile"] + (["tactile_pred"] if tactile_pred is not None else [])
-                               + ["latent", "proprio"] + [f"image x{src.shape[0] - len(tokens)}"])
+                               + ["latent", "proprio"] + (["decision_latent"] if decision_latent is not None else [])
+                               + [f"image x{src.shape[0] - len(tokens)}"])
                     log.log(TRACE, "  encoder token layout (pred_action=%s): %s  -> total src %s",
                             pred_action, " | ".join(_layout), tuple(src.shape))
         else:
@@ -222,7 +237,7 @@ class TransformerEncoderLayer(nn.Module):
 
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,
                  activation="relu", normalize_before=False, use_tactile=False,
-                 need_weights=True):
+                 need_weights=True, use_decision_fusion=False):
         super().__init__()
         self.need_weights = need_weights
         # print("use_tactile encoder", use_tactile)
@@ -249,6 +264,14 @@ class TransformerEncoderLayer(nn.Module):
         self.activation = _get_activation_fn(activation)
         self.normalize_before = normalize_before
         self.use_tactile = use_tactile
+        # Fixed at build time (unlike pred_action, which varies per forward call
+        # between pass 1/pass 2) -- whether Transformer.forward's token assembly
+        # includes a decision_latent token in the "middle" group (alongside
+        # latent/proprio). Shifts the middle/other slice boundary below by +1
+        # when true. MUST match Transformer.forward's token count exactly, or
+        # this cross-attends the wrong tokens with no error -- see the
+        # slice-boundary comment in forward_post.
+        self.use_decision_fusion = use_decision_fusion
 
     def with_pos_embed(self, tensor, pos: Optional[Tensor]):
         return tensor if pos is None else tensor + pos
@@ -268,27 +291,34 @@ class TransformerEncoderLayer(nn.Module):
 
         if self.use_tactile:
             # ==== Cross-attention ====
+            # Middle group is [latent, proprio] normally, [latent, proprio,
+            # decision_latent] when use_decision_fusion -- Transformer.forward
+            # appends decision_latent to the END of that group, so only the
+            # upper boundary (where "other"/image tokens start) shifts by +1;
+            # the tactile_token slice at the front is untouched either way.
+            _mid_extra = 1 if self.use_decision_fusion else 0
             if pred_action:
                 tactile_token = src[:2]
                 tactile_pos = pos[:2]
-                other_tokens = src[4:]
-                other_pos = pos[4:]
-                middle_tokens = src[2:4]
-                middle_pos = pos[2:4]
+                other_tokens = src[4 + _mid_extra:]
+                other_pos = pos[4 + _mid_extra:]
+                middle_tokens = src[2:4 + _mid_extra]
+                middle_pos = pos[2:4 + _mid_extra]
             else:
                 tactile_token = src[:1]
                 tactile_pos = pos[:1]
-                other_tokens = src[3:]
-                other_pos = pos[3:]
-                middle_tokens = src[1:3]
-                middle_pos = pos[1:3]
+                other_tokens = src[3 + _mid_extra:]
+                other_pos = pos[3 + _mid_extra:]
+                middle_tokens = src[1:3 + _mid_extra]
+                middle_pos = pos[1:3 + _mid_extra]
 
             if _enc_gate() and log.isEnabledFor(TRACE):
                 # The slice boundaries here MUST match the token order built in
                 # Transformer.forward. Log them so a mismatch is obvious.
                 log.log(TRACE,
-                        "  enc layer split (pred_action=%s): tactile=%s middle(latent,proprio)=%s other(image)=%s",
-                        pred_action, tuple(tactile_token.shape),
+                        "  enc layer split (pred_action=%s, use_decision_fusion=%s): tactile=%s "
+                        "middle(latent,proprio[,decision_latent])=%s other(image)=%s",
+                        pred_action, self.use_decision_fusion, tuple(tactile_token.shape),
                         tuple(middle_tokens.shape), tuple(other_tokens.shape))
 
             tactile_token2 = self.cross_attn_1(
@@ -444,6 +474,7 @@ def build_transformer(args):
         return_intermediate_dec=True,
         use_tactile=args.use_tactile,
         explicit_flash_attn=getattr(args, 'explicit_flash_attn', False),
+        use_decision_fusion=getattr(args, 'use_decision_fusion', False),
     )
 
 

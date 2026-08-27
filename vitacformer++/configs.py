@@ -227,7 +227,40 @@ if IS_ORIGAMI_TASK:
         # future half -- the tactile_next prediction target -- is always exactly 18, unjittered)
     }
 
-    
+    def build_delta_timestamps(image_history=False, image_history_sec=5.0,
+                                image_history_pool_fps=5.0, torque_input=False,
+                                camera_names=None):
+        """DELTA_TIMESTAMPS extended with image-history/torque keys, driven by
+        EXPLICIT arguments (CLI-arg-sourced -- origami_imitate_episodes.py/
+        origami_inference.py both call this instead of reading env vars) so
+        every choice made here is recorded in training_configs.json via the
+        normal config dict, not silently invisible to it.
+
+        image_history: adds a low-freq pool per camera (Gaussian-mode subsampled
+        in dataset/origami_dataset.py::convert_batch -- unlike JITTER_HISTORY's
+        native-FPS dense pool, images are video, so a native-FPS pool spanning
+        several seconds would be 150+ decoded frames per camera per sample;
+        this pool is fetched at its own low frequency instead).
+        torque_input: adds observation.state.joint_torque on the same window as
+        observation.state (same [65] per-frame shape, confirmed from
+        meta/info.json -- identical 65 joint names).
+
+        Returns a NEW dict each call -- callers must not mutate the module-level
+        DELTA_TIMESTAMPS in place.
+        """
+        dt = dict(DELTA_TIMESTAMPS)
+        if image_history:
+            camera_names = camera_names if camera_names is not None else CAMERA_NAMES
+            pool_offsets = [
+                -1 * (i / image_history_pool_fps)
+                for i in range(round(image_history_sec * image_history_pool_fps), -1, -1)
+            ]  # e.g. 5.0s @ 5fps -> 26 timestamps, -5.0 .. 0.0, spaced 0.2s apart
+            for _cam in camera_names:
+                dt[_cam] = pool_offsets
+        if torque_input:
+            dt["observation.state.joint_torque"] = _state_past_offsets
+        return dt
+
     #==================================== FINGER MASKING ==============================================
     #https://sharpa-robotics.github.io/sharpa-docs/#hand-control  has joint order definition 0-22
     

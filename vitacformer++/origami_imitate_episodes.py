@@ -54,6 +54,7 @@ from train_eval_utils import (JOINT_GROUPS, JOINT_GROUP_COLORS, _detailed_stats,
                               build_predicted_action_dims, build_action_step_weights)
 from my_utils.log_features import log_problematic_features
 from my_utils.gradcam import save_gradcam_grid
+from my_utils.attention_capture import save_attention_maps
 from my_utils.ori_logging import (setup_logging, get_logger, log_tensor, log_tensors,
                                   TRACE, StepGate)
 
@@ -68,7 +69,7 @@ def my_function():
 
 
 from configs import ( EPISODE_LEN, TOLERANCE, CAMERA_NAMES, STATE_DIM, LR_BACKBONE, BACKBONE, IS_ORIGAMI_TASK,
-    FULL_DATASET, DELTA_TIMESTAMPS, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
+    FULL_DATASET, build_delta_timestamps, CHUNK_SIZE, PROPRIOCEPTIVE_TEMPORAL_HORIZON, MASK_FINGERS, HAND_MASK, FPS, MAXDURATION_IN_EPISODE_SEC,
     MAX_EPISODES, VAL_EPISODES, VAL_EVERY_N_EPOCHS, BACKBONE_WEIGHTS, NORM_DISABLE_KEYS,
     VIT_UNFROZEN_LAYERS, IMAGE_HW )
 
@@ -421,6 +422,20 @@ def visualize_batch(data, batch_idx, epoch, save_dir, use_tactile, max_samples=2
 def main(args):
     set_seed(1)
 
+    # Extends DELTA_TIMESTAMPS with image-history/torque keys per this run's
+    # own CLI args (not env vars -- see build_delta_timestamps docstring) so
+    # every choice here ends up recorded in training_configs.json via the
+    # normal config dict below, not silently invisible to it. Everything past
+    # this point that previously read the bare DELTA_TIMESTAMPS constant
+    # directly must use this resolved version instead.
+    delta_timestamps = build_delta_timestamps(
+        image_history=args.get('image_history', False),
+        image_history_sec=args.get('image_history_sec', 5.0),
+        image_history_pool_fps=args.get('image_history_pool_fps', 5.0),
+        torque_input=args.get('torque_input', False),
+        camera_names=CAMERA_NAMES,
+    )
+
     # Validate mutually exclusive parameters
     resume_path = args['resume_path']
     load_pretrained_for_newtraining = args['load_pretrained_for_newtraining']
@@ -489,7 +504,7 @@ def main(args):
     log.info("  MASK_FINGERS=%s  MAXDURATION_IN_EPISODE_SEC=%s  PROPRIO_HORIZON=%s",
              MASK_FINGERS, MAXDURATION_IN_EPISODE_SEC, PROPRIOCEPTIVE_TEMPORAL_HORIZON)
     log.info("  FULL_DATASET=%s", FULL_DATASET)
-    for _k, _v in DELTA_TIMESTAMPS.items():
+    for _k, _v in delta_timestamps.items():
         log.info("  DELTA_TIMESTAMPS[%-22s] %d offsets, frame idx %s%s",
                  _k, len(_v), [round(t * FPS) for t in _v[:6]],
                  " ..." if len(_v) > 6 else "")
@@ -580,6 +595,8 @@ def main(args):
         'save_untrained': args.get('save_untrained', False),
         'gradcam': args.get('gradcam', False),
         'gradcam_n_samples': args.get('gradcam_n_samples', 2),
+        'save_attention_maps': args.get('save_attention_maps', False),
+        'attention_maps_n_samples': args.get('attention_maps_n_samples', 2),
     }
     
     
@@ -615,7 +632,7 @@ def main(args):
         f.write(f"HAND_MASK: {HAND_MASK}\n")
         f.write(f"MAXDURATION_IN_EPISODE_SEC: {MAXDURATION_IN_EPISODE_SEC}\n")
         f.write(f"PROPRIOCEPTIVE_TEMPORAL_HORIZON: {PROPRIOCEPTIVE_TEMPORAL_HORIZON}\n")
-        f.write(f"DELTA_TIMESTAMPS: {DELTA_TIMESTAMPS}\n")
+        f.write(f"DELTA_TIMESTAMPS: {delta_timestamps}\n")
         f.write(f"FULL_DATASET: {FULL_DATASET}\n")
         # f.write(f"SEASONS: {SEASONS}\n")
         f.write("\n")
@@ -667,7 +684,7 @@ def main(args):
             dataset_root=FULL_DATASET,
             split= "full",
             TOLERANCE= TOLERANCE,
-            delta_timestamps=DELTA_TIMESTAMPS,
+            delta_timestamps=delta_timestamps,
             use_tactile=use_tactile,
             max_duration_sec= MAXDURATION_IN_EPISODE_SEC  , #NOTE:;;; becareful
             doImageTransforms = config.get('doImageTransforms', False),
@@ -680,7 +697,7 @@ def main(args):
                 dataset_root=FULL_DATASET,
                 split="full",
                 TOLERANCE=TOLERANCE,
-                delta_timestamps=DELTA_TIMESTAMPS,
+                delta_timestamps=delta_timestamps,
                 use_tactile=use_tactile,
                 max_duration_sec=MAXDURATION_IN_EPISODE_SEC,
                 doImageTransforms=False,   # never augment the val set
@@ -767,11 +784,30 @@ def main(args):
         if policy_config['tactile_mode'] == 'none':
             policy_config['use_tactile'] = False
         config['tactile_mode'] = policy_config['tactile_mode']
+        policy_config['use_decision_fusion'] = args.get('use_decision_fusion', False)
+        if policy_config['use_decision_fusion'] and not policy_config['use_tactile']:
+            log.warning("--use_decision_fusion has no effect without --use_tactile "
+                        "(tactile_mode=%s disables it) -- decision fusion mechanically "
+                        "requires a tactile sequence to cross-attend against.",
+                        policy_config['tactile_mode'])
         config['image_crop'] = args.get('image_crop')
         config['camera_names'] = policy_config['camera_names']
         config['qpos_mask_prob'] = args.get('qpos_mask_prob', 0.0)
         config['qpos_mask_mode'] = args.get('qpos_mask_mode', 'fixed')
         config['qpos_static_velocity_threshold'] = args.get('qpos_static_velocity_threshold', 0.01)
+        config['image_history'] = args.get('image_history', False)
+        config['image_history_sec'] = args.get('image_history_sec', 5.0)
+        config['image_history_pool_fps'] = args.get('image_history_pool_fps', 5.0)
+        config['image_num_history'] = args.get('image_num_history', 5)
+        config['image_history_std'] = args.get('image_history_std', 0.25)
+        config['torque_input'] = args.get('torque_input', False)
+        config['delta_timestamps'] = delta_timestamps
+        if config['image_history']:
+            log.info("image_history: sec=%.1f pool_fps=%.1f num_history=%d std=%.2f",
+                     config['image_history_sec'], config['image_history_pool_fps'],
+                     config['image_num_history'], config['image_history_std'])
+        if config['torque_input']:
+            log.info("torque_input: enabled")
         if config['qpos_mask_prob'] > 0:
             log.info("qpos_mask: mode=%s prob=%.2f", config['qpos_mask_mode'], config['qpos_mask_prob'])
         if config['image_crop']:
@@ -1017,11 +1053,13 @@ def old_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0):
 
 def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0, log_final_inputs=False,
                          writer=None, global_step=0, return_a_hat=False):
-    image_data = data["image"]               # [B, N_cam, 3, H, W]
+    image_data = data["image"]               # [B, N_cam, 3, H, W] or [B, N_cam, T, 3, H, W]
     qpos_data = data["lowdim"]               # [B, T1, D1]
     action_data = data["action"]            # [B, T, D_action]
     is_pad = data["action_mask"]            # [B, T]
     qpos_mask = data.get("qpos_mask")       # [B] bool, or None
+    torque_data = data.get("torque")        # [B, T1, D1] or None
+    image_history_elapsed_sec = data.get("image_history_elapsed_sec")  # [B, T] or None
 
 
     #------------------------------------ NORMALIZE ??? #NOTE: ------------------------------------------------\
@@ -1056,7 +1094,11 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
     B, T1, D1 = qpos_data_norm.shape
     qpos_data_norm = qpos_data_norm.view(B, T1 * D1)  # → [B, T1 * D1]
 
-    # move to device...redundant since normalizer 
+    if torque_data is not None:
+        _Bt, _Tt, _Dt = torque_data.shape
+        torque_data = torque_data.reshape(_Bt, _Tt * _Dt)  # flatten like qpos; DETRVAE reshapes back per-timestep
+
+    # move to device...redundant since normalizer
     # non_blocking=True enables async H2D copy overlap (pin_memory=True on DataLoader)
     qpos_data_norm   = qpos_data_norm.to(device)#, non_blocking=True)
     image_data       = image_data.to(device)# , non_blocking=True)
@@ -1064,6 +1106,10 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
     is_pad = is_pad.to(device)# , non_blocking=True)
     if qpos_mask is not None:
         qpos_mask = qpos_mask.to(device)
+    if torque_data is not None:
+        torque_data = torque_data.to(device)
+    if image_history_elapsed_sec is not None:
+        image_history_elapsed_sec = image_history_elapsed_sec.to(device)
 
     if use_tactile:
         tactile = data["tactile"]                          # [B, T2, D2]
@@ -1093,14 +1139,16 @@ def origami_forward_pass(data, policy, normalizer, device, use_tactile, epoch=0,
         return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
                       tactile_norm, tactile_next_norm,
                       tactile_next_pad=tactile_next_pad, epoch=epoch,
-                      return_a_hat=return_a_hat, qpos_mask=qpos_mask)
+                      return_a_hat=return_a_hat, qpos_mask=qpos_mask,
+                      torque=torque_data, image_history_elapsed_sec=image_history_elapsed_sec)
 
     if log_final_inputs:
         log_final_model_inputs(qpos_data_norm, image_data, action_data_norm, is_pad,
                                None, None, writer, global_step)
 
     return policy(qpos_data_norm, image_data, action_data_norm, is_pad, device,
-                  return_a_hat=return_a_hat, qpos_mask=qpos_mask)
+                  return_a_hat=return_a_hat, qpos_mask=qpos_mask,
+                  torque=torque_data, image_history_elapsed_sec=image_history_elapsed_sec)
 
 
 
@@ -1109,7 +1157,11 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
                      max_steps=None, gradcam=False, gradcam_dir=None, gradcam_n_samples=2,
                      camera_names=None, predict_deltas=False,
                      predicted_action_dims=None, constant_action_dims=None,
-                     image_crop=None):
+                     image_crop=None, image_history=False, image_history_sec=5.0,
+                     image_num_history=5, image_history_std_sec=0.25, torque_input=False,
+                     delta_timestamps=None, use_decision_fusion=False,
+                     save_attention_maps_flag=False, attention_maps_dir=None,
+                     attention_maps_n_samples=2):
     """Run the held-out episodes and return a dict of scalar metrics.
 
     `policy` must be the UNWRAPPED module (accelerator.unwrap_model), and this
@@ -1138,6 +1190,11 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
     isolated forward+backward pass, see my_utils/gradcam.py). Off by default --
     this is a debug/analysis tool, not something every validation pass should
     pay for.
+
+    If save_attention_maps_flag=True, also saves temporal/self/between-modality
+    attention maps for the first `attention_maps_n_samples` examples of the
+    FIRST validation batch only (one extra forward pass, no gradients -- see
+    my_utils/attention_capture.py). Off by default, same reasoning as gradcam.
     """
     policy.eval()
 
@@ -1149,11 +1206,14 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
     for batch_idx, data in enumerate(tqdm(val_dataloader, desc=f"Val epoch {epoch}", leave=False)):
         if max_steps is not None and batch_idx >= max_steps:
             break
-        data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
+        data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=delta_timestamps,
                                          predict_deltas=predict_deltas,
                                          camera_names=camera_names, image_crop=image_crop,
                              epoch=epoch, batch_idx=batch_idx, normalizer=normalizer,
-                             training=False)
+                             training=False,
+                             image_history=image_history, image_history_sec=image_history_sec,
+                             image_num_history=image_num_history, image_history_std_sec=image_history_std_sec,
+                             torque_input=torque_input)
         data.pop("_timing", None)
 
         if gradcam and batch_idx == 0:
@@ -1166,6 +1226,18 @@ def origami_validate(val_dataloader, policy, normalizer, device, use_tactile, ep
             except Exception as e:
                 import traceback; traceback.print_exc()
                 log.warning("gradcam failed for epoch %d, skipping: %s", epoch, e)
+
+        if save_attention_maps_flag and batch_idx == 0:
+            try:
+                save_attention_maps(
+                    policy=policy, data=data, normalizer=normalizer, device=device,
+                    out_dir=attention_maps_dir, n_samples=attention_maps_n_samples,
+                    use_tactile=use_tactile, use_decision_fusion=use_decision_fusion,
+                    image_history=image_history, epoch=epoch,
+                )
+            except Exception as e:
+                import traceback; traceback.print_exc()
+                log.warning("attention_capture failed for epoch %d, skipping: %s", epoch, e)
 
         forward_dict, a_hat = origami_forward_pass(
             data, policy, normalizer, device, use_tactile, epoch=epoch, return_a_hat=True)
@@ -1677,7 +1749,17 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                     predict_deltas=config.get('predict_deltas', False),
                     predicted_action_dims=config.get('predicted_action_dims'),
                     constant_action_dims=config.get('constant_action_dims'),
-                    image_crop=config.get('image_crop'))
+                    image_crop=config.get('image_crop'),
+                    image_history=config.get('image_history', False),
+                    image_history_sec=config.get('image_history_sec', 5.0),
+                    image_num_history=config.get('image_num_history', 5),
+                    image_history_std_sec=config.get('image_history_std', 0.25),
+                    torque_input=config.get('torque_input', False),
+                    delta_timestamps=config.get('delta_timestamps'),
+                    use_decision_fusion=policy_config.get('use_decision_fusion', False),
+                    save_attention_maps_flag=config.get('save_attention_maps', False),
+                    attention_maps_dir=os.path.join(ckpt_dir, 'attention_maps', f'epoch_{epoch}'),
+                    attention_maps_n_samples=config.get('attention_maps_n_samples', 2))
                 validation_history.append((epoch, val_metrics))
 
                 if val_metrics:
@@ -1727,7 +1809,7 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
 
                 if IS_ORIGAMI_TASK:
                     # ── convert_batch (timing attached as data["_timing"]) ──
-                    data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=DELTA_TIMESTAMPS,
+                    data = convert_batch(data, use_tactile=use_tactile, delta_timestamps=config.get('delta_timestamps'),
                                          predict_deltas=config.get('predict_deltas', False),
                                          camera_names=config.get('camera_names'),
                                          image_crop=config.get('image_crop'),
@@ -1735,7 +1817,12 @@ def train_bc(train_dataloader, normalizer, train_dataset, timestamp, config, old
                                          training=True,
                                          qpos_mask_prob=config.get('qpos_mask_prob', 0.0),
                                          qpos_mask_mode=config.get('qpos_mask_mode', 'fixed'),
-                                         qpos_static_velocity_threshold=config.get('qpos_static_velocity_threshold', 0.01))
+                                         qpos_static_velocity_threshold=config.get('qpos_static_velocity_threshold', 0.01),
+                                         image_history=config.get('image_history', False),
+                                         image_history_sec=config.get('image_history_sec', 5.0),
+                                         image_num_history=config.get('image_num_history', 5),
+                                         image_history_std_sec=config.get('image_history_std', 0.25),
+                                         torque_input=config.get('torque_input', False))
                     convert_timing = data.pop("_timing", {})
                     _batch_timings['convert_norm'] = convert_timing.get('norm', 0)
                     _batch_timings['convert_resize'] = convert_timing.get('resize', 0)
@@ -2033,6 +2120,35 @@ if __name__ == '__main__':
                              "'input' keeps tactile as a plain observation token and runs one "
                              "pass (~25-40%% less forward compute; zeroing the aux head moved "
                              "action MSE -2.4%%). 'none' drops tactile entirely (worth 3-5%%).")
+    parser.add_argument('--use_decision_fusion', action='store_true',
+                        help='Fuse per-camera image-history embeddings with tactile(+torque) '
+                             'history into a decision latent, threaded into the tactile dual-pass '
+                             'as a 5th additional_pos_embed slot. Requires --use_tactile and '
+                             '--image_history (--torque_input optional -- torque is an additional '
+                             'fusion input, not required). Off by default.')
+    parser.add_argument('--image_history', action='store_true',
+                        help='Fetch a low-freq Gaussian-mode-sampled pool of past frames per '
+                             'camera (see configs.build_delta_timestamps), instead of only the '
+                             'current frame. Required by --use_decision_fusion. Off by default -- '
+                             'when off, image loading is byte-identical to before this existed.')
+    parser.add_argument('--image_history_sec', type=float, default=5.0,
+                        help='--image_history: total lookback window in seconds.')
+    parser.add_argument('--image_history_pool_fps', type=float, default=5.0,
+                        help='--image_history: fetch frequency for the underlying pool (kept low '
+                             'since images are video -- a native-FPS pool over several seconds '
+                             'would be 150+ decoded frames/camera/sample).')
+    parser.add_argument('--image_num_history', type=int, default=5,
+                        help='--image_history: number of Gaussian-mode samples drawn from the pool '
+                             'per forward call (evenly-spaced means across image_history_sec, '
+                             'each independently jittered).')
+    parser.add_argument('--image_history_std', type=float, default=0.25,
+                        help='--image_history: Gaussian jitter std (seconds) around each mode mean.')
+    parser.add_argument('--torque_input', action='store_true',
+                        help='Feed observation.state.joint_torque to the model (same window as '
+                             'observation.state). Previously extracted but always discarded -- see '
+                             'my_utils/normalizer.py recommended_modes() for why this was a '
+                             'previously-unneeded-work skip, not a missing-stats problem. Off by '
+                             'default. Optional input to --use_decision_fusion.')
     parser.add_argument('--qpos_mask_prob', type=float, default=0.0,
                         help='Probability of masking qpos per sample during training, to reduce '
                              'state->action shortcutting. 0 = disabled (default). 1.0 = qpos never '
@@ -2119,6 +2235,13 @@ if __name__ == '__main__':
                              'isolated forward+backward pass -- off by default.')
     parser.add_argument('--gradcam_n_samples', type=int, default=2,
                         help='Number of examples from the first val batch to run Grad-CAM on.')
+    parser.add_argument('--save_attention_maps', action='store_true',
+                        help='Save temporal/self/between-modality attention maps (.npy + heatmap '
+                             'PNG) on the first validation batch of every validation epoch (see '
+                             'my_utils/attention_capture.py). One extra forward pass, no '
+                             'gradients -- off by default.')
+    parser.add_argument('--attention_maps_n_samples', type=int, default=2,
+                        help='Number of examples from the first val batch to save attention maps for.')
     parser.add_argument('--tac_weight', type=float, default=1.0,
                         help='Multiplier on the tactile prediction loss (default 1.0, unchanged). '
                              'Sweep this together with --kl_weight: the three terms l1, kl*kl_weight '

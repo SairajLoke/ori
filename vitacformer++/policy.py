@@ -120,7 +120,7 @@ class ACTPolicy(nn.Module):
 
     def __call__(self, qpos, image, actions=None, is_pad=None, device=None, tactile=None,
                  tactile_next=None, tactile_next_pad=None, epoch=0, return_a_hat=False,
-                 qpos_mask=None):
+                 qpos_mask=None, torque=None, image_history_elapsed_sec=None):
         env_state = None
 
         if actions is not None: # training time
@@ -140,7 +140,7 @@ class ACTPolicy(nn.Module):
             # _stats('tactile_next', tactile_next)
             
 
-            a_hat, is_pad_hat, (mu, logvar), tac_hat = self.model(qpos, image, env_state, tactile, actions, is_pad, tactile_next, epoch=epoch, qpos_mask=qpos_mask)
+            a_hat, is_pad_hat, (mu, logvar), tac_hat = self.model(qpos, image, env_state, tactile, actions, is_pad, tactile_next, epoch=epoch, qpos_mask=qpos_mask, torque=torque, image_history_elapsed_sec=image_history_elapsed_sec)
             total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
             loss_dict = dict()
             loss_dict['l1'] = self._masked_l1(a_hat, actions, is_pad, self.action_dim_weights,
@@ -177,7 +177,8 @@ class ACTPolicy(nn.Module):
             return loss_dict
         else: # inference time
             # epoch>=75 disables teacher forcing so the model uses its own predicted tactile_next
-            a_hat, _, (_, _), _ = self.model(qpos, image, env_state, tactile, epoch=999, tactile_next=tactile_next) # no action, sample from prior
+            a_hat, _, (_, _), _ = self.model(qpos, image, env_state, tactile, epoch=999, tactile_next=tactile_next,
+                                             torque=torque, image_history_elapsed_sec=image_history_elapsed_sec) # no action, sample from prior
             return a_hat
 
 

@@ -1,0 +1,88 @@
+{
+  "fold_name": "left_wing_folded_out",
+  "fold_description": "Unfolding the left half outward along a wing crease, extending the left wing away from the folded body.",
+  "fold_dir": "auto_progress/fold3_frames",
+  "n_frames": 5,
+  "position": "start",
+  "question": "Based ONLY on these first frames of the stage (shown in chronological order, starting at the first frame recorded for this stage), estimate how far along the fold already looks at the START of the clip, and whether this is a clean starting point for the stage -- i.e. the paper is still in the pre-fold state this stage is supposed to start from, not already showing leftover motion or partial folding carried over from the previous stage.",
+  "results": [
+    {
+      "episode": "episode_000",
+      "progress_at_start": 0,
+      "clean_start": true,
+      "reasoning": "paper is fully folded with no visible crease or motion",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_000/frame_0000.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0001.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0002.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0003.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0004.jpg"
+      ]
+    },
+    {
+      "episode": "episode_001",
+      "progress_at_start": 0,
+      "clean_start": true,
+      "reasoning": "paper is flat and uncreased",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_001/frame_0000.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0001.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0002.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0003.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0004.jpg"
+      ]
+    },
+    {
+      "episode": "episode_002",
+      "progress_at_start": 0,
+      "clean_start": true,
+      "reasoning": "paper is flat and fully open at start",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_002/frame_0000.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0001.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0002.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0003.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0004.jpg"
+      ]
+    },
+    {
+      "episode": "episode_003",
+      "progress_at_start": 0,
+      "clean_start": true,
+      "reasoning": "paper is flat and uncreased at start",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_003/frame_0000.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0001.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0002.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0003.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0004.jpg"
+      ]
+    },
+    {
+      "episode": "episode_004",
+      "progress_at_start": 0,
+      "clean_start": true,
+      "reasoning": "paper is flat and uncreased",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_004/frame_0000.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0001.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0002.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0003.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0004.jpg"
+      ]
+    },
+    {
+      "episode": "episode_005",
+      "progress_at_start": 0,
+      "clean_start": true,
+      "reasoning": "paper is flat and fully folded with no visible creases or partial folds",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_005/frame_0000.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0001.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0002.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0003.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0004.jpg"
+      ]
+    }
+  ]
+}

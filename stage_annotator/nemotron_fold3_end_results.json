@@ -1,0 +1,88 @@
+{
+  "fold_name": "left_wing_folded_out",
+  "fold_description": "Unfolding the left half outward along a wing crease, extending the left wing away from the folded body.",
+  "fold_dir": "auto_progress/fold3_frames",
+  "n_frames": 5,
+  "position": "end",
+  "question": "Based ONLY on these final frames of the stage (shown in chronological order, ending at the last frame recorded for this stage), estimate how visually complete this fold looks at the END of the clip, and whether the fold looks cleanly finished (not mid-motion, not abandoned half-way) by the last frame.",
+  "results": [
+    {
+      "episode": "episode_000",
+      "progress_at_end": 85,
+      "stage_complete": true,
+      "reasoning": "left wing fully extended and aligned",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_000/frame_0134.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0135.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0136.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0137.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0138.jpg"
+      ]
+    },
+    {
+      "episode": "episode_001",
+      "progress_at_end": 90,
+      "stage_complete": true,
+      "reasoning": "left wing fully extended and creased",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_001/frame_0118.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0119.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0120.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0121.jpg",
+        "auto_progress/fold3_frames/episode_001/frame_0122.jpg"
+      ]
+    },
+    {
+      "episode": "episode_002",
+      "progress_at_end": 85,
+      "stage_complete": true,
+      "reasoning": "wing fully extended and crease defined",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_002/frame_0029.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0030.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0031.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0032.jpg",
+        "auto_progress/fold3_frames/episode_002/frame_0033.jpg"
+      ]
+    },
+    {
+      "episode": "episode_003",
+      "progress_at_end": 95,
+      "stage_complete": true,
+      "reasoning": "left wing fully extended and aligned",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_003/frame_0096.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0097.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0098.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0099.jpg",
+        "auto_progress/fold3_frames/episode_003/frame_0100.jpg"
+      ]
+    },
+    {
+      "episode": "episode_004",
+      "progress_at_end": 95,
+      "stage_complete": true,
+      "reasoning": "wing fully extended and creased",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_004/frame_0092.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0093.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0094.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0095.jpg",
+        "auto_progress/fold3_frames/episode_004/frame_0096.jpg"
+      ]
+    },
+    {
+      "episode": "episode_005",
+      "progress_at_end": 85,
+      "stage_complete": true,
+      "reasoning": "left wing fully extended with sharp crease",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_005/frame_0090.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0091.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0092.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0093.jpg",
+        "auto_progress/fold3_frames/episode_005/frame_0094.jpg"
+      ]
+    }
+  ]
+}

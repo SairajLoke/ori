@@ -1,0 +1,22 @@
+{
+  "fold_name": "left_wing_folded_out",
+  "fold_description": "",
+  "fold_dir": "auto_progress/fold3_frames",
+  "n_last_frames": 5,
+  "question": "Based ONLY on these final frames of the stage (shown in chronological order, ending at the last frame recorded for this stage), estimate how visually complete this fold looks at the END of the clip, and whether the fold looks cleanly finished (not mid-motion, not abandoned half-way) by the last frame.",
+  "results": [
+    {
+      "episode": "episode_000",
+      "progress_at_end": 85,
+      "stage_complete": true,
+      "reasoning": "wings fully formed with sharp creases and aligned edges",
+      "frame_paths": [
+        "auto_progress/fold3_frames/episode_000/frame_0134.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0135.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0136.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0137.jpg",
+        "auto_progress/fold3_frames/episode_000/frame_0138.jpg"
+      ]
+    }
+  ]
+}
